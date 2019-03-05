@@ -26,14 +26,12 @@
 #  ===================
 #
 #  Sound:
-#    - Without options, defaults to using SYSTEM_CMD_SOUND using platform
-#      dependent command line tools such as aplay, afplay or mediaplayer.
-#    - With ENABLE_SYSTEM_CMD_SOUND disabled falls back to wxSound backend. 
-#      This is known to be broken on at least Linux, and only supports .wav 
-#      files on all platforms.
-#    - ENABLE_PORTAUDIO builds using [lib]portaudio if available.
-#    - ENABLE_SYSTEM_CMD_SOUND builds using platform dependent command line
-#      tools such as aplay, afplay or mediaplayer.
+#    - Without options, defaults to MswSound on Windows, PortAudioSound
+#      on Linux and WxSound on OSX. 
+#    - With ENABLE_SYSTEM_CMD_SOUND enabled SystemCmdSound will the backend
+#      used on all platforms.
+#    - With  ENABLE_PORTAUDIO activated PortAudioSound can be used on all
+#      platforms if the necessary headers and libraries are available.
 #    - ENABLE_SNDFILE adds libsndfile support to portaudio. libsndfile
 #      supports a wide range of audio formats instead of .wav only.
 #
@@ -1165,7 +1163,7 @@ ELSEIF (WIN32)
 ENDIF ()
 
 OPTION(ENABLE_SYSTEM_CMD_SOUND
-       "Use aplay(1), afplay(1) etc. to play sounds if available" ON)
+    "Use aplay(1), afplay(1) etc. to play sounds if available" OFF)
 SET (HAVE_SYSTEM_CMD_SOUND "")
 IF (NOT (ENABLE_SYSTEM_CMD_SOUND MATCHES OFF))
   IF (APLAY OR AFPLAY OR WIN32)
@@ -1177,11 +1175,11 @@ IF (NOT (ENABLE_SYSTEM_CMD_SOUND MATCHES OFF))
   ENDIF()
 ENDIF()
 
-IF (WIN32)
+IF (WIN32 OR APPLE)
   SET (DEFAULT_PA OFF)
-ELSE (WIN32)
+ELSE ()
   SET (DEFAULT_PA ON)
-ENDIF (WIN32)
+ENDIF ()
 
 OPTION(ENABLE_PORTAUDIO
        "Use portaudio(3) to play sounds if available" ${DEFAULT_PA})
@@ -1527,14 +1525,12 @@ IF(APPLE)
             )
         ADD_DEFINITIONS(-DOCPN_USE_DARKMODE)
     ENDIF()    
-    
-    SET(SRCS ${SRCS}
-        src/MacSound.mm
-        src/MacSound.h
-        )
-    
 ENDIF(APPLE)
 
+IF (WIN32)
+    list(APPEND SRCS src/MswSound.cpp)
+    list(APPEND HDRS include/MswSound.h)
+ENDIF ()
 
 IF(NOT WIN32 AND NOT APPLE AND NOT QT_ANDROID AND OCPN_USE_CRASHREPORT)
   SET(HDRS ${HDRS} include/crashprint.h )
