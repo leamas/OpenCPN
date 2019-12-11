@@ -36,6 +36,7 @@
 #include <wx/progdlg.h>
 #include <wx/sizer.h>
 #include <wx/statline.h>
+#include <wx/textwrapper.h>
 
 #include "catalog_mgr.h"
 #include "download_mgr.h"
@@ -55,6 +56,35 @@ extern wxImage LoadSVGIcon( wxString filename, int width, int height );
 #undef minor
 
 namespace download_mgr {
+std::string WrapText(wxWindow *win, const wxString& text, int widthMax)
+{
+    class HardBreakWrapper : public wxTextWrapper
+    {
+        public:
+            HardBreakWrapper(wxWindow *win, const wxString& text, int width)
+            {
+                Wrap(win, text, width);
+            }
+
+            const std::string& GetWrapped() const { return m_wrapped; }
+
+        protected:
+            virtual void OnOutputLine(const wxString& line)
+            {
+                m_wrapped += line.ToStdString();
+            }
+      
+            virtual void OnNewLine()
+            {
+                m_wrapped += '\n';
+            }
+
+        private:
+            std::string m_wrapped;
+    };
+    HardBreakWrapper wrapper(win, text, widthMax);
+    return wrapper.GetWrapped();
+}
 
 /**
  * Used to compare plugin versions. Versions are basically semantic
@@ -482,15 +512,16 @@ class PluginTextPanel: public wxPanel
         PluginTextPanel(wxWindow* parent,
                         const PluginMetadata* plugin,
                         CandidateButtonsPanel* buttons)
-            :wxPanel(parent), m_descr(0), m_parent(parent), m_buttons(buttons)
+            : wxPanel(parent), m_descr(0), m_parent(parent), m_buttons(buttons)
         {
             auto flags = wxSizerFlags().Border();
 
             auto sum_hbox = new wxBoxSizer(wxHORIZONTAL);
+            m_summary = staticText(plugin->summary);
+            sum_hbox->Add(m_summary);
+            sum_hbox->AddSpacer(10);
             m_more = staticText("");
             m_more->SetLabelMarkup(MORE);
-            sum_hbox->Add(staticText(plugin->summary));
-            sum_hbox->AddSpacer(10);
             sum_hbox->Add(m_more, wxSizerFlags());
 
             auto vbox = new wxBoxSizer(wxVERTICAL);
@@ -504,6 +535,7 @@ class PluginTextPanel: public wxPanel
 
             m_more->Bind(wxEVT_LEFT_DOWN, &PluginTextPanel::OnClick, this);
             m_descr->Bind(wxEVT_LEFT_DOWN, &PluginTextPanel::OnClick, this);
+            Bind(wxEVT_SIZE, &PluginTextPanel::OnSize, this);
         }
 
         ~PluginTextPanel()
@@ -518,7 +550,19 @@ class PluginTextPanel: public wxPanel
             m_more->SetLabelMarkup(m_descr->IsShown() ? LESS : MORE);
             m_parent->Layout();
             m_buttons->HideDetails(!m_descr->IsShown());
+            GetContainingSizer()->Fit(this);
         }
+
+        void OnSize( wxSizeEvent& event )
+        {
+            auto width = GetClientSize().GetWidth();
+            std::string text = m_descr->GetLabel().ToStdString();
+            m_descr->SetLabel(WrapText(this, text.c_str(), width));
+            text = m_summary->GetLabel().ToStdString();
+            m_summary->SetLabel(WrapText(this, text.c_str(), width));
+            event.Skip();
+        }
+
 
     protected:
         const char* const MORE = _("<span foreground='blue'>More...</span>");
@@ -532,6 +576,7 @@ class PluginTextPanel: public wxPanel
 
         wxStaticText* m_descr;
         wxStaticText* m_more;
+        wxStaticText* m_summary;
         wxWindow* m_parent;
         CandidateButtonsPanel* m_buttons;
 };
@@ -584,8 +629,9 @@ class MainButtonsPanel: public wxPanel
             UpdateCatalogDialogBtn(wxWindow* parent)
                 :wxButton(parent, wxID_ANY, _("Advanced catalog update..."))
             {
-                 Bind(wxEVT_COMMAND_BUTTON_CLICKED,
-                     [=](wxCommandEvent&) {new CatalogDialog(GetParent(), false); });
+                 Bind(wxEVT_COMMAND_BUTTON_CLICKED, [=](wxCommandEvent&) {
+                      new CatalogDialog(GetParent(), false);
+                 });
             }
         
         };
@@ -624,7 +670,6 @@ class OcpnScrolledWindow : public wxScrolledWindow
             auto button_panel = new MainButtonsPanel(this, parent);
             box->Add(button_panel, wxSizerFlags().Right().Border().Expand());
             SetSizer(box);
-            //FitInside();
             SetScrollRate(0, 1);
         };
 };
