@@ -56,35 +56,6 @@ extern wxImage LoadSVGIcon( wxString filename, int width, int height );
 #undef minor
 
 namespace download_mgr {
-std::string WrapText(wxWindow *win, const wxString& text, int widthMax)
-{
-    class HardBreakWrapper : public wxTextWrapper
-    {
-        public:
-            HardBreakWrapper(wxWindow *win, const wxString& text, int width)
-            {
-                Wrap(win, text, width);
-            }
-
-            const std::string& GetWrapped() const { return m_wrapped; }
-
-        protected:
-            virtual void OnOutputLine(const wxString& line)
-            {
-                m_wrapped += line.ToStdString();
-            }
-      
-            virtual void OnNewLine()
-            {
-                m_wrapped += '\n';
-            }
-
-        private:
-            std::string m_wrapped;
-    };
-    HardBreakWrapper wrapper(win, text, widthMax);
-    return wrapper.GetWrapped();
-}
 
 /**
  * Used to compare plugin versions. Versions are basically semantic
@@ -555,10 +526,15 @@ class PluginTextPanel: public wxPanel
         void OnSize( wxSizeEvent& event )
         {
             auto width = GetClientSize().GetWidth();
+
             std::string text = m_descr->GetLabel().ToStdString();
-            m_descr->SetLabel(WrapText(this, text.c_str(), width));
+            m_descr->SetLabel(text.c_str());
+            m_descr->Wrap(width);
+
             text = m_summary->GetLabel().ToStdString();
-            m_summary->SetLabel(WrapText(this, text.c_str(), width));
+            m_summary->SetLabel(text.c_str());
+            m_summary->Wrap(width);
+
             event.Skip();
         }
 
