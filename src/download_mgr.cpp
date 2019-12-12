@@ -548,9 +548,8 @@ class PluginTextPanel: public wxPanel
         {
             m_descr->Show(!m_descr->IsShown());
             m_more->SetLabelMarkup(m_descr->IsShown() ? LESS : MORE);
-            m_parent->Layout();
             m_buttons->HideDetails(!m_descr->IsShown());
-            GetContainingSizer()->Fit(this);
+            m_parent->SendSizeEvent();
         }
 
         void OnSize( wxSizeEvent& event )
@@ -670,6 +669,8 @@ class OcpnScrolledWindow : public wxScrolledWindow
             auto button_panel = new MainButtonsPanel(this, parent);
             box->Add(button_panel, wxSizerFlags().Right().Border().Expand());
             SetSizer(box);
+            FitInside();
+            // TODO: Compute size using wxWindow::GetEffectiveMinSize()
             SetScrollRate(0, 1);
         };
 };
