@@ -685,7 +685,7 @@ PluginDownloadDialog::PluginDownloadDialog(wxWindow* parent)
 {
     auto vbox = new wxBoxSizer(wxVERTICAL);
     auto scrwin = new download_mgr::OcpnScrolledWindow(this);
-    vbox->Add(scrwin, wxSizerFlags().Proportion(1).Expand());
+    vbox->Add(scrwin, wxSizerFlags(1).Expand());
 
     // At least GTK has bad defaults, widgets are not realized. Try to
     // compute a reasonable minimum size:
@@ -693,6 +693,13 @@ PluginDownloadDialog::PluginDownloadDialog(wxWindow* parent)
     minsize = wxSize(5 * minsize.GetWidth(), 20 * minsize.GetHeight());
     SetMinClientSize(minsize);
 
+    // At least GTK has bad defaults, widgets are not realized. Try to
+    // compute a reasonable minimum size:
+    wxSize minsize = GetTextExtent("abcdefghijklmnopqrst");
+    minsize = wxSize(4 * minsize.GetWidth(), 16 * minsize.GetHeight());
+    SetMinClientSize(minsize);
+
+    SetSizer(vbox);
     Fit();
-    Center();
+    Layout();
 }
