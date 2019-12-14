@@ -703,12 +703,6 @@ PluginDownloadDialog::PluginDownloadDialog(wxWindow* parent)
     minsize = wxSize(5 * minsize.GetWidth(), 20 * minsize.GetHeight());
     SetMinClientSize(minsize);
 
-    // At least GTK has bad defaults, widgets are not realized. Try to
-    // compute a reasonable minimum size:
-    wxSize minsize = GetTextExtent("abcdefghijklmnopqrst");
-    minsize = wxSize(4 * minsize.GetWidth(), 16 * minsize.GetHeight());
-    SetMinClientSize(minsize);
-
     SetSizer(vbox);
     Fit();
     Layout();
