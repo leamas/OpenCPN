@@ -58,11 +58,11 @@ void copy_file(const std::string& src_path, const std::string& dest_path);
 class TextWrap {
  
     public:
-        TextWrap(const std::string& input);
-        std::string wrap();
+        TextWrap();
+        std::string wrap(const std::string& input);
 
     protected:
-        bool is_too_long(const std::string& l) { return l.length() > 72; }
+        virtual bool is_too_long(const std::string& l) { return l.length() > 72; }
 
     private:
         std::string m_input;

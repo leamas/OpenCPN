@@ -41,6 +41,7 @@
 #include "catalog_mgr.h"
 #include "download_mgr.h"
 #include "Downloader.h"
+#include "ocpn_utils.h"
 #include "OCPNPlatform.h"
 #include "PluginHandler.h"
 #include "pluginmanager.h"
@@ -473,6 +474,38 @@ class CandidateButtonsPanel: public wxPanel
     private:
         wxWindow* m_parent;
         WebsiteButton* m_info_btn;
+};
+
+/** Text field with reflowing word wrap. */
+class ocpnStaticText: public wxStaticText
+{
+    public:
+        ocpnStaticText(wxWindow* parent) : wxStaticText(parent, wxID_ANY, "")
+        {}
+
+        void SetLabel(const wxString& label) override
+        {
+            Wrapper wrapper(m_parent);
+            wxStaticText::SetLabel(wrapper.wrap(label.ToStdString()));
+        }
+
+    private:
+        class Wrapper: public ocpn::TextWrap
+        {
+            public:
+                Wrapper(wxWindow* parent)
+                    : ocpn::TextWrap(), m_parent(parent)
+                {}
+
+            protected:
+                bool is_too_long(const std::string& line) override
+                {
+                    int length = m_parent->GetTextExtent(line.c_str()).GetWidth();
+                    int max = m_parent->GetClientSize().GetWidth();
+                    return length > max;
+                }
+                wxWindow* m_parent;
+        };
 };
 
 

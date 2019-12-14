@@ -157,14 +157,13 @@ void copy_file(const std::string& src_path, const std::string& dest_path)
 
 }  // namespace ocpn
 
-static constexpr const char* NL_NL = "|^"; 
+static constexpr const char* NL_NL = "|^";
 
-ocpn::TextWrap::TextWrap(const std::string& input) : m_input(input) {}
-
+ocpn::TextWrap::TextWrap() {}
 
 std::string ocpn::TextWrap::wrap(const std::string& input)
 {
-    std::string s(replace_nlnl(m_input));
+    std::string s(replace_nlnl(input));
     std::istringstream is(s);
     std::ostringstream os;
     std::string line;
@@ -198,6 +197,7 @@ std::string ocpn::TextWrap::wrap(const std::string& input)
     return os.str();
 }
 
+
 std::string ocpn::TextWrap::replace_nlnl(const std::string& old)
 {
     const std::string nl_nl_word = std::string(" ") + NL_NL + " ";
@@ -209,4 +209,3 @@ std::string ocpn::TextWrap::replace_nlnl(const std::string& old)
     }
     return s;
 }
-
