@@ -477,34 +477,47 @@ class CandidateButtonsPanel: public wxPanel
 };
 
 /** Text field with reflowing word wrap. */
-class ocpnStaticText: public wxStaticText
+class OcpnStaticText: public wxStaticText
 {
     public:
-        ocpnStaticText(wxWindow* parent) : wxStaticText(parent, wxID_ANY, "")
-        {}
+        OcpnStaticText(wxWindow* parent) : wxStaticText(parent, wxID_ANY, "")
+        {
+            Bind(wxEVT_SIZE, &OcpnStaticText::OnSize, this);
+        }
 
         void SetLabel(const wxString& label) override
         {
-            Wrapper wrapper(m_parent);
+            Wrapper wrapper(m_parent, GetClientSize().GetWidth());
             wxStaticText::SetLabel(wrapper.wrap(label.ToStdString()));
+        }
+
+        void SetLabel(const wxString& label, int width)
+        {
+            Wrapper wrapper(m_parent, width);
+            wxStaticText::SetLabel(wrapper.wrap(label.ToStdString()));
+        }
+
+        void OnSize(wxSizeEvent& event)
+        {
+            SetLabel(GetLabel(), event.GetSize().GetWidth());
+            event.Skip();
         }
 
     private:
         class Wrapper: public ocpn::TextWrap
         {
             public:
-                Wrapper(wxWindow* parent)
-                    : ocpn::TextWrap(), m_parent(parent)
+                Wrapper(wxWindow* parent, int width)
+                    : ocpn::TextWrap(), m_parent(parent), m_width(width)
                 {}
 
             protected:
                 bool is_too_long(const std::string& line) override
                 {
-                    int length = m_parent->GetTextExtent(line.c_str()).GetWidth();
-                    int max = m_parent->GetClientSize().GetWidth();
-                    return length > max;
+                    return m_parent->GetTextExtent(line).GetWidth() > m_width;
                 }
                 wxWindow* m_parent;
+                int m_width;
         };
 };
 
@@ -530,16 +543,17 @@ class PluginTextPanel: public wxPanel
 
             auto vbox = new wxBoxSizer(wxVERTICAL);
             auto name = staticText(plugin->name + "    " + plugin->version);
-            m_descr = staticText(plugin->description);
+            m_descr = new OcpnStaticText(this);
+            wxLogMessage("wrapping label: %s", plugin->description.c_str());
+            m_descr->SetLabel(plugin->description);
             m_descr->Hide();
             vbox->Add(name, flags);
             vbox->Add(sum_hbox, flags);
-            vbox->Add(m_descr, flags);
+            vbox->Add(m_descr, flags.Expand());
             SetSizer(vbox);
 
             m_more->Bind(wxEVT_LEFT_DOWN, &PluginTextPanel::OnClick, this);
             m_descr->Bind(wxEVT_LEFT_DOWN, &PluginTextPanel::OnClick, this);
-            Bind(wxEVT_SIZE, &PluginTextPanel::OnSize, this);
         }
 
         ~PluginTextPanel()
@@ -555,22 +569,6 @@ class PluginTextPanel: public wxPanel
             m_buttons->HideDetails(!m_descr->IsShown());
             m_parent->SendSizeEvent();
         }
-
-        void OnSize( wxSizeEvent& event )
-        {
-            auto width = GetClientSize().GetWidth();
-
-            std::string text = m_descr->GetLabel().ToStdString();
-            m_descr->SetLabel(text.c_str());
-            m_descr->Wrap(width);
-
-            text = m_summary->GetLabel().ToStdString();
-            m_summary->SetLabel(text.c_str());
-            m_summary->Wrap(width);
-
-            event.Skip();
-        }
-
 
     protected:
         const char* const MORE = _("<span foreground='blue'>More...</span>");
@@ -657,18 +655,17 @@ class OcpnScrolledWindow : public wxScrolledWindow
             :wxScrolledWindow(parent)
         {
             auto grid = new wxFlexGridSizer(3, 0, 0);
-            grid->AddGrowableCol(0);
             grid->AddGrowableCol(1);
-            grid->AddGrowableCol(2);
-            auto flags = wxSizerFlags().Proportion(1).Expand();
+            auto flags = wxSizerFlags();
             auto box = new wxBoxSizer(wxVERTICAL);
             for (auto plugin: PluginHandler::getInstance()->getAvailable()) {
                 if (plugin.target != PKG_TARGET) {
                     continue;
                 }
-                grid->Add(new PluginIconPanel(this, plugin.name), flags);
+                grid->Add(new PluginIconPanel(this, plugin.name), flags.Expand());
                 auto buttons = new CandidateButtonsPanel(this, &plugin);
-                grid->Add(new PluginTextPanel(this, &plugin, buttons), flags);
+                grid->Add(new PluginTextPanel(this, &plugin, buttons),
+                          flags.Proportion(1));
                 grid->Add(buttons, flags);
                 grid->Add(new wxStaticLine(this), flags);
                 grid->Add(new wxStaticLine(this), flags);
@@ -699,9 +696,9 @@ PluginDownloadDialog::PluginDownloadDialog(wxWindow* parent)
 
     // At least GTK has bad defaults, widgets are not realized. Try to
     // compute a reasonable minimum size:
-    wxSize minsize = GetTextExtent("abcdefghijklmnopqrst");
-    minsize = wxSize(5 * minsize.GetWidth(), 20 * minsize.GetHeight());
-    SetMinClientSize(minsize);
+    int min_height = GetTextExtent("abcdefghijklmnopqrst").GetHeight();
+    SetMinClientSize(wxSize(GetBestSize().GetWidth(), 20 * min_height));
+
 
     SetSizer(vbox);
     Fit();
