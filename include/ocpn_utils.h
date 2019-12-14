@@ -48,4 +48,26 @@ bool replace(std::string& str, const std::string& from, const std::string& to);
 
 void copy_file(const std::string& src_path, const std::string& dest_path);
 
+
+/**
+ * An aggressive, reflowing text wrapper which only respects paragraph
+ * delimiters (that is, "\n\n").
+ * Breaks line if deemed too long by is_too_long(), by default at 72
+ * characters. Override as required.
+ */
+class TextWrap {
+ 
+    public:
+        TextWrap(const std::string& input);
+        std::string wrap();
+
+    protected:
+        bool is_too_long(const std::string& l) { return l.length() > 72; }
+
+    private:
+        std::string m_input;
+        std::string replace_nlnl(const std::string& s);
+};
+
 }   // namespace ocpn
+

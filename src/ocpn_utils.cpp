@@ -22,9 +22,14 @@
  ***************************************************************************
  */
 #include <algorithm>
+#include <cstring>
 #include <cstdio>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <istream>
+#include <sstream>
+#include <string>
+
 #include <string.h>
 #include <sys/stat.h>
 
@@ -151,3 +156,57 @@ void copy_file(const std::string& src_path, const std::string& dest_path)
 }
 
 }  // namespace ocpn
+
+static constexpr const char* NL_NL = "|^"; 
+
+ocpn::TextWrap::TextWrap(const std::string& input) : m_input(input) {}
+
+
+std::string ocpn::TextWrap::wrap(const std::string& input)
+{
+    std::string s(replace_nlnl(m_input));
+    std::istringstream is(s);
+    std::ostringstream os;
+    std::string line;
+    while (!is.eof()) {
+        std::string word;
+        is >> word;
+        if (word == std::string(NL_NL)) {
+            os << line << std::endl << std::endl;
+            line = "";
+        }
+        else if (is_too_long(word)) {
+            if (line.length() > 0) {
+                os << line << std::endl;
+            }
+            os << word << std::endl;
+        } 
+        else  if (is_too_long(line + word)) {
+            os << line << std::endl;
+            line = word;
+        }
+        else {
+            if (line.length() > 0) {
+                line = line + " ";
+            }
+            line += word;
+        }
+    }
+    if (line.length() > 0) {
+        os << line;
+    }
+    return os.str();
+}
+
+std::string ocpn::TextWrap::replace_nlnl(const std::string& old)
+{
+    const std::string nl_nl_word = std::string(" ") + NL_NL + " ";
+    std::string s(old);
+    size_t pos = s.find("\n\n");
+    while( pos != std::string::npos) {
+        s.replace(pos, (size_t) 4, nl_nl_word);
+        pos = s.find("\n\n", pos + strlen(NL_NL));
+    }
+    return s;
+}
+
