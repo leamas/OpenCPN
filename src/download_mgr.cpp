@@ -678,7 +678,15 @@ class OcpnScrolledWindow : public wxScrolledWindow
             FitInside();
             // TODO: Compute size using wxWindow::GetEffectiveMinSize()
             SetScrollRate(0, 1);
+            Bind(wxEVT_SIZE, &OcpnScrolledWindow::OnSize, this);
         };
+
+        void OnSize(wxSizeEvent& event)
+        {
+            wxLogMessage("OcpnScrolledWindow, w: %d, h: %d",
+                         event.GetSize().GetWidth(), event.GetSize().GetHeight());
+            //event.Skip();
+        }
 };
 
 }  // namespace download_mgr
@@ -694,13 +702,13 @@ PluginDownloadDialog::PluginDownloadDialog(wxWindow* parent)
     auto scrwin = new download_mgr::OcpnScrolledWindow(this);
     vbox->Add(scrwin, wxSizerFlags(1).Expand());
 
-    // At least GTK has bad defaults, widgets are not realized. Try to
-    // compute a reasonable minimum size:
-    int min_height = GetTextExtent("abcdefghijklmnopqrst").GetHeight();
-    SetMinClientSize(wxSize(GetBestSize().GetWidth(), 20 * min_height));
-
+    // The list has no natural height. Allocate 20 lines of text so some
+    // items are displayed initially in Layout()
+    int min_height = GetTextExtent("abcdefghijklmnopqrst").GetHeight() * 20;
+    SetMinClientSize(wxSize(GetClientSize().GetWidth(), min_height));
 
     SetSizer(vbox);
     Fit();
     Layout();
+    SetMinClientSize(wxSize(GetClientSize()));
 }
