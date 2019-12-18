@@ -480,30 +480,43 @@ class CandidateButtonsPanel: public wxPanel
 class OcpnStaticText: public wxStaticText
 {
     public:
-        OcpnStaticText(wxWindow* parent) : wxStaticText(parent, wxID_ANY, "")
+        OcpnStaticText(wxWindow* parent) : 
+            wxStaticText(parent, wxID_ANY, "",
+                         wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE)
         {
             Bind(wxEVT_SIZE, &OcpnStaticText::OnSize, this);
         }
 
-        void SetLabel(const wxString& label) override
-        {
-            Wrapper wrapper(m_parent, GetClientSize().GetWidth());
-            wxStaticText::SetLabel(wrapper.wrap(label.ToStdString()));
-        }
+        //void SetLabel(const wxString& label) override
+        //{
+        //    Wrapper wrapper(m_parent, GetClientSize().GetWidth());
+        //    auto new_label = wrapper.wrap(label.ToStdString());
+        //    if (new_label == curr_label) {
+        //        wxLogMessage("Skipping");
+        //        return;
+        //    }
+        //    curr_label = new_label;
+        //    wxStaticText::SetLabel(curr_label);
+        //}
 
-        void SetLabel(const wxString& label, int width)
-        {
-            Wrapper wrapper(m_parent, width);
-            wxStaticText::SetLabel(wrapper.wrap(label.ToStdString()));
-        }
+        //void SetLabel(const wxString& label, int width)
+        //{
+        //    Wrapper wrapper(m_parent, width);
+        //    wxStaticText::SetLabel(wrapper.wrap(label.ToStdString()));
+        //}
 
         void OnSize(wxSizeEvent& event)
         {
-            SetLabel(GetLabel(), event.GetSize().GetWidth());
+            wxLogMessage("OcpnStaticText, w: %d, h: %d",
+                         event.GetSize().GetWidth(), event.GetSize().GetHeight());
+            wxLogMessage("OcpnStaticText , parent,  w: %d, h: %d",
+                         GetParent()->GetClientSize().GetWidth(), GetParent()->GetClientSize().GetHeight());
+            //SetLabel(GetLabel(), event.GetSize().GetWidth());
             event.Skip();
         }
 
     private:
+        wxString curr_label;
         class Wrapper: public ocpn::TextWrap
         {
             public:
@@ -685,7 +698,7 @@ class OcpnScrolledWindow : public wxScrolledWindow
         {
             wxLogMessage("OcpnScrolledWindow, w: %d, h: %d",
                          event.GetSize().GetWidth(), event.GetSize().GetHeight());
-            //event.Skip();
+            event.Skip();
         }
 };
 
