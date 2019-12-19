@@ -482,41 +482,53 @@ class OcpnStaticText: public wxStaticText
     public:
         OcpnStaticText(wxWindow* parent) : 
             wxStaticText(parent, wxID_ANY, "",
-                         wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE)
+                         wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE),
+            m_line_height(GetTextExtent("abcdefghijklMNO123").GetHeight()),
+            m_width(-1)
         {
             Bind(wxEVT_SIZE, &OcpnStaticText::OnSize, this);
         }
 
-        //void SetLabel(const wxString& label) override
-        //{
-        //    Wrapper wrapper(m_parent, GetClientSize().GetWidth());
-        //    auto new_label = wrapper.wrap(label.ToStdString());
-        //    if (new_label == curr_label) {
-        //        wxLogMessage("Skipping");
-        //        return;
-        //    }
-        //    curr_label = new_label;
-        //    wxStaticText::SetLabel(curr_label);
-        //}
 
-        //void SetLabel(const wxString& label, int width)
-        //{
-        //    Wrapper wrapper(m_parent, width);
-        //    wxStaticText::SetLabel(wrapper.wrap(label.ToStdString()));
-        //}
+        wxSize DoGetBestClientSize() const override
+        {
+            int lines = std::count(m_label.begin(), m_label.end(), '\n') + 1;
+            wxLogMessage("Returning best width: %d, lines: %d", m_width, lines);
+            return wxSize(m_width, lines * m_line_height);
+        }
+
+
+        void SetLabel(const wxString& label) override
+        {
+            Wrapper wrapper(this, m_width);
+            auto new_label = wrapper.wrap(label.ToStdString());
+            if (new_label == m_label) {
+                wxLogMessage("Skipping");
+                return;
+            }
+            m_label = new_label;
+            wxStaticText::SetLabel(m_label);
+            wxLogMessage("Setting label, width: %d", m_width);
+            InvalidateBestSize();
+        }
 
         void OnSize(wxSizeEvent& event)
         {
             wxLogMessage("OcpnStaticText, w: %d, h: %d",
                          event.GetSize().GetWidth(), event.GetSize().GetHeight());
-            wxLogMessage("OcpnStaticText , parent,  w: %d, h: %d",
-                         GetParent()->GetClientSize().GetWidth(), GetParent()->GetClientSize().GetHeight());
-            //SetLabel(GetLabel(), event.GetSize().GetWidth());
+            m_width = event.GetSize().GetWidth();
+            InvalidateBestSize();
+
+            Wrapper wrapper(this, m_width);
+            m_label = wrapper.wrap(m_label);
+            wxStaticText::SetLabel(m_label);
             event.Skip();
         }
 
     private:
-        wxString curr_label;
+        const int m_line_height;
+        std::string m_label;
+        int m_width;
         class Wrapper: public ocpn::TextWrap
         {
             public:
@@ -557,7 +569,6 @@ class PluginTextPanel: public wxPanel
             auto vbox = new wxBoxSizer(wxVERTICAL);
             auto name = staticText(plugin->name + "    " + plugin->version);
             m_descr = new OcpnStaticText(this);
-            wxLogMessage("wrapping label: %s", plugin->description.c_str());
             m_descr->SetLabel(plugin->description);
             m_descr->Hide();
             vbox->Add(name, flags);
