@@ -208,6 +208,7 @@ set(OCPN_PACKAGE_RELEASE "1" CACHE STRING "Package release number")
 
 option(OCPN_USE_GL "Enable OpenGL support" ON)
 option(OCPN_USE_GLES_SHIM "Enable GLESv1 Shim library" OFF)
+option(OCPN_USE_UDEV "Use udev to enumerate serial ports" ON)
 
 if (MSVC OR (NOT APPLE AND NOT QT_ANDROID AND NOT MINGW))
   option(OCPN_USE_CRASHREPORT "Enable crash reporting" ON)
@@ -1191,6 +1192,15 @@ find_package(Gettext REQUIRED)
 
 add_subdirectory(libs/ssl_sha1)
 target_link_libraries(${PACKAGE_NAME} PRIVATE ssl::sha1)
+
+find_package(Libudev)
+if (UDEV_FOUND AND OCPN_USE_UDEV)
+  target_link_libraries(${PACKAGE_NAME} PRIVATE ocpn::libudev)
+  set(HAVE_LIBUDEV 1)
+endif ()
+
+find_path(HAVE_UNISTD_H NAMES unistd.h)
+
 
 #
 # Linux: set up GTK
