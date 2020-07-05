@@ -10487,8 +10487,17 @@ struct device_data {
     device_data(const std::string& p, const std::string& i): info(i), path(p) {}
 };
 
-int isTTYreal(const char *dev)
+
+struct symlink {
+    std::string path;
+    std::string target;
+    symlink(const std::string& p, const std::string& t): path(p), target(t) {}
+};
+
+
+static int isTTYreal(const char *dev)
 {
+    int ret = 0;
 #ifdef __NetBSD__
     if (strncmp("/dev/tty0", dev, 9) == 0)
 	return 1;
@@ -10497,9 +10506,8 @@ int isTTYreal(const char *dev)
     if (strcmp("/dev/gps", dev) == 0)
 	return 1;
     return 0;
-#else /* !NetBSD */
+#elif defined(HAVE_LINUX_SERIAL_H) && defined (HAVE_SYS_STAT_H)
     struct serial_struct serinfo;
-    int ret = 0;
 
     int fd = open(dev, O_RDONLY | O_NONBLOCK | O_NOCTTY);
 
@@ -10512,9 +10520,8 @@ int isTTYreal(const char *dev)
         }
         close (fd);
     }
-
-    return ret;
 #endif /* !NetBSD */
+    return ret;
 }
 
 
@@ -10522,12 +10529,10 @@ static bool isTTYreal(const device_data& data) {
   return isTTYreal(data.path.c_str());
 }
 
-struct symlink {
-    std::string path;
-    std::string target;
-    symlink(const std::string& p, const std::string& t): path(p), target(t) {}
-};
 
+#if defined(HAVE_DIRENT_H) && defined(HAVE_READLINK)
+
+#define HAVE_SYSFS_PORTS
 
 /** Return list of full paths to all possible ttys. */
 static std::vector<std::string> get_device_candidates()
@@ -10609,16 +10614,10 @@ static wxArrayString *EnumerateSysfsSerialPorts( void )
     return wx_ports;
 }
 
+#endif  // HAVE_DIRENT_H && defined(HAVE_READLINK)
 
-#ifdef USE_SYSFS_PORTS
 
-wxArrayString *EnumerateSerialPorts( void )
-{
-    return EnumerateSysfsSerialPorts();
-}
-
-#elif defined(HAVE_LIBUDEV)   // USE_SYSFS_PORTS
-
+#if defined(HAVE_LIBUDEV)  
 
 /** Return a single string of free-format device info, possibly empty. */
 std::string get_device_info(struct udev_device* ud) {
@@ -10677,7 +10676,7 @@ static std::vector<struct device_data> enumerate_udev_ports(struct udev* udev)
 }
 
 
-wxArrayString *EnumerateSerialPorts( void )
+wxArrayString *EnumerateUdevSerialPorts( void )
 {
     struct udev* udev = udev_new();
     auto dev_items = enumerate_udev_ports(udev);
@@ -10688,8 +10687,33 @@ wxArrayString *EnumerateSerialPorts( void )
     return ports;
 }
 
-#else // HAVE_LIBUDEV
+#endif  // HAVE_LIBUDEV
 
+
+#if defined(OCPN_USE_SYSFS_PORTS) && defined(HAVE_SYSFS_PORTS)
+
+wxArrayString *EnumerateSerialPorts( void )
+{
+    return EnumerateSysfsSerialPorts();
+}
+
+
+#elif defined(OCPN_USE_UDEV_PORTS) && defined(HAVE_LIBUDEV)
+
+wxArrayString *EnumerateSerialPorts( void )
+{
+    return EnumerateUdevSerialPorts();
+}
+
+#elif defined(__OCPN__ANDROID__)
+
+wxArrayString *EnumerateSerialPorts( void )
+{
+    return androidGetSerialPortsArray();
+}
+
+
+#else
 
 wxArrayString *EnumerateSerialPorts( void )
 {
@@ -10721,7 +10745,7 @@ wxArrayString *EnumerateSerialPorts( void )
 
 #else  // OPCN_USE_NEWSERIAL
 
-#if defined(__UNIX__) && !defined(__OCPN__ANDROID__) && !defined(__WXOSX__)
+#if defined(__UNIX__) && !defined(__WXOSX__)
 
     //Initialize the pattern table
     if( devPatern[0] == NULL ) {
@@ -10762,7 +10786,7 @@ wxArrayString *EnumerateSerialPorts( void )
 #endif /* linux */
 
 
-#endif // defined(__UNIX__) && !defined(__OCPN__ANDROID__) && !defined(__WXOSX__)
+#endif // defined(__UNIX__) && !defined(__WXOSX__)
 
 #ifdef PROBE_PORTS__WITH_HELPER
 
@@ -10939,7 +10963,7 @@ wxArrayString *EnumerateSerialPorts( void )
         _exit(0);// If exec fails then exit forked process.
     }
 
-#endif      // __WXGTK__
+#endif      //  PROBE_PORTS__WITH_HELPER
 #ifdef __WXOSX__
 #include "macutils.h"
     char* paPortNames[MAX_SERIAL_PORTS];
@@ -11136,15 +11160,13 @@ wxArrayString *EnumerateSerialPorts( void )
 
 #endif      //__WXMSW__
 
-#ifdef __OCPN__ANDROID__
-    preturn = androidGetSerialPortsArray();
-#endif  // __OCPN__ANDROID__
-    
-#endif //OCPN_USE_NEWSERIAL
+#endif 
     return preturn;
 }
 
-#endif // USE_SYSFS_PORTS
+#endif   //  defined(OCPN_USE_SYSFS_PORTS) && defined(HAVE_SYSFS_PORTS)
+
+
 bool CheckSerialAccess( void )
 {
     bool bret = true;
