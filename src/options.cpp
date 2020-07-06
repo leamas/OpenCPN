@@ -123,6 +123,7 @@ extern GLuint g_raster_format;
 #include "ConfigMgr.h"
 
 #include "SignalKDataStream.h"
+#include "ser_ports.h"
 
 #if !defined(__WXOSX__)  
 #define SLIDER_STYLE  wxSL_HORIZONTAL | wxSL_AUTOTICKS | wxSL_LABELS
@@ -344,7 +345,6 @@ bool            g_bOverruleScaMin;
 extern int      osMajor, osMinor;
 extern bool     g_bShowMuiZoomButtons;
 
-extern "C" bool CheckSerialAccess(void);
 extern  wxString GetShipNameFromFile(int);
 
 WX_DEFINE_ARRAY_PTR(ChartCanvas*, arrayofCanvasPtr);
