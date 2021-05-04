@@ -865,25 +865,23 @@ static std::string computeMetadataPath(void)
     std::string path = g_Platform->GetPrivateDataDir().ToStdString();
     path += SEP;
     path += "ocpn-plugins.xml";
-    if (ocpn::exists(path)) {
-        return path;
-    }
 
     // If default location for composit plugin metadata is not found, 
     // we look in the plugin cache directory, which will normally contain
     // he last "master" catalog downloaded
-    path = ocpn::lookup_metadata();
-    if (path != "") {
-        return path;
+    if (!ocpn::exists(path)) {
+        path = ocpn::lookup_metadata();
     }
     
     // And if that does not work, use the empty metadata file found in the
     // distribution "data" directory
-    path = g_Platform->GetSharedDataDir();
-    path += SEP ;
-    path += "ocpn-plugins.xml";
-    if (!ocpn::exists(path)) {
-        wxLogWarning("Non-existing plugins file: %s", path);
+    if (path == "") {
+        path = g_Platform->GetSharedDataDir();
+        path += SEP ;
+        path += "ocpn-plugins.xml";
+        if (!ocpn::exists(path)) {
+            wxLogWarning("Non-existing plugins file: %s", path);
+        }
     }
     return path;
 }
@@ -891,7 +889,7 @@ static std::string computeMetadataPath(void)
 
 std::string PluginHandler::getMetadataPath()
 {
-    if( metadataPath.size() > 0) {
+    if (metadataPath.size() > 0) {
         return metadataPath;
     }
     metadataPath = computeMetadataPath();
