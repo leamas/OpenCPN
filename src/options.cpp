@@ -1603,7 +1603,7 @@ void options::CheckDeviceAccess( /*[[maybe_unused]]*/ wxString &path) {
    int r = access(path.mb_str(), R_OK | W_OK);
    if (r == 0)
       return;
-  OCPNMessageBox (this, BAD_ACCESS_MSG, wxString( _("OpenCPN Warning") ),
+  OCPNMessageBox (this, BAD_ACCESS_MSG, wxString( _("OpenCPN Warning") ),   // aND HERE
 		  wxICON_WARNING | wxOK, 60 );
 #endif
 
@@ -7788,7 +7788,7 @@ ConnectionParams* options::UpdateConnectionParamsFromSelectedItem(ConnectionPara
     pConnectionParams->OutputSentenceListType = WHITELIST;
   else
     pConnectionParams->OutputSentenceListType = BLACKLIST;
-  pConnectionParams->Port = m_comboPort->GetValue().BeforeFirst(' ');
+  pConnectionParams->Port = m_comboPort->GetValue().BeforeFirst(' ');   // HERE...
   
   if( (pConnectionParams->Type != INTERNAL_GPS) && (pConnectionParams->Type != INTERNAL_BT) )
     CheckDeviceAccess(pConnectionParams->Port);
