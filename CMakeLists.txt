@@ -939,6 +939,7 @@ set(
   include/kml.h
   include/Layer.h
   include/LinkPropDlg.h
+  include/linux_devices.h
   include/LLRegion.h
   include/logger.h
   include/MarkIcon.h
@@ -1009,6 +1010,7 @@ set(
   include/TrackPropDlg.h
   include/TTYScroll.h
   include/TTYWindow.h
+  include/udev_rule_mgr.h
   include/undo.h
   include/update_mgr.h
   include/vector2D.h
@@ -1071,6 +1073,7 @@ set(
   src/kml.cpp
   src/Layer.cpp
   src/LinkPropDlg.cpp
+  src/linux_devices.cpp
   src/LLRegion.cpp
   src/logger.cpp
   src/MarkInfo.cpp
@@ -1135,6 +1138,7 @@ set(
   src/TrackPropDlg.cpp
   src/TTYScroll.cpp
   src/TTYWindow.cpp
+  src/udev_rule_mgr.cpp
   src/undo.cpp
   src/update_mgr.cpp
   src/viewport.cpp
