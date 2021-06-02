@@ -1013,6 +1013,7 @@ set(
   include/udev_rule_mgr.h
   include/undo.h
   include/update_mgr.h
+  include/usb_devices.h
   include/vector2D.h
   include/viewport.h
   include/WindowDestroyListener.h
@@ -1073,7 +1074,6 @@ set(
   src/kml.cpp
   src/Layer.cpp
   src/LinkPropDlg.cpp
-  src/linux_devices.cpp
   src/LLRegion.cpp
   src/logger.cpp
   src/MarkInfo.cpp
@@ -1160,6 +1160,10 @@ if (APPLE)
     add_definitions(-DOCPN_USE_DARKMODE)
   endif ()
 endif (APPLE)
+
+if (UNIX AND NOT APPLE AND NOT QT_ANDRIOD)
+  list(APPEND SRCS src/linux_devices.cpp)
+endif ()
 
 if (NOT WIN32 AND NOT APPLE AND NOT QT_ANDROID AND OCPN_USE_CRASHREPORT)
   list(APPEND HDRS include/crashprint.h)
