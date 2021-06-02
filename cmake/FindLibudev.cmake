@@ -23,6 +23,7 @@ find_library(UDEV_LIBRARY
   PATHS ${PC_LIBUDEV_LIBRARY_DIRS} ${PC_LIBUDEV_LIBDIR}
   HINTS "${UDEV_ROOT_DIR}"
   PATH_SUFFIXES lib
+  REQUIRED
 )
 
 get_filename_component(_libdir "${UDEV_LIBRARY}" PATH)
@@ -36,7 +37,7 @@ find_path(UDEV_INCLUDE_DIR
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
-  Libudev DEFAULT_MSG UDEV_LIBRARY UDEV_INCLUDE_DIR
+  UDEV DEFAULT_MSG UDEV_LIBRARY UDEV_INCLUDE_DIR
 )
 
 if(UDEV_FOUND)
