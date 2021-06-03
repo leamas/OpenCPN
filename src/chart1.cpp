@@ -7133,7 +7133,8 @@ void MyFrame::OnInitTimer(wxTimerEvent& event)
                     }
                 }
             }
-            if (is_dongle_permissions_wrong()) {
+            //if (is_dongle_permissions_wrong()) {
+            if (true) {
                  auto dialog = new DongleRuleDialog(this);
                  dialog->ShowModal();
                  delete dialog;

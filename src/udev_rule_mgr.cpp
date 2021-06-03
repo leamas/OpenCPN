@@ -28,13 +28,21 @@
 
 #include "udev_rule_mgr.h"
 
+#include <wx/sizer.h>
+#include <wx/stattext.h>
 
 
 DongleRuleDialog::DongleRuleDialog(wxWindow* parent)
     :wxDialog(parent, wxID_ANY, _("Manage dongle udev rule"),
               wxDefaultPosition , wxDefaultSize,
               wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxSTAY_ON_TOP)
-{}
+{
+    auto sizer = new wxBoxSizer(wxVERTICAL);
+    sizer->Add(new wxStaticText(this, wxID_ANY, "Orvar"));
+    SetSizer(sizer);
+    Fit();
+    Show();
+}
 
 
 DeviceRuleDialog::DeviceRuleDialog(wxWindow* parent, const char* device_path)
