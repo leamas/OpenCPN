@@ -44,6 +44,7 @@ typedef struct usbdata {
 bool is_dongle_permissions_wrong();
 bool is_device_permissions_ok(const char* path);
 usbdata get_device_usbdata(const char* path);
+std::string create_udev_rule(usbdata data, const char* device_path);
 
 
 #endif
