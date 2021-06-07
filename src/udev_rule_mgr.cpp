@@ -31,6 +31,8 @@
 #include <wx/sizer.h>
 #include <wx/stattext.h>
 
+extern bool hide_udev_dongle_dialog;
+extern bool hide_udev_device_dialog;
 
 DongleRuleDialog::DongleRuleDialog(wxWindow* parent)
     :wxDialog(parent, wxID_ANY, _("Manage dongle udev rule"),

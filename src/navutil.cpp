@@ -467,6 +467,8 @@ bool                    g_bShowMuiZoomButtons = true;
 
 wxString                g_catalog_custom_url;
 wxString                g_catalog_channel;
+bool                    g_hide_udev_dongle_dialog;
+bool                    g_hide_udev_device_dialog;
 
 #ifdef ocpnUSE_GL
 extern ocpnGLOptions g_GLOptions;
@@ -860,6 +862,10 @@ int MyConfig::LoadMyConfigRaw( bool bAsTemplate )
     // Plugin catalog handler persistent variables.
     Read( "CatalogCustomURL", &g_catalog_custom_url);
     Read( "CatalogChannel", &g_catalog_channel);
+
+    // Udev dialogs hide/show persistent state.
+    Read( "HideUdevDongleDialog", &g_hide_udev_dongle_dialog);
+    Read( "HideUdevDeviceDialog", &g_hide_udev_device_dialog);
     
     
     //  NMEA connection options.
@@ -2364,6 +2370,10 @@ void MyConfig::UpdateSettings()
     Write( _T( "CatalogCustomURL"), g_catalog_custom_url);
     Write( _T( "CatalogChannel"), g_catalog_channel);
     
+    // Udev dialogs hide/show state.
+    Write( "HideUdevDongleDialog", g_hide_udev_dongle_dialog);
+    Write( "HideUdevDeviceDialog", g_hide_udev_device_dialog);
+
     Write( _T ( "FilterNMEA_Avg" ), g_bfilter_cogsog );
     Write( _T ( "FilterNMEA_Sec" ), g_COGFilterSec );
 
