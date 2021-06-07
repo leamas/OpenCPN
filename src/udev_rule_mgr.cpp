@@ -28,11 +28,12 @@
 
 #include "udev_rule_mgr.h"
 
+#include <wx/checkbox.h>
 #include <wx/sizer.h>
 #include <wx/stattext.h>
 
-extern bool hide_udev_dongle_dialog;
-extern bool hide_udev_device_dialog;
+extern bool g_hide_udev_dongle_dialog;
+extern bool g_hide_udev_device_dialog;
 
 DongleRuleDialog::DongleRuleDialog(wxWindow* parent)
     :wxDialog(parent, wxID_ANY, _("Manage dongle udev rule"),
@@ -53,4 +54,22 @@ DeviceRuleDialog::DeviceRuleDialog(wxWindow* parent, const char* device_path)
               wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxSTAY_ON_TOP)
 {}
 
+static const char* const
+    HIDE_DIALOG_LABEL = _("Do not show this dialog next time");
 
+class DongleHideCheckbox: public wxCheckBox
+{
+    public:
+
+        DongleHideCheckbox(wxWindow* parent)
+            : wxCheckBox(parent, wxID_ANY, HIDE_DIALOG_LABEL,
+                         wxDefaultPosition,wxDefaultSize, wxALIGN_RIGHT)
+        {
+            SetValue(g_hide_udev_dongle_dialog);
+            Bind(wxEVT_CHECKBOX,
+                 [](wxCommandEvent& ev) {
+                     g_hide_udev_dongle_dialog = ev.IsChecked();
+                 }
+            );
+        }
+};
