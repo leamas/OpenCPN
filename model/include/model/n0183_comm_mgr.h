@@ -23,6 +23,10 @@
 #ifndef _N0183_PROTOL_MGR__
 #define _N0183_PROTOL_MGR__
 
+#include <atomic>
+
+#include <wx/string.h>
+
 #include "comm_buffers.h"
 
 #ifndef __ANDROID__
@@ -43,10 +47,17 @@ public:
   bool SetOutMsg(const wxString& msg);
   void OnExit(void);
 
+  /** Unset thread "keep going" flag i. e., initiate stop sequence. */
+  void Stop() { keep_going = 0; }
+
+  /** Return true if/when thread has stopped. */
+  bool IsStopped() const { return keep_going < 0; }
+
 private:
 #ifndef __ANDROID__
   serial::Serial m_serial;
 #endif
+  std::atomic_int keep_going;
   void ThreadMessage(const wxString& msg);
   bool OpenComPortPhysical(const wxString& com_name, int baud_rate);
   void CloseComPortPhysical();
