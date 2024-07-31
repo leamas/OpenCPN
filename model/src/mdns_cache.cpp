@@ -20,7 +20,6 @@
 /** \file  mdns_cache.cpp Implement mdns_cache.h */
 
 #include <algorithm>
-#include <iostream>
 
 #include <curl/curl.h>
 
@@ -39,42 +38,41 @@ static bool Ping(const std::string& url, long port = 8443L) {
   CURLcode result = curl_easy_perform(c);
   curl_easy_cleanup(c);
   bool ok = result == CURLE_RECV_ERROR || result == CURLE_OK;
-  auto status = ok ? "ok" : curl_easy_strerror(result);
-  DEBUG_LOG << "Checked mdns host: " << url << ": " << status;
+  DEBUG_LOG << "Checked mdns host: " << url << ": "
+            << (ok ? "ok" : curl_easy_strerror(result));
   return ok;
 }
 
 MdnsCache& MdnsCache::GetInstance() {
-  static MdnsCache dns_cache;
-  return dns_cache;
+  static MdnsCache mdns_cache;
+  return mdns_cache;
 }
 
-bool MdnsCache::Add(const MdnsCache::Entry& entry) {
+bool MdnsCache::Add(const Entry& entry) {
   std::unique_lock lock(m_mutex);
-  DEBUG_LOG << "Adding mdns cache entry, ip: " << entry.ip;
-  auto found =
-      std::find_if(the_cache.begin(), the_cache.end(),
-                   [entry](MdnsCache::Entry& e) { return e.ip == entry.ip; });
-  if (found == the_cache.end()) the_cache.push_back(entry);
-  DEBUG_LOG << "Added mdns cache entry, ip: " << entry.ip << ", status: " <<
-      (found == the_cache.end() ? "true" : "false");
-  return found == the_cache.end();
+  auto found = std::find_if(m_cache.begin(), m_cache.end(),
+                            [entry](Entry& e) { return e.ip == entry.ip; });
+  DEBUG_LOG << "Added mdns cache entry, ip: " << entry.ip
+            << ", status: " << (found == m_cache.end() ? "true" : "false");
+  if (found != m_cache.end()) return false;
+  m_cache.push_back(entry);
+  return true;
 }
 
 bool MdnsCache::Add(const std::string& service, const std::string& host,
                     const std::string& _ip, const std::string& _port) {
-  return Add(MdnsCache::Entry(service, host, _ip, _port));
+  return Add(Entry(service, host, _ip, _port));
 }
 
 bool MdnsCache::Add(const std::string& _ip, const std::string& _port) {
-  return Add(MdnsCache::Entry("opencpn", "unknown", _ip, _port));
+  return Add(Entry("opencpn", "unknown", _ip, _port));
 }
 
 void MdnsCache::Validate() {
   std::unique_lock lock(m_mutex);
-  for (auto it = the_cache.begin(); it != the_cache.end();) {
+  for (auto it = m_cache.begin(); it != m_cache.end();) {
     if (!Ping(it->ip)) {
-      the_cache.erase(it);
+      m_cache.erase(it);
     } else {
       it++;
     }

@@ -77,11 +77,11 @@ public:
   bool Add(const std::string& _ip,  const std::string& _port);
 
   /** Return read-only cached entries reference. */
-  const std::vector<Entry>& GetCache() const { return the_cache; }
+  const std::vector<Entry>& GetCache() const { return m_cache; }
 
 private:
   mutable std::mutex m_mutex;
-  std::vector<Entry> the_cache;
+  std::vector<Entry> m_cache;
 
   MdnsCache() = default;
 };
