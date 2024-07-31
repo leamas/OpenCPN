@@ -49,12 +49,12 @@ MdnsCache& MdnsCache::GetInstance() {
   return dns_cache;
 }
 
-bool MdnsCache::Add(const MdnsCacheEntry& entry) {
+bool MdnsCache::Add(const MdnsCache::Entry& entry) {
   std::unique_lock lock(m_mutex);
   DEBUG_LOG << "Adding mdns cache entry, ip: " << entry.ip;
   auto found =
       std::find_if(the_cache.begin(), the_cache.end(),
-                   [entry](MdnsCacheEntry& e) { return e.ip == entry.ip; });
+                   [entry](MdnsCache::Entry& e) { return e.ip == entry.ip; });
   if (found == the_cache.end()) the_cache.push_back(entry);
   DEBUG_LOG << "Added mdns cache entry, ip: " << entry.ip << ", status: " <<
       (found == the_cache.end() ? "true" : "false");
@@ -63,11 +63,11 @@ bool MdnsCache::Add(const MdnsCacheEntry& entry) {
 
 bool MdnsCache::Add(const std::string& service, const std::string& host,
                     const std::string& _ip, const std::string& _port) {
-  return Add(MdnsCacheEntry(service, host, _ip, _port));
+  return Add(MdnsCache::Entry(service, host, _ip, _port));
 }
 
 bool MdnsCache::Add(const std::string& _ip, const std::string& _port) {
-  return Add(MdnsCacheEntry("opencpn", "unknown", _ip, _port));
+  return Add(MdnsCache::Entry("opencpn", "unknown", _ip, _port));
 }
 
 void MdnsCache::Validate() {

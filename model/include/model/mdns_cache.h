@@ -34,18 +34,18 @@
 #include <string>
 #include <vector>
 
-typedef struct _MdnsCacheEntry {
-  std::string service_instance;
-  std::string hostname;
-  std::string ip;
-  std::string port;
-  _MdnsCacheEntry(const std::string& service, const std::string host,
-                  const std::string& _ip, const std::string _port)
-      : service_instance(service), hostname(host), ip(_ip), port(_port) {}
-} MdnsCacheEntry;
-
 class MdnsCache {
 public:
+  struct Entry {
+    std::string service_instance;
+    std::string hostname;
+    std::string ip;
+    std::string port;
+    Entry(const std::string& service, const std::string host,
+          const std::string& _ip, const std::string _port)
+        : service_instance(service), hostname(host), ip(_ip), port(_port) {}
+  };
+
   static MdnsCache& GetInstance();
 
   MdnsCache& operator=(MdnsCache&) = delete;
@@ -59,7 +59,7 @@ public:
    * @return true if entry was added, false if entry with same ip
    * address already exists.
    */
-  bool Add(const MdnsCacheEntry& entry);
+  bool Add(const Entry& entry);
 
   /**
    * Add new entry to the cache
@@ -77,11 +77,11 @@ public:
   bool Add(const std::string& _ip,  const std::string& _port);
 
   /** Return read-only cached entries reference. */
-  const std::vector<MdnsCacheEntry>& GetCache() const { return the_cache; }
+  const std::vector<Entry>& GetCache() const { return the_cache; }
 
 private:
   mutable std::mutex m_mutex;
-  std::vector<MdnsCacheEntry> the_cache;
+  std::vector<Entry> the_cache;
 
   MdnsCache() = default;
 };
