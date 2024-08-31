@@ -74,18 +74,18 @@ public:
   }
 
   // Get the north limit of the cache area for a given zoom in WMTS coordinates
-  int GetNorthLimit(int zoomLevel) {
+  int GetNorthLimit(int zoomLevel) const {
     return zoomTable[zoomLevel - minZoom].tile_y_max;
   }
 
   // Get the south limit of the cache area for a given zoom in WMTS coordinates
-  int GetSouthLimit(int zoomLevel) {
+  int GetSouthLimit(int zoomLevel) const {
     return zoomTable[zoomLevel - minZoom].tile_y_min;
   }
 
   /// @brief Get the current size of the cache in number of tiles
   /// @return Number of tiles in the cache
-  uint32_t GetCacheSize() { return listSize; }
+  uint32_t GetCacheSize() const { return listSize; }
 
   /// @brief Retreive a tile from the cache. If the tile is not present in the
   /// cache, an empty tile is created and added.
