@@ -131,9 +131,8 @@ void* CommDriverN0183SerialThread::Entry() {
   }
 
   //    The main loop
-  keep_going = 1;
   unsigned retries = 0;
-  while (keep_going > 0) {
+  while (KeepGoing()) {
     unsigned newdata = 0;
     uint8_t rdata[2000];
 
@@ -185,6 +184,6 @@ void* CommDriverN0183SerialThread::Entry() {
   }
 
   CloseComPortPhysical();
-  keep_going = -1;  // I am dead
+  SignalExit();
   return 0;
 }
