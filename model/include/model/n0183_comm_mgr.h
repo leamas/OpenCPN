@@ -27,6 +27,8 @@
 #define _N0183_PROTOL_MGR__
 
 #include <atomic>
+#include <memory>
+#include <functional>
 
 #include <wx/string.h>
 
@@ -36,12 +38,13 @@
 #ifndef __ANDROID__
 #include "serial/serial.h"
 #endif
-
+using SendMsgFunc = std::function<void(const std::vector<unsigned char>&)>;
 class CommDriverN0183Serial;
+
 
 class CommDriverN0183SerialThread : public ThreadCtrl {
 public:
-  CommDriverN0183SerialThread(CommDriverN0183Serial* launcher);
+  CommDriverN0183SerialThread(SendMsgFunc send_msg_func);
 
   ~CommDriverN0183SerialThread();
 
@@ -53,10 +56,6 @@ public:
   /** Send a message to remote peer. */
   bool SetOutMsg(const wxString& msg);
 
-  /** Unset thread "keep going" flag i. e., initiate stop sequence. */
-
-  /** Return true if/when thread has stopped. */
-
 private:
 #ifndef __ANDROID__
   serial::Serial m_serial;
@@ -66,10 +65,10 @@ private:
   void CloseComPortPhysical();
   ssize_t WriteComPortPhysical(const char* msg);
 
-  CommDriverN0183Serial* m_parent_driver;
   wxString m_portname;
   int m_baud;
   OutputBuffer m_out_que;
+  SendMsgFunc m_send_msg_func;
 };
 
 #endif  //    _N0183_PROTOL_MGR__
