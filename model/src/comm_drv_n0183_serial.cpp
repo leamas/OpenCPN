@@ -134,8 +134,8 @@ void CommDriverN0183Serial::Close() {
     m_secondary_thread.RequestStop();
     std::chrono::duration<int> elapsed;
     if (m_secondary_thread.WaitUntilStopped(10s, elapsed)) {
-      MESSAGE_LOG << "Stopped in " << duration_cast<seconds>(elapsed).count()
-                  << " sec.";
+      MESSAGE_LOG << "Stopped in "
+	          << duration_cast<milliseconds>(elapsed).count() << " msec.";
     } else {
       MESSAGE_LOG << "Not stopped after 10 sec.";
     }
