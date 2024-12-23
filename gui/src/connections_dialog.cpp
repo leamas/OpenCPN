@@ -47,10 +47,6 @@
 #include "androidUTIL.h"
 #endif
 
-extern bool g_bfilter_cogsog;
-extern int g_COGFilterSec;
-extern int g_SOGFilterSec;
-
 //------------------------------------------------------------------------------
 //          ConnectionsDialog Implementation
 //------------------------------------------------------------------------------
