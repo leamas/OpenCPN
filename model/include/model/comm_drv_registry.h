@@ -29,7 +29,7 @@
 #include "model/comm_driver.h"
 #include "observable_evtvar.h"
 
-typedef std::shared_ptr<AbstractCommDriver> DriverPtr;
+using DriverPtr = std::unique_ptr<AbstractCommDriver>;
 
 /**
  * The global driver registry, a singleton. Drivers register here when

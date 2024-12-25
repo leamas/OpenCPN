@@ -132,7 +132,7 @@ std::vector<DriverHandle> GetActiveDrivers() {
   std::vector<DriverHandle> result;
 
   auto& registry = CommDriverRegistry::GetInstance();
-  const std::vector<std::shared_ptr<AbstractCommDriver>>& drivers =
+  const std::vector<std::unique_ptr<AbstractCommDriver>>& drivers =
       registry.GetDrivers();
 
   for (auto& driver : drivers) result.push_back(driver->Key());

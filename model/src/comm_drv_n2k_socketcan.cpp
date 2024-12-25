@@ -167,9 +167,9 @@ private:
 
 // Static CommDriverN2KSocketCAN factory implementation.
 
-std::shared_ptr<CommDriverN2KSocketCAN> CommDriverN2KSocketCAN::Create(
+std::unique_ptr<CommDriverN2KSocketCAN> CommDriverN2KSocketCAN::Create(
     const ConnectionParams* params, DriverListener& listener) {
-  return std::shared_ptr<CommDriverN2KSocketCAN>(
+  return std::unique_ptr<CommDriverN2KSocketCAN>(
       new CommDriverN2KSocketCanImpl(params, listener));
 }
 
@@ -214,7 +214,7 @@ void CommDriverN2KSocketCanImpl::Close() {
   // We cannot use shared_from_this() since we might be in the destructor.
   auto& registry = CommDriverRegistry::GetInstance();
   auto me = FindDriver(registry.GetDrivers(), iface, bus);
-  registry.Deactivate(me);
+  registry.Deactivate(std::move(me));
 }
 
 bool CommDriverN2KSocketCanImpl::SendAddressClaim(int proposed_source_address) {
