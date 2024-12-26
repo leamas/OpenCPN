@@ -48,14 +48,14 @@ public:
   bool SendMessage(std::shared_ptr<const NavMsg> msg,
                    std::shared_ptr<const NavAddr> addr) override;
 
-  void Activate() override;
-
   virtual std::shared_ptr<NavAddr> GetAddress();
 
 private:
   std::string output_path;
   std::string input_path;
   DriverListener& listener;
+
+  void Activate();
 };
 
 #endif  // COMM_DRV_FILE_H

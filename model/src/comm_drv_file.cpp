@@ -55,7 +55,9 @@ FileCommDriver::FileCommDriver(const string& opath, const string& ipath,
     : AbstractCommDriver(NavAddr::Bus::TestBus, opath),
       output_path(opath),
       input_path(ipath),
-      listener(l) {}
+      listener(l) {
+  Activate();
+}
 
 FileCommDriver::FileCommDriver(const string& opath)
     : FileCommDriver(opath, "", kVoidDriverListener) {}
@@ -118,7 +120,6 @@ static shared_ptr<const NavMsg> LineToMessage(const string& line,
 }
 
 void FileCommDriver::Activate() {
-  CommDriverRegistry::GetInstance().Activate(shared_from_this());
   if (input_path != "") {
     ifstream f(input_path);
     string line;

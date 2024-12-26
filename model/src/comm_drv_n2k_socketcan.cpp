@@ -213,8 +213,8 @@ void CommDriverN2KSocketCanImpl::Close() {
 
   // We cannot use shared_from_this() since we might be in the destructor.
   auto& registry = CommDriverRegistry::GetInstance();
-  auto me = FindDriver(registry.GetDrivers(), iface, bus);
-  registry.Deactivate(std::move(me));
+  auto& me = FindDriver(registry.GetDrivers(), iface, bus);
+  registry.Deactivate(me);
 }
 
 bool CommDriverN2KSocketCanImpl::SendAddressClaim(int proposed_source_address) {
@@ -387,10 +387,6 @@ CommDriverN2KSocketCAN::CommDriverN2KSocketCAN(const ConnectionParams* params,
 }
 
 CommDriverN2KSocketCAN::~CommDriverN2KSocketCAN() {}
-
-void CommDriverN2KSocketCAN::Activate() {
-  CommDriverRegistry::GetInstance().Activate(shared_from_this());
-}
 
 // Worker implementation
 

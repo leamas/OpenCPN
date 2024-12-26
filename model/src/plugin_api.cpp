@@ -143,29 +143,31 @@ std::vector<DriverHandle> GetActiveDrivers() {
 const std::unordered_map<std::string, std::string> GetAttributes(
     DriverHandle handle) {
   auto& registry = CommDriverRegistry::GetInstance();
-  auto drivers = registry.GetDrivers();
+  auto& drivers = registry.GetDrivers();
   auto func = [handle](const DriverPtr d) { return d->Key() == handle; };
-  auto found = std::find_if(drivers.begin(), drivers.end(), func);
+  AbstractCommDriver* found(nullptr);
+  for (auto& d : drivers) if (d->Key() == handle) found = d.get();
 
   std::unordered_map<std::string, std::string> rv;
-  if (found == drivers.end()) {
+  if (!found) {
     return rv;
   }
-  return found->get()->GetAttributes();
+  return found->GetAttributes();
 }
 
 CommDriverResult WriteCommDriver(
     DriverHandle handle, const std::shared_ptr<std::vector<uint8_t>>& payload) {
   // Find the driver from the handle
   auto& registry = CommDriverRegistry::GetInstance();
-  auto drivers = registry.GetDrivers();
+  auto& drivers = registry.GetDrivers();
   auto func = [handle](const DriverPtr d) { return d->Key() == handle; };
-  auto found = std::find_if(drivers.begin(), drivers.end(), func);
+  //auto found = std::find_if(drivers.begin(), drivers.end(), func);
+  AbstractCommDriver* found(nullptr);
+  for (auto& d : drivers) if (d->Key() == handle) found = d.get();
 
-  if (found == drivers.end()) {
+  if (!found) {
     return RESULT_COMM_INVALID_HANDLE;
   }
-  auto driver = *found;
 
   // Determine protocol
   std::unordered_map<std::string, std::string> attributes =
@@ -175,7 +177,7 @@ CommDriverResult WriteCommDriver(
   std::string protocol = protocol_it->second;
 
   if (protocol == "nmea0183") {
-    auto d0183 = std::dynamic_pointer_cast<CommDriverN0183>(driver);
+    auto d0183 = dynamic_cast<CommDriverN0183*>(found);
 
     std::string msg(payload->begin(), payload->end());
     std::string id = msg.substr(1, 5);
@@ -204,14 +206,13 @@ CommDriverResult WriteCommDriverN2K(
 
   // Find the driver from the handle
   auto& registry = CommDriverRegistry::GetInstance();
-  auto drivers = registry.GetDrivers();
+  auto& drivers = registry.GetDrivers();
   auto func = [handle](const DriverPtr d) { return d->Key() == handle; };
-  auto found = std::find_if(drivers.begin(), drivers.end(), func);
-
-  if (found == drivers.end()) {
+  AbstractCommDriver* driver(nullptr);
+  for (auto& d : drivers) if (d->Key() == handle) driver = d.get();
+  if (!driver) {
     return RESULT_COMM_INVALID_HANDLE;
   }
-  auto driver = *found;
   auto dest_addr =
       std::make_shared<const NavAddr2000>(driver->iface, destinationCANAddress);
   auto msg =
@@ -227,14 +228,13 @@ CommDriverResult RegisterTXPGNs(DriverHandle handle,
 
   // Find the driver from the handle
   auto& registry = CommDriverRegistry::GetInstance();
-  auto drivers = registry.GetDrivers();
-  auto func = [handle](const DriverPtr d) { return d->Key() == handle; };
-  auto driver = std::find_if(drivers.begin(), drivers.end(), func);
-
-  if (driver == drivers.end()) {
+  auto& drivers = registry.GetDrivers();
+  AbstractCommDriver* driver(nullptr);
+  for (auto& d : drivers) if (d->Key() == handle) driver = d.get();
+  if (!driver) {
     return RESULT_COMM_INVALID_HANDLE;
   }
-  auto dn2k = std::dynamic_pointer_cast<CommDriverN2K>(*driver);
+  auto dn2k = dynamic_cast<CommDriverN2K*>(driver);
 
   int nloop = 0;
   for (size_t i = 0; i < pgn_list.size(); i++) {

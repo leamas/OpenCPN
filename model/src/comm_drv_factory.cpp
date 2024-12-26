@@ -50,10 +50,9 @@
 #include "model/comm_drv_n2k_socketcan.h"
 #endif
 
-std::shared_ptr<AbstractCommDriver> MakeCommDriver(
+std::unique_ptr<AbstractCommDriver> MakeCommDriver(
     const ConnectionParams* params) {
-  wxLogMessage(
-      wxString::Format(_T("MakeCommDriver: %s"), params->GetDSPort().c_str()));
+  wxLogMessage("MakeCommDriver: %s", params->GetDSPort().c_str());
 
   auto& msgbus = NavMsgBus::GetInstance();
   auto& registry = CommDriverRegistry::GetInstance();
@@ -108,7 +107,7 @@ std::shared_ptr<AbstractCommDriver> MakeCommDriver(
 #if defined(__linux__) && !defined(__ANDROID__) && !defined(__WXOSX__)
     case SOCKETCAN: {
       auto driver = CommDriverN2KSocketCAN::Create(params, msgbus);
-      registry.Activate(driver);
+      registry.Activate(std::move(driver));
       return driver;
       break;
     }
