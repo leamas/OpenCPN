@@ -30,7 +30,7 @@
 #include <wx/wx.h>
 #endif
 
-#include"config.h"
+#include "config.h"
 
 #include <wx/jsonreader.h>
 #include <wx/jsonval.h>
@@ -148,10 +148,10 @@ void BroadcastNMEA0183Message(const wxString& msg, NmeaLog& nmea_log,
   on_msg_sent.Notify(msg.ToStdString());
 }
 
-bool CreateOutputConnection(
-    const wxString& com_name, ConnectionParams& params_save, bool& btempStream,
-    bool& b_restoreStream, N0183DlgCtx dlg_ctx, bool bGarminIn) {
-
+bool CreateOutputConnection(const wxString& com_name,
+                            ConnectionParams& params_save, bool& btempStream,
+                            bool& b_restoreStream, N0183DlgCtx dlg_ctx,
+                            bool bGarminIn) {
   auto& registry = CommDriverRegistry::GetInstance();
   const std::vector<std::unique_ptr<AbstractCommDriver>>& drivers =
       registry.GetDrivers();
@@ -164,7 +164,7 @@ bool CreateOutputConnection(
     comx = com_name.AfterFirst(':');  // strip "Serial:"
     comx = comx.BeforeFirst(' ');
     // strip off any description provided by Windows
-    auto&  old_driver = FindDriver(drivers, comx.ToStdString());
+    auto& old_driver = FindDriver(drivers, comx.ToStdString());
     wxLogDebug("Looking for old stream %s", com_name);
 
     if (old_driver) {
@@ -198,8 +198,8 @@ bool CreateOutputConnection(
 #ifdef __ANDROID__
     wxMilliSleep(1000);
 #else
-    auto drv_serial_n0183
-        = dynamic_cast<CommDriverN0183Serial*>(new_driver.get());
+    auto drv_serial_n0183 =
+        dynamic_cast<CommDriverN0183Serial*>(new_driver.get());
     if (drv_serial_n0183) {
       if ((wxNOT_FOUND != com_name.Upper().Find("USB")) &&
           (wxNOT_FOUND != com_name.Upper().Find("GARMIN"))) {
@@ -231,7 +231,7 @@ bool CreateOutputConnection(
     }
 #endif
   } else {
-    //driver = FindDriver(drivers, com_name.ToStdString());
+    // driver = FindDriver(drivers, com_name.ToStdString());
   }
   if (com_name.Find("Bluetooth") != wxNOT_FOUND) {
     wxString comm_addr = com_name.AfterFirst(';');
@@ -282,6 +282,8 @@ bool CreateOutputConnection(
       btempStream = true;
       retval = true;
     }
+
+#if 0  // FIXME (leamas)
     auto& driver = FindDriver(drivers, params->   comm_addr.ToStdString());
     drv_net_n0183 = dynamic_cast<CommDriverN0183Net*>(driver.get());
 
@@ -291,6 +293,7 @@ bool CreateOutputConnection(
       msg += com_name;
       dlg_ctx.set_message(msg);
       dlg_ctx.pulse();
+
 
       if (drv_net_n0183) {
         int loopCount = 10;  // seconds
@@ -318,6 +321,7 @@ bool CreateOutputConnection(
         }
       }
     }
+#endif
   }
   return retval;
 }
@@ -333,7 +337,7 @@ int PrepareOutputChannel(const wxString& com_name, N0183DlgCtx dlg_ctx,
   // and query its parameters.
   const std::vector<DriverPtr>& drivers = registry.GetDrivers();
   bool is_garmin_serial = false;
-  CommDriverN0183Serial*  drv_serial_n0183(nullptr);
+  CommDriverN0183Serial* drv_serial_n0183(nullptr);
 
   if (com_name.Lower().StartsWith("serial")) {
     wxString comx;
@@ -365,9 +369,8 @@ int PrepareOutputChannel(const wxString& com_name, N0183DlgCtx dlg_ctx,
     registry.Deactivate(me);
     btempStream = true;
   }
-  bool rv =
-          CreateOutputConnection(com_name, params_save, btempStream,
-                             b_restoreStream, dlg_ctx, is_garmin_serial);
+  bool rv = CreateOutputConnection(com_name, params_save, btempStream,
+                                   b_restoreStream, dlg_ctx, is_garmin_serial);
   if (!rv) return 1;
 
 #ifdef xUSE_GARMINHOST
