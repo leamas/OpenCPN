@@ -49,6 +49,7 @@
 #include "model/comm_drv_n0183_net.h"
 #include "model/comm_drv_n0183_android_bt.h"
 #include "model/comm_navmsg_bus.h"
+#include "model/nmea_log.h"
 
 wxDEFINE_EVENT(EVT_N0183_MUX, ObservedEvt);
 
@@ -131,26 +132,17 @@ void Multiplexer::LogOutputMessageColor(const wxString &msg,
                                         const wxString &stream_name,
                                         const wxString &color) {
   if (m_log_callbacks.log_is_active()) {
-    wxDateTime now = wxDateTime::Now();
-    wxString ss;
-#ifndef __WXQT__  //  Date/Time on Qt are broken, at least for android
-    ss = now.FormatISOTime();
-#endif
-    ss.Append(" ").Append(SYMBOL_OUTPUT).Append(" ");
+    NavmsgStatus ns;
+    ns.direction = NavmsgStatus::Direction::kOutput;
     if (color == "<RED>") {
-      ss.Append(SYMBOL_ERROR);
+      ns.status = NavmsgStatus::State::kChecksumError;
     } else if (color == "<CORAL>") {
-      ss.Append(SYMBOL_DROPPED);
+      ns.accepted = NavmsgStatus::Accepted::kFilteredDropped;
     } else {
-      ss.Append(SYMBOL_ACCEPTED);
+      ns.accepted = NavmsgStatus::Accepted::kOk;
     }
-    ss.Append(" (");
-    ss.Append(stream_name);
-    ss.Append(") ");
-    ss.Append(msg);
-    ss.Prepend(color);
-
-    m_log_callbacks.log_message(ss);
+    Logline ll(msg.ToStdString(), ns, stream_name.ToStdString());
+    m_log_callbacks.log_message(ll);
   }
 }
 
@@ -166,41 +158,27 @@ void Multiplexer::LogInputMessage(const wxString &msg,
                                   const wxString &stream_name, bool b_filter,
                                   bool b_error, const wxString error_msg) {
   if (m_log_callbacks.log_is_active()) {
-    wxDateTime now = wxDateTime::Now();
-    wxString ss;
-#ifndef __WXQT__  //  Date/Time on Qt are broken, at least for android
-    ss = now.FormatISOTime();
-#endif
-    ss.Append(" ").Append(SYMBOL_INPUT);
+    NavmsgStatus ns;
+    ns.direction = NavmsgStatus::Direction::kInput;
     if (b_error) {
-      ss.Prepend("<RED>");
-      ss.Append(" ").Append(SYMBOL_ERROR);
+      ns.status = NavmsgStatus::State::kChecksumError;
     } else {
       if (b_filter) {
         if (m_legacy_input_filter_behaviour) {
-          ss.Prepend("<CORAL>");
-          ss.Append(" ").Append(SYMBOL_FILTERED);
+          ns.accepted = NavmsgStatus::Accepted::kFilteredNoOutput;
         } else {
-          ss.Prepend("<MAROON>");
-          ss.Append(" ").Append(SYMBOL_DROPPED);
+          ns.accepted = NavmsgStatus::Accepted::kFilteredDropped;
         }
       } else {
-        ss.Prepend("<GREEN>");
-        ss.Append(" ").Append(SYMBOL_ACCEPTED);
+        ns.accepted = NavmsgStatus::Accepted::kOk;
       }
     }
-    ss.Append(" (");
-    ss.Append(stream_name);
-    ss.Append(") ");
+    wxString ss;
     ss.Append(msg);
-    if (b_error) {
-      ss.Append(" - ");
-      if (!error_msg.IsEmpty())
-        ss.Append(error_msg);
-      else
-        ss.Append(_("Unknown error"));
-    }
-    m_log_callbacks.log_message(ss);
+
+    Logline ll(ss.ToStdString(), ns, stream_name.ToStdString());
+    ll.error_msg = error_msg;
+    m_log_callbacks.log_message(ll);
   }
 }
 

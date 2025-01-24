@@ -22,8 +22,15 @@
  ***************************************************************************
  */
 
+#ifdef _WIN32
+#undef constamt
+#include <winsock2.h>
+#include <windows.h>
+#endif
+
 #include "NMEALogWindow.h"
 #include "TTYWindow.h"
+#include "tty_scroll.h"
 #include "OCPNPlatform.h"
 
 #ifdef __OCPN__ANDROID__
@@ -66,11 +73,14 @@ void NMEALogWindow::Create(wxWindow *parent, int num_lines) {
   }
   m_window->Show();
 }
+//
+// void NMEALogWindow::Add(const wxString &s) {
+//  if (m_window) m_window->Add(s);
+//}
 
-void NMEALogWindow::Add(const wxString &s) {
-  if (m_window) m_window->Add(s);
+void NMEALogWindow::Add(struct Logline l) {
+  if (m_window) m_window->Add(l);
 }
-
 void NMEALogWindow::Refresh(bool do_refresh) {
   if (m_window) m_window->Refresh(do_refresh);
 }

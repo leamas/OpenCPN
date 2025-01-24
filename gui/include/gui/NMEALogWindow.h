@@ -29,6 +29,7 @@
 #include <wx/string.h>
 #include <wx/window.h>
 
+#include "model/navmsg_filter.h"
 #include "model/nmea_log.h"
 
 #include "WindowDestroyListener.h"
@@ -52,7 +53,8 @@ public:
   NMEALogWindow &operator=(const NMEALogWindow &) = delete;
   bool Active() const;
   void Create(wxWindow *parent, int num_lines = 35);
-  void Add(const wxString &s);
+  void Add(struct Logline l);
+  // void Add(const wxString &s);
   void Refresh(bool do_refresh = false);
   int GetSizeW();
   int GetSizeH();

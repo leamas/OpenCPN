@@ -34,6 +34,7 @@
 #endif  // precompiled headers
 
 #include "model/comm_navmsg.h"
+#include "model/nmea_log.h"
 
 class Multiplexer;  // forward
 
@@ -41,10 +42,9 @@ extern Multiplexer *g_pMUX;
 
 struct MuxLogCallbacks {
   std::function<bool()> log_is_active;
-  std::function<void(const wxString &)> log_message;
+  std::function<void(Logline)> log_message;
   MuxLogCallbacks()
-      : log_is_active([]() { return false; }),
-        log_message([](const wxString &s) {}) {}
+      : log_is_active([]() { return false; }), log_message([](Logline) {}) {}
 };
 
 class Multiplexer : public wxEvtHandler {

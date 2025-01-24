@@ -76,19 +76,10 @@ void LogBroadcastOutputMessageColor(const wxString& msg,
                                     const wxString& stream_name,
                                     const wxString& color, NmeaLog& nmea_log) {
   if (nmea_log.Active()) {
-    wxDateTime now = wxDateTime::Now();
-    wxString ss;
-#ifndef __WXQT__  //  Date/Time on Qt are broken, at least for android
-    ss = now.FormatISOTime();
-#endif
-    ss.Prepend("--> ");
-    ss.Append(" (");
-    ss.Append(stream_name);
-    ss.Append(") ");
-    ss.Append(msg);
-    ss.Prepend(color);
-
-    nmea_log.Add(ss.ToStdString());
+    NavmsgStatus ns;
+    ns.direction = NavmsgStatus::Direction::kOutput;
+    Logline ll(msg.ToStdString(), ns, stream_name.ToStdString());
+    nmea_log.Add(ll);
   }
 }
 
