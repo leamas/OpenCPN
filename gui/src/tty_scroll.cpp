@@ -17,6 +17,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,  USA.         *
  **************************************************************************/
 
+#include <sstream>
+#include <string>
+
 #include <wx/clipbrd.h>
 #include <wx/dcclient.h>
 #include <wx/string.h>
@@ -29,6 +32,13 @@
  * Implement tty_scroll.h
  */
 
+static const auto kUtfCheckMark = wxString::FromUTF8(u8"\u2713");
+static const auto kUtfCircledDivisionSlash = wxString::FromUTF8(u8"\u2298");
+static const auto kUtfFallingDiagonal = wxString::FromUTF8(u8"\u269F");
+static const auto kUtfMultiplicationX = wxString::FromUTF8(u8"\u2716");
+static const auto kUtfRightArrow = wxString::FromUTF8(u8"\u2192");
+static const auto kUtfLeftArrow = wxString::FromUTF8(u8"\u2190");
+
 TtyScroll::TtyScroll(wxWindow* parent, int n_lines, wxTextCtrl& filter)
     : wxScrolledWindow(parent), m_n_lines(n_lines), m_filter(filter) {
   m_is_paused = false;
@@ -37,13 +47,13 @@ TtyScroll::TtyScroll(wxWindow* parent, int n_lines, wxTextCtrl& filter)
 
   SetScrollRate(0, m_line_height);
   SetVirtualSize(-1, (m_n_lines + 1) * m_line_height);
-  for (unsigned i = 0; i < m_n_lines; i++) m_lines.push_back("");
+  for (unsigned i = 0; i < m_n_lines; i++) m_lines.push_back(Logline());
   Bind(wxEVT_SIZE, [&](wxSizeEvent& ev) { OnSize(ev); });
 }
 
 void TtyScroll::OnSize(wxSizeEvent& ev) {
   m_n_lines = ev.GetSize().y / GetCharHeight();
-  while (m_lines.size() < m_n_lines) m_lines.push_back("");
+  while (m_lines.size() < m_n_lines) m_lines.push_back(Logline());
   SetVirtualSize(-1, (m_n_lines + 1) * m_line_height);
   ev.Skip();
 }
@@ -52,7 +62,17 @@ void TtyScroll::Add(const wxString& line) {
   wxString filter = m_filter.GetValue();
   if (!m_is_paused && (filter.IsEmpty() || line.Contains(filter))) {
     while (m_lines.size() > m_n_lines - 1) m_lines.pop_front();
-    m_lines.push_back(line);
+    m_lines.push_back(Logline(line.ToStdString()));
+    Refresh(true);
+  }
+}
+
+void TtyScroll::Add(struct Logline ll) {
+  wxString filter = m_filter.GetValue();
+  if (!m_is_paused &&
+      (filter.IsEmpty() || ll.line.find(filter) != std::string::npos)) {
+    while (m_lines.size() > m_n_lines - 1) m_lines.pop_front();
+    m_lines.push_back(ll);
     Refresh(true);
   }
 }
@@ -69,31 +89,38 @@ void TtyScroll::OnDraw(wxDC& dc) {
   if (line_to > m_n_lines - 1) line_to = m_n_lines - 1;
 
   wxCoord y = line_from * m_line_height;
-  wxString lss;
   for (size_t line = line_from; line <= line_to; line++) {
+    std::stringstream ss;
+#ifndef __WXQT__  //  Date/Time on Qt are broken, at least for android
+    ss << wxDateTime::Now().FormatISOTime() << " ";
+#endif
+    auto l = m_lines[line];
+    if (l.state.direction == NavmsgStatus::Direction::kOutput)
+      ss << " " << kUtfRightArrow << " ";
+    else
+      ss << " " << kUtfLeftArrow << " ";
     wxCoord y_phys;
     CalcScrolledPosition(0, y, NULL, &y_phys);
-
-    wxString ls = m_lines[line];
-    if (ls.Mid(0, 7) == "<GREEN>") {
-      dc.SetTextForeground(wxColour("DARK GREEN"));
-      lss = ls.Mid(7);
-    } else if (ls.Mid(0, 6) == ("<BLUE>")) {
-      dc.SetTextForeground(wxColour("BLUE"));
-      lss = ls.Mid(6);
-    } else if (ls.Mid(0, 5) == "<RED>") {
+    if (l.state.status != NavmsgStatus::State::kOk) {
       dc.SetTextForeground(wxColour("RED"));
-      lss = ls.Mid(5);
-    } else if (ls.Mid(0, 8) == "<MAROON>") {
-      dc.SetTextForeground(wxColour("MAROON"));
-      lss = ls.Mid(8);
-    } else if (ls.Mid(0, 7) == "<CORAL>") {
+      ss << kUtfMultiplicationX;
+    } else if (l.state.accepted == NavmsgStatus::Accepted::kFilteredNoOutput) {
       dc.SetTextForeground(wxColour("CORAL"));
-      lss = ls.Mid(7);
+      ss << kUtfFallingDiagonal;
+    } else if (l.state.accepted == NavmsgStatus::Accepted::kFilteredDropped) {
+      ss << kUtfCircledDivisionSlash;
+      dc.SetTextForeground(wxColour("MAROON"));
     } else {
-      lss = ls;
+      ss << kUtfCheckMark;
+      dc.SetTextForeground(wxColour("GREEN"));
     }
-    dc.DrawText(lss, 0, y);
+    std::stringstream error_msg;
+    if (l.state.status !=NavmsgStatus::State::kOk)  {
+      error_msg << " - "
+                << (l.error_msg.size() > 0 ? l.error_msg : "Unknown  errror");
+    }
+    ss << " ("  << l.stream_name << ") " << l.line << error_msg.str() << "\n";
+    dc.DrawText(ss.str(), 0, y);
     y += m_line_height;
   }
 }
@@ -102,15 +129,14 @@ void TtyScroll::Copy(bool n0183) {
   wxString the_text;
   for (auto& s : m_lines) {
     if (n0183) {
-      int pos = 0;
-      if ((pos = s.Find("$")) != wxNOT_FOUND) {
-        the_text.append(s.Mid(pos) + "\n");
-      } else if ((pos = s.Find("!")) != wxNOT_FOUND) {
-        the_text.append(s.Mid(pos) + "\n");
+      size_t pos = 0;
+      if ((pos = s.line.find("$")) != std::string::npos) {
+        the_text.append(s.line.substr(pos) + "\n");
+      } else if ((pos = s.line.find("!")) != std::string::npos) {
+        the_text.append(s.line.substr(pos) + "\n");
       }
     } else {
-      the_text.append(s);
-      the_text.append("\n");
+      the_text += s.line + "\n";
     }
   }
   // Write scrolled text to the clipboard

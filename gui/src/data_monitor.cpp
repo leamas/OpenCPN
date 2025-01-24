@@ -42,7 +42,7 @@ public:
     Fit();
   }
 
-  void Add(const std::string& s) { m_tty_scroll->Add(s); }
+  void Add(const std::string& s) { m_tty_scroll->Add(Logline(s)); }
 
   /** Invoke Add(s) for possibly existing instance. */
   static void AddIfExists(const std::string& s) {

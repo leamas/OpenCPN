@@ -60,15 +60,15 @@ class NavmsgStatus {
 public:
   enum class Direction { kInput, kReceived, kOutput, kInternal };
   enum class Accepted { kOk, kFilteredNoOutput, kFilteredDropped };
-  enum class Status { kOk, kChecksumError, kMalformed };
+  enum class State { kOk, kChecksumError, kMalformed };
 
   Direction direction : 3;
-  Status status : 3;
+  State status : 3;
   Accepted accepted : 2;
 
   NavmsgStatus()
       : direction(Direction::kInput),
-        status(Status::kOk),
+        status(State::kOk),
         accepted(Accepted::kOk) {}
 };
 
@@ -92,7 +92,7 @@ private:
   std::string m_name;
   std::string m_description;
   std::set<NavmsgStatus::Direction> directions;
-  std::set<NavmsgStatus::Status> status;
+  std::set<NavmsgStatus::State> status;
   std::set<NavAddr::Bus> buses;
   std::set<std::string> include_msg;  // Set of message ids included
   std::set<std::string> exclude_msg;  // Set of message ids excluded
