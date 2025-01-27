@@ -159,7 +159,7 @@ void Multiplexer::LogInputMessage(const wxString &msg,
                                   bool b_error, const wxString error_msg) {
   if (m_log_callbacks.log_is_active()) {
     NavmsgStatus ns;
-    ns.direction = NavmsgStatus::Direction::kInput;
+    ns.direction = NavmsgStatus::Direction::kReceived;
     if (b_error) {
       ns.status = NavmsgStatus::State::kChecksumError;
     } else {

@@ -42,14 +42,17 @@ public:
     Fit();
   }
 
-  void Add(const std::string& s) { m_tty_scroll->Add(Logline(s)); }
+  void Add(Logline ll) { m_tty_scroll->Add(ll); }
 
   /** Invoke Add(s) for possibly existing instance. */
   static void AddIfExists(const std::string& s) {
     auto window = wxWindow::FindWindowByName("TtyPanel");
     if (!window) return;
     auto tty_panel = dynamic_cast<TtyPanel*>(window);
-    if (tty_panel) tty_panel->Add(s);
+    NavmsgStatus ns;
+    ns.direction = NavmsgStatus::Direction::kInput;
+    Logline ll(s, ns, "");
+    if (tty_panel) tty_panel->Add(ll);
   }
 
 protected:

@@ -38,6 +38,7 @@ static const auto kUtfFallingDiagonal = wxString::FromUTF8(u8"\u269F");
 static const auto kUtfMultiplicationX = wxString::FromUTF8(u8"\u2716");
 static const auto kUtfRightArrow = wxString::FromUTF8(u8"\u2192");
 static const auto kUtfLeftArrow = wxString::FromUTF8(u8"\u2190");
+static const auto kUtfLeftwardsArrowToBar = wxString::FromUTF8(u8"\u21E4");
 
 TtyScroll::TtyScroll(wxWindow* parent, int n_lines, wxTextCtrl& filter)
     : wxScrolledWindow(parent), m_n_lines(n_lines), m_filter(filter) {
@@ -56,15 +57,6 @@ void TtyScroll::OnSize(wxSizeEvent& ev) {
   while (m_lines.size() < m_n_lines) m_lines.push_back(Logline());
   SetVirtualSize(-1, (m_n_lines + 1) * m_line_height);
   ev.Skip();
-}
-
-void TtyScroll::Add(const wxString& line) {
-  wxString filter = m_filter.GetValue();
-  if (!m_is_paused && (filter.IsEmpty() || line.Contains(filter))) {
-    while (m_lines.size() > m_n_lines - 1) m_lines.pop_front();
-    m_lines.push_back(Logline(line.ToStdString()));
-    Refresh(true);
-  }
 }
 
 void TtyScroll::Add(struct Logline ll) {
@@ -97,6 +89,8 @@ void TtyScroll::OnDraw(wxDC& dc) {
     auto l = m_lines[line];
     if (l.state.direction == NavmsgStatus::Direction::kOutput)
       ss << " " << kUtfRightArrow << " ";
+    else if (l.state.direction == NavmsgStatus::Direction::kInput)
+      ss << " " << kUtfLeftwardsArrowToBar << " ";
     else
       ss << " " << kUtfLeftArrow << " ";
     wxCoord y_phys;
@@ -115,11 +109,11 @@ void TtyScroll::OnDraw(wxDC& dc) {
       dc.SetTextForeground(wxColour("GREEN"));
     }
     std::stringstream error_msg;
-    if (l.state.status !=NavmsgStatus::State::kOk)  {
+    if (l.state.status != NavmsgStatus::State::kOk) {
       error_msg << " - "
                 << (l.error_msg.size() > 0 ? l.error_msg : "Unknown  errror");
     }
-    ss << " ("  << l.stream_name << ") " << l.line << error_msg.str() << "\n";
+    ss << " (" << l.stream_name << ") " << l.line << error_msg.str() << "\n";
     dc.DrawText(ss.str(), 0, y);
     y += m_line_height;
   }

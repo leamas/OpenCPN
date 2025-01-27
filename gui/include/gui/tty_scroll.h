@@ -53,8 +53,6 @@ public:
    * Subject to checks with respect to paused state and filter possibly
    * discarding argument line.
    */
-  virtual void Add(const wxString& line);
-
   virtual void Add(struct Logline line);
 
   /** Set the window to ignore Add() or not depending on pause. */

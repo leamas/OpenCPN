@@ -16,7 +16,6 @@ struct Logline {
   Logline() : line(), state() {}
   Logline(const std::string& s, NavmsgStatus sts, const std::string& stream)
       : line(s), state(sts), stream_name(stream), error_msg("Unknown error") {}
-  Logline(const std::string& s) : line(s), state() {}
 };
 
 class NmeaLog {
