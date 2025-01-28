@@ -47,6 +47,8 @@ public:
 
   bool IsActive() const override { return IsShownOnScreen(); }
 
+  void OnStop(bool stop) { m_tty_scroll->Pause(stop); }
+
   /** Invoke Add(s) for possibly existing instance. */
   static void AddIfExists(const std::string& s) {
     auto window = wxWindow::FindWindowByName("TtyPanel");
@@ -124,18 +126,20 @@ public:
 /** Button to stop/resume messages in main log window. */
 class StopResumeButton : public wxButton {
 public:
-  StopResumeButton(wxWindow* parent)
-      : wxButton(parent, wxID_ANY), is_viewing(false) {
+  StopResumeButton(wxWindow* parent, std::function<void(bool)> on_stop)
+      : wxButton(parent, wxID_ANY), is_stopped(false), m_on_stop(on_stop) {
     Bind(wxEVT_BUTTON, [&](wxCommandEvent&) { OnClick(); });
     OnClick();
   }
 
 private:
-  bool is_viewing;
+  bool is_stopped;
+  std::function<void(bool)> m_on_stop;
 
   void OnClick() {
-    is_viewing = !is_viewing;
-    SetLabel(is_viewing ? _("Stop") : _("Resume"));
+    is_stopped = !is_stopped;
+    m_on_stop(is_stopped);
+    SetLabel(is_stopped ? _("Resume") : _("Stop"));
   }
 };
 
@@ -265,7 +269,8 @@ private:
 /** Overall bottom status line. */
 class StatusLine : public wxPanel {
 public:
-  StatusLine(wxWindow* parent, wxWindow* quick_filter)
+  StatusLine(wxWindow* parent, wxWindow* quick_filter,
+             std::function<void(bool)> on_stop)
       : wxPanel(parent), m_is_resized(false) {
     // Add a containing sizer for labels, so they can be aligned vertically
     auto log_label_box = new wxBoxSizer(wxVERTICAL);
@@ -282,7 +287,7 @@ public:
     wbox->Add(GetCharWidth() * 2, 0, 1);  // Stretching horizontal space
     wbox->Add(filter_label_box, flags.Align(wxALIGN_CENTER_VERTICAL));
     wbox->Add(new FilterChoice(this), flags);
-    wbox->Add(new StopResumeButton(this), flags);
+    wbox->Add(new StopResumeButton(this, on_stop), flags);
     wbox->Add(new FilterButton(this, quick_filter), flags);
     wbox->Add(new MenuButton(this, [&](int id) { SetLogType(id); }), flags);
 
@@ -344,7 +349,9 @@ DataMonitor::DataMonitor(wxWindow* parent, std::function<void()> on_exit)
   vbox->Add(new wxStaticLine(this), wxSizerFlags().Expand().Border());
 
   vbox->Add(m_quick_filter, wxSizerFlags());
-  vbox->Add(new StatusLine(this, m_quick_filter), wxSizerFlags().Expand());
+  auto on_stop = [&, tty_panel](bool stop) { tty_panel->OnStop(stop); };
+  vbox->Add(new StatusLine(this, m_quick_filter, on_stop),
+            wxSizerFlags().Expand());
   SetSizer(vbox);
   m_quick_filter->Hide();
   Fit();
