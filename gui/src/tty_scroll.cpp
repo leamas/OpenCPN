@@ -42,8 +42,10 @@ static const auto kUtfLeftwardsArrowToBar = wxString::FromUTF8(u8"\u21E4");
 static const auto kUtfLeftRightArrow = wxString::FromUTF8(u8"\u2194");
 
 TtyScroll::TtyScroll(wxWindow* parent, int n_lines, wxTextCtrl& filter)
-    : wxScrolledWindow(parent), m_n_lines(n_lines), m_filter(filter) {
-  m_is_paused = false;
+    : wxScrolledWindow(parent),
+      m_n_lines(n_lines),
+      m_filter(filter),
+      m_is_paused(true) {
   wxClientDC dc(this);
   dc.GetTextExtent("Line Height", NULL, &m_line_height);
 
@@ -76,18 +78,17 @@ void TtyScroll::OnDraw(wxDC& dc) {
   CalcUnscrolledPosition(rect_update.x, rect_update.y, &rect_update.x,
                          &rect_update.y);
 
-  size_t line_from = rect_update.y / m_line_height,
-         line_to = rect_update.GetBottom() / m_line_height;
-
+  size_t line_from = rect_update.y / m_line_height;
+  size_t line_to = rect_update.GetBottom() / m_line_height;
   if (line_to > m_n_lines - 1) line_to = m_n_lines - 1;
 
   wxCoord y = line_from * m_line_height;
   for (size_t line = line_from; line <= line_to; line++) {
     std::stringstream ss;
+    auto l = m_lines[line];
 #ifndef __WXQT__  //  Date/Time on Qt are broken, at least for android
     ss << wxDateTime::Now().FormatISOTime() << " ";
 #endif
-    auto l = m_lines[line];
     if (l.state.direction == NavmsgStatus::Direction::kOutput)
       ss << " " << kUtfRightArrow << " ";
     else if (l.state.direction == NavmsgStatus::Direction::kInput)
@@ -117,7 +118,10 @@ void TtyScroll::OnDraw(wxDC& dc) {
                 << (l.error_msg.size() > 0 ? l.error_msg : "Unknown  errror");
     }
     ss << " (" << l.stream_name << ") " << l.line << error_msg.str() << "\n";
-    dc.DrawText(ss.str(), 0, y);
+    if (l.line.size() > 0)
+      dc.DrawText(ss.str(), 0, y);
+    else
+      dc.DrawText("", 0, y);
     y += m_line_height;
   }
 }
