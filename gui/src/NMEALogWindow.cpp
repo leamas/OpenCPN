@@ -22,6 +22,12 @@
  ***************************************************************************
  */
 
+#ifdef _WIN32
+#undef constamt
+#include <winsock2.h>
+#include <windows.h>
+#endif
+
 #include "NMEALogWindow.h"
 #include "TTYWindow.h"
 #include "tty_scroll.h"
