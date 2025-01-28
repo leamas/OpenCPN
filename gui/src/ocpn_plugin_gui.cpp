@@ -22,6 +22,8 @@
  * PlugIn GUI API Functions
  */
 
+#include "dychart.h"  // Must be ahead due to buggy GL includes handling
+
 #include <wx/wx.h>
 #include <wx/arrstr.h>
 #include <wx/dc.h>
@@ -45,7 +47,6 @@
 #include "chartdb.h"
 #include "chcanv.h"
 #include "ConfigMgr.h"
-#include "dychart.h"
 #include "FontMgr.h"
 #include "glChartCanvas.h"
 #include "gui_lib.h"

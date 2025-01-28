@@ -51,7 +51,7 @@ public:
   static NMEALogWindow &GetInstance();
   NMEALogWindow(const NMEALogWindow &) = delete;
   NMEALogWindow &operator=(const NMEALogWindow &) = delete;
-  bool Active() const;
+  bool IsActive() const;
   void Create(wxWindow *parent, int num_lines = 35);
   void Add(struct Logline l);
   // void Add(const wxString &s);

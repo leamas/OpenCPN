@@ -99,6 +99,8 @@ void TtyScroll::OnDraw(wxDC& dc) {
       ws << " " << kUtfRightArrow << " ";
     else if (l.state.direction == NavmsgStatus::Direction::kInput)
       ws << " " << kUtfLeftwardsArrowToBar << " ";
+    else if (l.state.direction == NavmsgStatus::Direction::kInternal)
+      ws << " " << kUtfLeftRightArrow << " ";
     else
       ws << " " << kUtfLeftArrow << " ";
     wxCoord y_phys;
