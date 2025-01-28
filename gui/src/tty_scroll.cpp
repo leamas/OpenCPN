@@ -118,8 +118,9 @@ void TtyScroll::OnDraw(wxDC& dc) {
                 << (l.error_msg.size() > 0 ? l.error_msg : "Unknown  errror");
     }
     ss << " (" << l.stream_name << ") " << l.line << error_msg.str() << "\n";
+    wxString ws("abc");
     if (l.line.size() > 0)
-      dc.DrawText(ss.str(), 0, y);
+      dc.DrawText(ws, 0, y);
     else
       dc.DrawText("", 0, y);
     y += m_line_height;
