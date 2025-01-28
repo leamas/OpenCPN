@@ -736,7 +736,7 @@ MyFrame::MyFrame(wxFrame *frame, const wxString &title, const wxPoint &pos,
   //    Establish my children
   struct MuxLogCallbacks log_callbacks;
   log_callbacks.log_is_active = []() {
-    return NMEALogWindow::GetInstance().Active();
+    return NMEALogWindow::GetInstance().IsActive();
   };
   log_callbacks.log_message = [](Logline ll) {
     NMEALogWindow::GetInstance().Add(ll);
@@ -6868,7 +6868,7 @@ void MyFrame::applySettingsString(wxString settings) {
 
   if (rr & TOOLBAR_CHANGED) b_newToolbar = true;
 
-  //  We do this is one case only to remove an orphan recovery window
+    //  We do this is one case only to remove an orphan recovery window
 #ifdef __ANDROID__
   if (previous_expert && !g_bUIexpert) {
     androidForceFullRepaint();
@@ -6910,7 +6910,7 @@ void MyFrame::applySettingsString(wxString settings) {
 
   Refresh(false);
 
-  if (NMEALogWindow::GetInstance().Active())
+  if (NMEALogWindow::GetInstance().IsActive())
     NMEALogWindow::GetInstance().GetTTYWindow()->Raise();
 }
 

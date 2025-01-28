@@ -52,7 +52,7 @@ void NMEALogWindow::Shutdown() {
   }
 }
 
-bool NMEALogWindow::Active() const { return m_window != NULL; }
+bool NMEALogWindow::IsActive() const { return m_window != NULL; }
 
 void NMEALogWindow::Create(wxWindow *parent, int num_lines) {
   if (m_window == NULL) {

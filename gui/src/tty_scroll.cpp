@@ -39,6 +39,7 @@ static const auto kUtfMultiplicationX = wxString::FromUTF8(u8"\u2716");
 static const auto kUtfRightArrow = wxString::FromUTF8(u8"\u2192");
 static const auto kUtfLeftArrow = wxString::FromUTF8(u8"\u2190");
 static const auto kUtfLeftwardsArrowToBar = wxString::FromUTF8(u8"\u21E4");
+static const auto kUtfLeftRightArrow = wxString::FromUTF8(u8"\u2194");
 
 TtyScroll::TtyScroll(wxWindow* parent, int n_lines, wxTextCtrl& filter)
     : wxScrolledWindow(parent), m_n_lines(n_lines), m_filter(filter) {
@@ -91,6 +92,8 @@ void TtyScroll::OnDraw(wxDC& dc) {
       ss << " " << kUtfRightArrow << " ";
     else if (l.state.direction == NavmsgStatus::Direction::kInput)
       ss << " " << kUtfLeftwardsArrowToBar << " ";
+    else if (l.state.direction == NavmsgStatus::Direction::kInternal)
+      ss << " " << kUtfLeftRightArrow << " ";
     else
       ss << " " << kUtfLeftArrow << " ";
     wxCoord y_phys;

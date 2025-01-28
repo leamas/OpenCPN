@@ -35,6 +35,7 @@
 #include "model/plugin_loader.h"
 
 #include "model/plugin_comm.h"
+#include "model/gui.h"
 
 #include "ocpn_plugin.h"
 
@@ -55,33 +56,53 @@ static void catch_signals_PIM(int signo) {
 }
 
 #endif
+static std::string PosItem(const std::string what, double item) {
+  std::stringstream ss;
+  ss << what << " " << std::setprecision(3) << item;
+  return ss.str();
+}
 
+static std::string MsgToString(PlugIn_Position_Fix fix) {
+  std::stringstream ss;
+  ss << Position(fix.Lat, fix.Lon).to_string() << " " << PosItem("Cog", fix.Cog)
+     << PosItem("Sog", fix.Sog) << " " << PosItem("Var", fix.Var)
+     << " Nsats: " << fix.nSats;
+  return ss.str();
+}
+
+static void LogMessage(const std::string& message) {
+  auto log = GetNmeaLog();
+  if (log) {
+    NavmsgStatus ns;
+    ns.direction = NavmsgStatus::Direction::kInternal;
+    Logline ll(message, ns, "Internal");
+    log->Add(ll);
+  }
+}
 void SendMessageToAllPlugins(const wxString& message_id,
                              const wxString& message_body) {
   auto msg = std::make_shared<PluginMsg>(
       PluginMsg(message_id.ToStdString(), message_body.ToStdString()));
   NavMsgBus::GetInstance().Notify(msg);
 
-  // decouple 'const wxString &' and 'wxString &' to keep bin
-  wxString decouple_message_id(message_id);
-  wxString decouple_message_body(message_body);
+  // decouple 'const wxString &' and 'wxString &' to keep API
+  wxString id(message_id);
+  wxString body(message_body);
 
-  auto plugin_array = PluginLoader::getInstance()->GetPlugInArray();
-  for (unsigned int i = 0; i < plugin_array->GetCount(); i++) {
-    PlugInContainer* pic = plugin_array->Item(i);
+  LogMessage((id + ": " + body).ToStdString());
+
+  for (auto pic : *PluginLoader::getInstance()->GetPlugInArray()) {
     if (pic->m_enabled && pic->m_init_state) {
       if (pic->m_cap_flag & WANTS_PLUGIN_MESSAGING) {
         switch (pic->m_api_version) {
           case 106: {
             auto* ppi = dynamic_cast<opencpn_plugin_16*>(pic->m_pplugin);
-            if (ppi)
-              ppi->SetPluginMessage(decouple_message_id, decouple_message_body);
+            if (ppi) ppi->SetPluginMessage(id, body);
             break;
           }
           case 107: {
             auto* ppi = dynamic_cast<opencpn_plugin_17*>(pic->m_pplugin);
-            if (ppi)
-              ppi->SetPluginMessage(decouple_message_id, decouple_message_body);
+            if (ppi) ppi->SetPluginMessage(id, body);
             break;
           }
           case 108:
@@ -97,8 +118,7 @@ void SendMessageToAllPlugins(const wxString& message_id,
           case 118:
           case 119: {
             auto* ppi = dynamic_cast<opencpn_plugin_18*>(pic->m_pplugin);
-            if (ppi)
-              ppi->SetPluginMessage(decouple_message_id, decouple_message_body);
+            if (ppi) ppi->SetPluginMessage(id, body);
             break;
           }
           default:
@@ -116,6 +136,10 @@ void SendJSONMessageToAllPlugins(const wxString& message_id, wxJSONValue v) {
   SendMessageToAllPlugins(message_id, out);
   wxLogDebug(message_id);
   wxLogDebug(out);
+  wxJSONWriter writer;
+  wxString msg;
+  writer.Write(v, msg);
+  LogMessage((message_id + ": " + msg).ToStdString());
 }
 
 void SendAISSentenceToAllPlugIns(const wxString& sentence) {
@@ -129,6 +153,7 @@ void SendAISSentenceToAllPlugIns(const wxString& sentence) {
         pic->m_pplugin->SetAISSentence(decouple_sentence);
     }
   }
+  LogMessage((wxString("AIS message: ") + sentence).ToStdString());
 }
 
 void SendPositionFixToAllPlugIns(GenericPosDatEx* ppos) {
@@ -162,6 +187,8 @@ void SendPositionFixToAllPlugIns(GenericPosDatEx* ppos) {
   pfix_ex.nSats = ppos->nSats;
   pfix_ex.Hdt = ppos->kHdt;
   pfix_ex.Hdm = ppos->kHdm;
+
+  LogMessage(MsgToString(pfix));
 
   for (unsigned int i = 0; i < plugin_array->GetCount(); i++) {
     PlugInContainer* pic = plugin_array->Item(i);
@@ -319,6 +346,7 @@ void SendCursorLatLonToAllPlugIns(double lat, double lon) {
         if (pic->m_pplugin) pic->m_pplugin->SetCursorLatLon(lat, lon);
     }
   }
+  LogMessage(std::string("Cursor pos: ") + Position(lat, lon).to_string());
 }
 
 void SendNMEASentenceToAllPlugIns(const wxString& sentence) {
@@ -339,6 +367,7 @@ void SendNMEASentenceToAllPlugIns(const wxString& sentence) {
   temp.sa_flags = 0;
   sigaction(SIGSEGV, &temp, NULL);
 #endif
+  LogMessage((wxString("NMEA msg: ") + sentence).ToStdString());
   auto plugin_array = PluginLoader::getInstance()->GetPlugInArray();
   for (unsigned int i = 0; i < plugin_array->GetCount(); i++) {
     PlugInContainer* pic = plugin_array->Item(i);

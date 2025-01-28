@@ -75,7 +75,7 @@ wxString FormatPrintableMessage(wxString msg_raw) {
 void LogBroadcastOutputMessageColor(const wxString& msg,
                                     const wxString& stream_name,
                                     const wxString& color, NmeaLog& nmea_log) {
-  if (nmea_log.Active()) {
+  if (nmea_log.IsActive()) {
     NavmsgStatus ns;
     ns.direction = NavmsgStatus::Direction::kOutput;
     Logline ll(msg.ToStdString(), ns, stream_name.ToStdString());
