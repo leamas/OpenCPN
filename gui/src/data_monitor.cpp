@@ -96,6 +96,7 @@ public:
   LogButton(wxWindow* parent) : wxButton(parent, wxID_ANY), is_logging(true) {
     Bind(wxEVT_BUTTON, [&](wxCommandEvent&) { OnClick(); });
     OnClick();
+    Disable();
   }
 
 private:
@@ -282,8 +283,8 @@ public:
     auto flags = wxSizerFlags(0).Border();
     auto wbox = new wxWrapSizer(wxHORIZONTAL);
     wbox->Add(log_label_box, flags.Align(wxALIGN_CENTER_VERTICAL));
-    auto log_button = new LogButton(this);
-    wbox->Add(log_button, flags);
+    m_log_button = new LogButton(this);
+    wbox->Add(m_log_button, flags);
     wbox->Add(GetCharWidth() * 2, 0, 1);  // Stretching horizontal space
     wbox->Add(filter_label_box, flags.Align(wxALIGN_CENTER_VERTICAL));
     wbox->Add(new FilterChoice(this), flags);
@@ -313,6 +314,7 @@ protected:
 private:
   bool m_is_resized;
   wxControl* m_log_label;
+  wxButton* m_log_button;
 
   void SetLogType(int id) {
     switch (static_cast<TheMenu::Id>(id)) {
@@ -332,6 +334,7 @@ private:
         std::cout << "Menu id: " << id << "\n";
         break;
     }
+    m_log_button->Enable();
   }
 };
 
