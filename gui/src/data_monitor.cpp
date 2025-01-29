@@ -127,7 +127,7 @@ public:
 class StopResumeButton : public wxButton {
 public:
   StopResumeButton(wxWindow* parent, std::function<void(bool)> on_stop)
-      : wxButton(parent, wxID_ANY), is_stopped(false), m_on_stop(on_stop) {
+      : wxButton(parent, wxID_ANY), is_stopped(true), m_on_stop(on_stop) {
     Bind(wxEVT_BUTTON, [&](wxCommandEvent&) { OnClick(); });
     OnClick();
   }
