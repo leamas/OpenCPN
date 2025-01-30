@@ -216,6 +216,7 @@ public:
   /** Return unique key used by observable to notify/listen. */
   virtual std::string key() const = 0;
 
+  /** Return printable string for logging etc without trailing nl */
   virtual std::string to_string() const {
     return NavAddr::BusToString(bus) + " " + key();
   }
@@ -298,7 +299,9 @@ public:
   std::string key() const { return Nmea0183Msg::MessageKey(type.c_str()); };
 
   std::string to_string() const {
-    return NavMsg::to_string() + " " + talker + type + " " + payload;
+    // Drop the trailing lf which is part of the format.
+    return NavMsg::to_string() + " " + talker + type + " " +
+           payload.substr(0, payload.size() - 1);
   }
 
   /** Return key which should be used to listen to given message type. */
