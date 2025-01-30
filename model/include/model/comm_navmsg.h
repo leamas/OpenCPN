@@ -336,6 +336,8 @@ public:
   const std::string dest_host;  ///< hostname, ip address or 'localhost'
 
   std::string key() const { return std::string("plug.json-") + name; };
+
+  std::string to_string() const { return name + ": " + message; }
 };
 
 /** A parsed SignalK message over ipv4 */
