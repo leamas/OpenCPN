@@ -32,10 +32,11 @@
 
 #include "model/comm_appmsg.h"
 #include "model/comm_navmsg_bus.h"
-#include "model/plugin_loader.h"
-
-#include "model/plugin_comm.h"
 #include "model/gui.h"
+#include "model/nmea_log.h"
+#include "model/plugin_comm.h"
+#include "model/plugin_loader.h"
+#include "model/ocpn_utils.h"
 
 #include "ocpn_plugin.h"
 
@@ -69,9 +70,9 @@ static std::string MsgToString(PlugIn_Position_Fix fix) {
      << " Nsats: " << fix.nSats;
   return ss.str();
 }
-
-static void LogMessage(const std::string& message) {
-  auto log = GetNmeaLog();
+static void LogRawMessage(const std::string& message) {
+  auto w = wxWindow::FindWindowByName(kDataMonitorWindowName);
+  auto log = dynamic_cast<NmeaLog*>(w);
   if (log) {
     NavmsgStatus ns;
     ns.direction = NavmsgStatus::Direction::kInternal;
@@ -79,6 +80,11 @@ static void LogMessage(const std::string& message) {
     log->Add(ll);
   }
 }
+
+static void LogMessage(const std::string& message) {
+  LogRawMessage(ocpn::printable(message));
+}
+
 void SendMessageToAllPlugins(const wxString& message_id,
                              const wxString& message_body) {
   auto msg = std::make_shared<PluginMsg>(
@@ -89,7 +95,8 @@ void SendMessageToAllPlugins(const wxString& message_id,
   wxString id(message_id);
   wxString body(message_body);
 
-  LogMessage((id + ": " + body).ToStdString());
+  LogMessage(msg->to_string());
+  LogMessage(std::string("internal ALL ") + msg->to_string());
 
   for (auto pic : *PluginLoader::getInstance()->GetPlugInArray()) {
     if (pic->m_enabled && pic->m_init_state) {
@@ -139,7 +146,7 @@ void SendJSONMessageToAllPlugins(const wxString& message_id, wxJSONValue v) {
   wxJSONWriter writer;
   wxString msg;
   writer.Write(v, msg);
-  LogMessage((message_id + ": " + msg).ToStdString());
+  LogMessage(std::string("json ALL json ") + msg.ToStdString());
 }
 
 void SendAISSentenceToAllPlugIns(const wxString& sentence) {
@@ -153,7 +160,7 @@ void SendAISSentenceToAllPlugIns(const wxString& sentence) {
         pic->m_pplugin->SetAISSentence(decouple_sentence);
     }
   }
-  LogMessage((wxString("AIS message: ") + sentence).ToStdString());
+  LogMessage(std::string("ais-0183 ALL json ") + sentence.ToStdString());
 }
 
 void SendPositionFixToAllPlugIns(GenericPosDatEx* ppos) {
@@ -188,7 +195,7 @@ void SendPositionFixToAllPlugIns(GenericPosDatEx* ppos) {
   pfix_ex.Hdt = ppos->kHdt;
   pfix_ex.Hdm = ppos->kHdm;
 
-  LogMessage(MsgToString(pfix));
+  LogRawMessage(std::string("application ALL gnss-fix ") + MsgToString(pfix));
 
   for (unsigned int i = 0; i < plugin_array->GetCount(); i++) {
     PlugInContainer* pic = plugin_array->Item(i);
@@ -346,7 +353,8 @@ void SendCursorLatLonToAllPlugIns(double lat, double lon) {
         if (pic->m_pplugin) pic->m_pplugin->SetCursorLatLon(lat, lon);
     }
   }
-  LogMessage(std::string("Cursor pos: ") + Position(lat, lon).to_string());
+  LogRawMessage(std::string("application ALL cursor-pos ") +
+                Position(lat, lon).to_string());
 }
 
 void SendNMEASentenceToAllPlugIns(const wxString& sentence) {
@@ -367,7 +375,7 @@ void SendNMEASentenceToAllPlugIns(const wxString& sentence) {
   temp.sa_flags = 0;
   sigaction(SIGSEGV, &temp, NULL);
 #endif
-  LogMessage((wxString("NMEA msg: ") + sentence).ToStdString());
+  LogMessage(std::string("internal ALL nmea-msg ") + sentence.ToStdString());
   auto plugin_array = PluginLoader::getInstance()->GetPlugInArray();
   for (unsigned int i = 0; i < plugin_array->GetCount(); i++) {
     PlugInContainer* pic = plugin_array->Item(i);
