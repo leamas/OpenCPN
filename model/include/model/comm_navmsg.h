@@ -298,11 +298,7 @@ public:
 
   std::string key() const { return Nmea0183Msg::MessageKey(type.c_str()); };
 
-  std::string to_string() const {
-    // Drop the trailing lf which is part of the format.
-    return NavMsg::to_string() + " " + talker + type + " " +
-           payload.substr(0, payload.size() - 1);
-  }
+  std::string to_string() const;
 
   /** Return key which should be used to listen to given message type. */
   static std::string MessageKey(const char* type = "ALL") {
