@@ -101,7 +101,8 @@ private:
 /** Button to start/stop logging. */
 class LogButton : public wxButton {
 public:
-  LogButton(wxWindow* parent) : wxButton(parent, wxID_ANY), is_logging(true) {
+  LogButton(wxWindow* parent, DataLogger& logger)
+      : wxButton(parent, wxID_ANY), is_logging(true), m_logger(logger) {
     Bind(wxEVT_BUTTON, [&](wxCommandEvent&) { OnClick(); });
     OnClick();
     Disable();
@@ -109,10 +110,12 @@ public:
 
 private:
   bool is_logging;
+  DataLogger& m_logger;
 
   void OnClick() {
     is_logging = !is_logging;
     SetLabel(is_logging ? _("Stop") : _("Start"));
+    m_logger.SetLogging(is_logging);
   }
 };
 
@@ -169,6 +172,7 @@ public:
     kViewSource,
     kViewCopy
   };
+
   TheMenu(wxWindow* parent, std::function<void(int)> set_logtype_func,
           DataLogger& logger, wxWindow* log_button)
       : m_parent(parent),
@@ -308,7 +312,7 @@ public:
       : wxPanel(parent), m_is_resized(false), m_logger(logger) {
     // Add a containing sizer for labels, so they can be aligned vertically
     auto log_label_box = new wxBoxSizer(wxVERTICAL);
-    m_log_label = new wxStaticText(this, wxID_ANY, _("Logging: None"));
+    m_log_label = new wxStaticText(this, wxID_ANY, _("Logging: Pretty"));
     log_label_box->Add(m_log_label);
     auto filter_label_box = new wxBoxSizer(wxVERTICAL);
     filter_label_box->Add(new wxStaticText(this, wxID_ANY, _("View")));
@@ -316,17 +320,17 @@ public:
     auto flags = wxSizerFlags(0).Border();
     auto wbox = new wxWrapSizer(wxHORIZONTAL);
     wbox->Add(log_label_box, flags.Align(wxALIGN_CENTER_VERTICAL));
-    m_log_button = new LogButton(this);
+    m_log_button = new LogButton(this, m_logger);
     wbox->Add(m_log_button, flags);
     wbox->Add(GetCharWidth() * 2, 0, 1);  // Stretching horizontal space
     wbox->Add(filter_label_box, flags.Align(wxALIGN_CENTER_VERTICAL));
     wbox->Add(new FilterChoice(this), flags);
     wbox->Add(new StopResumeButton(this, on_stop), flags);
     wbox->Add(new FilterButton(this, quick_filter), flags);
+
     auto set_log_type = [&](int id) { SetLogType(id); };
     wbox->Add(new MenuButton(this, set_log_type, m_logger, m_log_button),
               flags);
-
     SetSizer(wbox);
     Layout();
     Show();
@@ -441,11 +445,12 @@ void DataLogger::Add(Logline ll) {
 }
 
 DataMonitor::DataMonitor(wxWindow* parent, std::function<void()> on_exit)
-    : wxFrame(parent, wxID_ANY, "Data Monitor"),
+    : wxFrame(parent, wxID_ANY, "Data Monitor", wxDefaultPosition,
+              wxDefaultSize, wxDEFAULT_FRAME_STYLE, kDataMonitorWindowName),
       m_on_exit(on_exit),
-      m_monitor_src([&](const std::shared_ptr<const NavMsg>& navmsg) {
-        auto msg = std::dynamic_pointer_cast<const Nmea0183Msg>(navmsg);
-        TtyPanel::AddIfExists(msg->payload);
+      m_monitor_src([&](const std::shared_ptr<const NavMsg>& msg) {
+        TtyPanel::AddIfExists(msg->to_string());
+        m_logger.Add(msg->to_string());
       }),
       m_quick_filter(new QuickFilterPanel(this)),
       m_logger(parent) {
