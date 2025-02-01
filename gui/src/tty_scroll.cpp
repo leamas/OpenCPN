@@ -40,14 +40,15 @@
  * Implement tty_scroll.h
  */
 
-static const auto kUtfCheckMark = wxString::FromUTF8(u8"\u2713");
-static const auto kUtfCircledDivisionSlash = wxString::FromUTF8(u8"\u2298");
-static const auto kUtfFallingDiagonal = wxString::FromUTF8(u8"\u269F");
-static const auto kUtfLeftArrow = wxString::FromUTF8(u8"\u2190");
-static const auto kUtfLeftRightArrow = wxString::FromUTF8(u8"\u2194");
-static const auto kUtfLeftwardsArrowToBar = wxString::FromUTF8(u8"\u21E4");
-static const auto kUtfMultiplicationX = wxString::FromUTF8(u8"\u2716");
-static const auto kUtfRightArrow = wxString::FromUTF8(u8"\u2192");
+const wxString kUtfCheckMark = wxString::FromUTF8(u8"\u2713");
+const wxString kUtfCircledDivisionSlash = wxString::FromUTF8(u8"\u2298");
+const wxString kUtfFallingDiagonal = wxString::FromUTF8(u8"\u269F");
+const wxString kUtfIdenticalTo = wxString::FromUTF8(u8"\u2261");
+const wxString kUtfLeftArrow = wxString::FromUTF8(u8"\u2190");
+const wxString kUtfLeftRightArrow = wxString::FromUTF8(u8"\u2194");
+const wxString kUtfLeftwardsArrowToBar = wxString::FromUTF8(u8"\u21E4");
+const wxString kUtfMultiplicationX = wxString::FromUTF8(u8"\u2716");
+const wxString kUtfRightArrow = wxString::FromUTF8(u8"\u2192");
 
 /** Draw a single line in the log window. */
 static void DrawLine(wxDC& dc, Logline ll, int data_pos, int y) {
