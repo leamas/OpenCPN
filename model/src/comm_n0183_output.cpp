@@ -610,8 +610,8 @@ int SendRouteToGPS_N0183(Route* pr, const wxString& com_name,
         if (g_GPS_Ident != "FurunoGP3X")
           drv_n0183->SendMessage(msg_out, std::make_shared<NavAddr>());
 
-        multiplexer.LogOutputMessage(snt.Sentence, com_name.ToStdString(),
-                                     false);
+        multiplexer.LogOutputMessage(msg_out->to_string(),
+                                     com_name.ToStdString(), false);
         auto msg =
             wxString("-->GPS Port: ") + com_name + " Sentence: " + snt.Sentence;
         msg.Trim();
@@ -816,9 +816,8 @@ int SendRouteToGPS_N0183(Route* pr, const wxString& com_name,
         auto msg_out = std::make_shared<Nmea0183Msg>(
             "ECRTE", sentence.ToStdString(), std::make_shared<NavAddr>());
         drv_n0183->SendMessage(msg_out, address);
-
-        wxString fmsg = FormatPrintableMessage(sentence);
-        multiplexer.LogOutputMessageColor(fmsg, com_name, "<BLUE>");
+        multiplexer.LogOutputMessageColor(msg_out->to_string(), com_name,
+                                          "<BLUE>");
         wxYield();
 
         //             LogOutputMessage(sentence, dstr->GetPort(), false);
@@ -835,8 +834,8 @@ int SendRouteToGPS_N0183(Route* pr, const wxString& com_name,
           "ECRTE", snt.Sentence.ToStdString(), address);
       drv_n0183->SendMessage(msg_out, address);
 
-      wxString fmsg = FormatPrintableMessage(snt.Sentence);
-      multiplexer.LogOutputMessageColor(fmsg, com_name, "<BLUE>");
+      multiplexer.LogOutputMessageColor(msg_out->to_string(), com_name,
+                                        "<BLUE>");
       wxYield();
 
       auto msg =
@@ -858,7 +857,8 @@ int SendRouteToGPS_N0183(Route* pr, const wxString& com_name,
       auto msg_out =
           std::make_shared<Nmea0183Msg>("GPRTC", rte.ToStdString(), address);
       drv_n0183->SendMessage(msg_out, address);
-      multiplexer.LogOutputMessage(rte, com_name.ToStdString(), false);
+      multiplexer.LogOutputMessage(msg_out->to_string(), com_name.ToStdString(),
+                                   false);
 
       auto msg = wxString("-->GPS Port:") + com_name + " Sentence: " + rte;
       msg.Trim();
@@ -871,7 +871,8 @@ int SendRouteToGPS_N0183(Route* pr, const wxString& com_name,
           std::make_shared<Nmea0183Msg>("GPRTC", term.ToStdString(), address);
       drv_n0183->SendMessage(msg_outf, address);
 
-      multiplexer.LogOutputMessage(term, com_name.ToStdString(), false);
+      multiplexer.LogOutputMessage(msg_outf->to_string(),
+                                   com_name.ToStdString(), false);
 
       msg = wxString("-->GPS Port:") + com_name + " Sentence: " + term;
       msg.Trim();
@@ -1066,7 +1067,7 @@ int SendWaypointToGPS_N0183(RoutePoint* prp, const wxString& com_name,
         "ECWPL", snt.Sentence.ToStdString(), address);
     drv_n0183->SendMessage(msg_out, address);
 
-    multiplexer.LogOutputMessage(snt.Sentence, com_name, false);
+    multiplexer.LogOutputMessage(msg_out->to_string(), com_name, false);
     auto msg = wxString("-->GPS Port:") + com_name + " Sentence: ";
     msg.Trim();
     wxLogMessage(msg);
