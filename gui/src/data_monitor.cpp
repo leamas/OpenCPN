@@ -169,9 +169,12 @@ public:
     kViewSource,
     kViewCopy
   };
-
-  TheMenu(std::function<void(int)> set_logtype_func)
-      : m_set_logtype_func(set_logtype_func) {
+  TheMenu(wxWindow* parent, std::function<void(int)> set_logtype_func,
+          DataLogger& logger, wxWindow* log_button)
+      : m_parent(parent),
+        m_log_button(log_button),
+        m_logger(logger),
+        m_set_logtype_func(set_logtype_func) {
     auto filters = new wxMenu("");
     AppendId(filters, Id::kActiveFilter, _("Select active filter..."));
     AppendId(filters, Id::kNewFilter, _("Create new..."));
@@ -202,6 +205,9 @@ public:
         case Id::kLogFormatCantools:
           m_set_logtype_func(ev.GetId());
           break;
+        case Id::kLogFile:
+          SetLogfile();
+          break;
         default:
           std::cout << "Menu id: " << ev.GetId() << "\n";
           break;
@@ -210,7 +216,11 @@ public:
   }
 
 private:
+  wxWindow* m_parent;
+  wxWindow* m_log_button;
+  DataLogger& m_logger;
   std::function<void(int)> m_set_logtype_func;
+
   wxMenuItem* AppendId(wxMenu* root, Id id, const wxString& label) {
     return root->Append(static_cast<int>(id), label);
   }
@@ -221,6 +231,16 @@ private:
 
   void AppendCheckId(wxMenu* root, Id id, const wxString& label) {
     root->AppendCheckItem(static_cast<int>(id), label);
+  }
+
+  void SetLogfile() {
+    wxFileDialog dlg(m_parent, _("Select logfile"), "",
+                     m_logger.GetLogfile().string(), _("Log Files (*.log)"),
+                     wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    if (dlg.ShowModal() == wxID_CANCEL) return;
+    m_logger = DataLogger(m_parent, fs::path(dlg.GetPath().ToStdString()));
+    m_logger.SetLogging(true);
+    m_log_button->Enable();
   }
 };
 
@@ -257,20 +277,25 @@ private:
 /** Button invoking the popup menu. */
 class MenuButton : public wxButton {
 public:
-  MenuButton(wxWindow* parent, std::function<void(int)> set_logtype_func)
+  MenuButton(wxWindow* parent, std::function<void(int)> set_logtype_func,
+             DataLogger& logger, wxWindow* log_button)
       : wxButton(parent, wxID_ANY, wxEmptyString, wxDefaultPosition,
                  wxDefaultSize, wxBU_EXACTFIT),
-        m_set_logtype_func(set_logtype_func) {
+        m_set_logtype_func(set_logtype_func),
+        m_logger(logger),
+        m_log_button(log_button) {
     Bind(wxEVT_BUTTON, [&](wxCommandEvent&) { OnClick(); });
-    SetLabel(wxString::FromUTF8(u8"\u2261"));
+    SetLabel(kUtfIdenticalTo);
     SetToolTip(_("Open menu"));
   }
 
 private:
   std::function<void(int)> m_set_logtype_func;
+  DataLogger& m_logger;
+  wxWindow* m_log_button;
 
   void OnClick() {
-    TheMenu menu(m_set_logtype_func);
+    TheMenu menu(GetParent(), m_set_logtype_func, m_logger, m_log_button);
     PopupMenu(&menu);
   }
 };
@@ -279,8 +304,8 @@ private:
 class StatusLine : public wxPanel {
 public:
   StatusLine(wxWindow* parent, wxWindow* quick_filter,
-             std::function<void(bool)> on_stop)
-      : wxPanel(parent), m_is_resized(false) {
+             std::function<void(bool)> on_stop, DataLogger& logger)
+      : wxPanel(parent), m_is_resized(false), m_logger(logger) {
     // Add a containing sizer for labels, so they can be aligned vertically
     auto log_label_box = new wxBoxSizer(wxVERTICAL);
     m_log_label = new wxStaticText(this, wxID_ANY, _("Logging: None"));
@@ -298,7 +323,9 @@ public:
     wbox->Add(new FilterChoice(this), flags);
     wbox->Add(new StopResumeButton(this, on_stop), flags);
     wbox->Add(new FilterButton(this, quick_filter), flags);
-    wbox->Add(new MenuButton(this, [&](int id) { SetLogType(id); }), flags);
+    auto set_log_type = [&](int id) { SetLogType(id); };
+    wbox->Add(new MenuButton(this, set_log_type, m_logger, m_log_button),
+              flags);
 
     SetSizer(wbox);
     Layout();
@@ -323,6 +350,7 @@ private:
   bool m_is_resized;
   wxControl* m_log_label;
   wxButton* m_log_button;
+  DataLogger& m_logger;
 
   void SetLogType(int id) {
     switch (static_cast<TheMenu::Id>(id)) {
@@ -428,7 +456,7 @@ DataMonitor::DataMonitor(wxWindow* parent, std::function<void()> on_exit)
 
   vbox->Add(m_quick_filter, wxSizerFlags());
   auto on_stop = [&, tty_panel](bool stop) { tty_panel->OnStop(stop); };
-  vbox->Add(new StatusLine(this, m_quick_filter, on_stop),
+  vbox->Add(new StatusLine(this, m_quick_filter, on_stop, m_logger),
             wxSizerFlags().Expand());
   SetSizer(vbox);
   m_quick_filter->Hide();
