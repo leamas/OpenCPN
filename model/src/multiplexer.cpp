@@ -250,7 +250,8 @@ void Multiplexer::HandleN0183(std::shared_ptr<const Nmea0183Msg> n0183_msg) {
     //}
 
     wxString port(n0183_msg->source->iface);
-    LogInputMessage(fmsg, port, !bpass_input_filter, b_error, error_msg);
+    LogInputMessage(n0183_msg->to_string(), port, !bpass_input_filter, b_error,
+                    error_msg);
   }
 
   // Detect virtual driver, message comes from plugin API
@@ -282,6 +283,7 @@ void Multiplexer::HandleN0183(std::shared_ptr<const Nmea0183Msg> n0183_msg) {
 #endif
       }
 
+      std::shared_ptr<const Nmea0183Msg> msg = n0183_msg;
       if ((m_legacy_input_filter_behaviour && !bpass_input_filter) ||
           bpass_input_filter) {
         //  Allow re-transmit on same port (if type is SERIAL),
@@ -302,8 +304,8 @@ void Multiplexer::HandleN0183(std::shared_ptr<const Nmea0183Msg> n0183_msg) {
               if (comma_pos != std::string::npos && comma_pos > 5)
                 id = n0183_msg->payload.substr(1, comma_pos - 1);
               auto null_addr = std::make_shared<NavAddr>();
-              auto msg = std::make_shared<Nmea0183Msg>(id, n0183_msg->payload,
-                                                       null_addr);
+              msg = std::make_shared<Nmea0183Msg>(id, n0183_msg->payload,
+                                                  null_addr);
               bxmit_ok = driver->SendMessage(msg, null_addr);
               bout_filter = false;
             }
@@ -311,11 +313,14 @@ void Multiplexer::HandleN0183(std::shared_ptr<const Nmea0183Msg> n0183_msg) {
             // Send to the Debug Window, if open
             if (!bout_filter) {
               if (bxmit_ok)
-                LogOutputMessageColor(fmsg, driver->iface, _T("<BLUE>"));
+                LogOutputMessageColor(msg->to_string(), driver->iface,
+                                      _T("<BLUE>"));
               else
-                LogOutputMessageColor(fmsg, driver->iface, _T("<RED>"));
+                LogOutputMessageColor(msg->to_string(), driver->iface,
+                                      _T("<RED>"));
             } else
-              LogOutputMessageColor(fmsg, driver->iface, _T("<CORAL>"));
+              LogOutputMessageColor(msg->to_string(), driver->iface,
+                                    _T("<CORAL>"));
           }
         }
       }
