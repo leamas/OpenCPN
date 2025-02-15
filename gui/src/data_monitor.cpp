@@ -118,6 +118,10 @@ public:
 
   void SetFilter(const NavmsgFilter& f) { m_tty_scroll->SetFilter(f); };
 
+  void SetQuickFilter(const std::string& filter) {
+    m_tty_scroll->SetQuickFilter(filter);
+  }
+
   /** Invoke Add(s) for possibly existing instance. */
   static void AddIfExists(const Logline& ll) {
     auto window = wxWindow::FindWindowByName("TtyPanel");
@@ -139,8 +143,10 @@ private:
 
 class QuickFilterPanel : public wxPanel {
 public:
-  QuickFilterPanel(wxWindow* parent)
-      : wxPanel(parent), m_text_ctrl(new wxTextCtrl(this, wxID_ANY)) {
+  QuickFilterPanel(wxWindow* parent, std::function<void()> on_text_evt)
+      : wxPanel(parent),
+        m_text_ctrl(new wxTextCtrl(this, wxID_ANY)),
+        m_on_text_evt(on_text_evt) {
     auto hbox = new wxBoxSizer(wxHORIZONTAL);
     auto flags = wxSizerFlags(0).Border();
     auto label_box = new wxBoxSizer(wxVERTICAL);
@@ -150,10 +156,14 @@ public:
     SetSizer(hbox);
     Fit();
     Show();
+    Bind(wxEVT_TEXT, [&](wxCommandEvent&) { m_on_text_evt(); });
   }
+
+  std::string GetValue() { return m_text_ctrl->GetValue().ToStdString(); }
 
 private:
   wxTextCtrl* m_text_ctrl;
+  std::function<void()> m_on_text_evt;
 };
 
 /** Button to start/stop logging. */
@@ -573,19 +583,32 @@ DataMonitor::DataMonitor(wxWindow* parent)
         auto msg = std::dynamic_pointer_cast<const Nmea0183Msg>(navmsg);
         TtyPanel::AddIfExists(navmsg);
       }),
-      m_quick_filter(new QuickFilterPanel(this)),
+      m_quick_filter(nullptr),
       m_logger(parent) {
   auto vbox = new wxBoxSizer(wxVERTICAL);
   auto tty_panel = new TtyPanel(this, 12);
   vbox->Add(tty_panel, wxSizerFlags(1).Expand().Border());
   vbox->Add(new wxStaticLine(this), wxSizerFlags().Expand().Border());
 
+  auto on_quick_filter_evt = [&, tty_panel] {
+    auto* quick_filter = dynamic_cast<QuickFilterPanel*>(m_quick_filter);
+    assert(quick_filter);
+    std::string value = quick_filter->GetValue();
+    tty_panel->SetQuickFilter(value);
+  };
+  m_quick_filter = new QuickFilterPanel(this, on_quick_filter_evt);
   vbox->Add(m_quick_filter, wxSizerFlags());
+
   auto on_stop = [&, tty_panel](bool stop) { tty_panel->OnStop(stop); };
   vbox->Add(new StatusLine(this, m_quick_filter, tty_panel, on_stop, m_logger),
             wxSizerFlags().Expand());
   SetSizer(vbox);
+
+  m_quick_filter->Bind(wxEVT_TEXT, [&, tty_panel](wxCommandEvent&) {
+    tty_panel->SetQuickFilter(GetLabel().ToStdString());
+  });
   m_quick_filter->Hide();
+
   Fit();
   Show();
 
