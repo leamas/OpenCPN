@@ -70,15 +70,9 @@ wxColor StdColorsByState::operator()(NavmsgStatus ns) {
 /** Draw a single line in the log window. */
 void TtyScroll::DrawLine(wxDC& dc, Logline ll, int data_pos, int y) {
   wxString ws;
-  std::string msg_text = ll.navmsg ? ll.navmsg->to_string() : "";
-  if (!m_quick_filter.empty() &&
-      msg_text.find(m_quick_filter) == std::string::npos) {
-    return;
-  }
 #ifndef __WXQT__  //  Date/Time on Qt are broken, at least for android
-  if (!msg_text.empty()) ws << wxDateTime::Now().FormatISOTime() << " ";
+  if (!ll.message.empty()) ws << wxDateTime::Now().FormatISOTime() << " ";
 #endif
-
   if (ll.state.direction == NavmsgStatus::Direction::kOutput)
     ws << " " << kUtfRightArrow << " ";  // BLUE
   else if (ll.state.direction == NavmsgStatus::Direction::kInput)
@@ -108,7 +102,7 @@ void TtyScroll::DrawLine(wxDC& dc, Logline ll, int data_pos, int y) {
 
   dc.DrawText(ws, 0, y);
   ws = "";
-  ws << msg_text << error_msg.str();
+  ws << ll.message << error_msg.str();
   dc.DrawText(ws, data_pos, y);
 }
 
@@ -132,11 +126,13 @@ void TtyScroll::OnSize(wxSizeEvent& ev) {
 }
 
 void TtyScroll::Add(struct Logline ll) {
-  if (!m_is_paused && m_filter.Pass(ll.state, ll.navmsg)) {
-    while (m_lines.size() > m_n_lines - 1) m_lines.pop_front();
-    m_lines.push_back(ll);
-    Refresh(true);
-  }
+  if (m_is_paused || !m_filter.Pass(ll.state, ll.navmsg)) return;
+  using namespace std::string;
+  if (!m_quick_filter.empty() && ll.message.find(m_quick_filter) == npos)
+    return;
+  while (m_lines.size() > m_n_lines - 1) m_lines.pop_front();
+  m_lines.push_back(ll);
+  Refresh(true);
 }
 
 void TtyScroll::SetColors(std::unique_ptr<ColorByState> color_by_state) {
@@ -163,7 +159,7 @@ void TtyScroll::OnDraw(wxDC& dc) {
 
 void TtyScroll::CopyToClipboard() const {
   std::stringstream ss;
-  for (auto& line : m_lines) ss << line.navmsg->to_string() << "\n";
+  for (auto& line : m_lines) ss << line.message << "\n";
   if (wxTheClipboard->Open()) {
     wxTheClipboard->SetData(new wxTextDataObject(ss.str()));
     wxTheClipboard->Close();
