@@ -152,7 +152,7 @@ void TtyScroll::OnDraw(wxDC& dc) {
   for (size_t line = line_from; line <= line_to; line++) {
     wxString ws;
     dc.SetTextForeground((*m_color_by_state)(m_lines[line].state));
-    DrawLine(dc, m_lines[line], 30 * GetCharWidth(), y);
+    DrawLine(dc, m_lines[line], 40 * GetCharWidth(), y);
     y += m_line_height;
   }
 }

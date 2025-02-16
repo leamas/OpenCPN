@@ -157,7 +157,9 @@ public:
     SetSizer(hbox);
     Fit();
     Show();
-    Bind(wxEVT_TEXT, [&](wxCommandEvent&) { m_on_text_evt(); });
+    m_text_ctrl->Bind(wxEVT_TEXT, [&](wxCommandEvent&) { 
+		      m_on_text_evt();
+    });
   }
 
   std::string GetValue() { return m_text_ctrl->GetValue().ToStdString(); }
@@ -569,7 +571,7 @@ fs::path DataLogger::DefaultLogfile() {
 
 void DataLogger::Add(const Logline& ll) {
   if (!m_is_logging || !ll.navmsg) return;
-  if (ll.navmsg->to_candump().empty()) return;
+  if (m_format == Format::kCandump && ll.navmsg->to_candump().empty()) return;
   if (m_format == DataLogger::Format::kCandump)
     AddCandumpLogline(ll, m_stream);
   else
