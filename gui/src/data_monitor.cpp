@@ -84,7 +84,8 @@ static void AddStdLogline(const Logline& ll, std::ostream& stream, char fs) {
   else
     ws << kUtfCheckMark << fs;
 
-  ws << (ll.navmsg ? "-" : ll.navmsg->source->iface) << fs;
+  ws << (ll.navmsg ? ll.navmsg->source->iface : ".") << fs;
+  ws << (ll.navmsg ? NavAddr::BusToString(ll.navmsg->bus) : "-") << fs;
   if (ll.state.status != NavmsgStatus::State::kOk)
     ws << (ll.error_msg.size() > 0 ? ll.error_msg : "Unknown  errror");
   else

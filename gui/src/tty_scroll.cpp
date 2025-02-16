@@ -98,7 +98,8 @@ void TtyScroll::DrawLine(wxDC& dc, Logline ll, int data_pos, int y) {
   }
   std::string iface(ll.navmsg ? ll.navmsg->source->iface : "");
   if (iface.size() > 20) iface = iface.substr(0, 17) + "...";
-  ws << iface;
+  ws << iface << " ";
+  ws << (ll.navmsg ? NavAddr::BusToString(ll.navmsg->bus) : "-") << " ";
 
   dc.DrawText(ws, 0, y);
   ws = "";
@@ -127,9 +128,8 @@ void TtyScroll::OnSize(wxSizeEvent& ev) {
 
 void TtyScroll::Add(struct Logline ll) {
   if (m_is_paused || !m_filter.Pass(ll.state, ll.navmsg)) return;
-  using namespace std::string;
-  if (!m_quick_filter.empty() && ll.message.find(m_quick_filter) == npos)
-    return;
+  const auto& filter = m_quick_filter;
+  if (!filter.empty() && ll.message.find(filter) == std::string::npos) return;
   while (m_lines.size() > m_n_lines - 1) m_lines.pop_front();
   m_lines.push_back(ll);
   Refresh(true);
