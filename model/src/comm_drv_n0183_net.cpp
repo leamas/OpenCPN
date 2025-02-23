@@ -53,6 +53,7 @@
 #include "model/comm_drv_n0183_net.h"
 #include "model/comm_drv_registry.h"
 #include "model/comm_navmsg_bus.h"
+#include "model/config_vars.h"
 #include "model/garmin_protocol_mgr.h"
 #include "model/idents.h"
 #include "model/logger.h"
@@ -63,6 +64,13 @@
 using namespace std::literals::chrono_literals;
 
 #define N_DOG_TIMEOUT 8
+
+static bool IsBroadcastAddr(unsigned addr, const std::string& netmask) {
+  struct in_addr  mask_addr;
+  inet_pton(AF_INET, netmask.c_str(), &mask_addr);
+  in_addr_t host_mask = ~mask_addr.s_addr;
+  return (addr & host_mask) == host_mask;
+}
 
 class MrqContainer {
 public:
@@ -226,7 +234,7 @@ void CommDriverN0183Net::OpenNetworkUdp(unsigned int addr) {
     // but for consistency with broadcast behaviour, we will
     // instead rely on setting priority levels to ignore
     // sentences read back that have just been transmitted
-    if ((!m_is_multicast) && (m_addr.IPAddress().EndsWith("255"))) {
+    if (!m_is_multicast && IsBroadcastAddr(addr, g_netmask.ToStdString())) {
       int broadcastEnable = 1;
       m_tsock->SetOption(SOL_SOCKET, SO_BROADCAST, &broadcastEnable,
                          sizeof(broadcastEnable));
