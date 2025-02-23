@@ -87,6 +87,7 @@ wxString g_compatOsVersion = PKG_TARGET_VERSION;
 wxString g_default_routepoint_icon;
 wxString g_GPS_Ident;
 wxString g_hostname;
+wxString g_netmask = "255.255.255.0";
 wxString g_SART_sound_file;
 wxString g_TalkerIdText;
 wxString g_winPluginDir;

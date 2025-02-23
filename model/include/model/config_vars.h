@@ -92,6 +92,7 @@ extern wxString g_compatOsVersion;
 extern wxString g_default_routepoint_icon;
 extern wxString g_GPS_Ident;
 extern wxString g_hostname;
+extern wxString g_netmask;
 extern wxString g_SART_sound_file;
 extern wxString g_TalkerIdText;
 extern wxString g_winPluginDir;  // Base plugin directory on Windows.
