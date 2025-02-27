@@ -400,7 +400,7 @@ EVT_MENU(-1, ChartCanvas::OnToolLeftClick)
 EVT_TIMER(DEFERRED_FOCUS_TIMER, ChartCanvas::OnDeferredFocusTimerEvent)
 EVT_TIMER(MOVEMENT_VP_TIMER, ChartCanvas::MovementVPTimerEvent)
 EVT_TIMER(DRAG_INERTIA_TIMER, ChartCanvas::OnChartDragInertiaTimer)
-EVT_TIMER(wxID_ANY, ChartCanvas::OnJumpEaseTimer)
+EVT_TIMER(JUMP_EASE_TIMER, ChartCanvas::OnJumpEaseTimer)
 
 END_EVENT_TABLE()
 
@@ -583,6 +583,9 @@ ChartCanvas::ChartCanvas(wxFrame *frame, int canvasIndex, wxWindow *nmea_log)
   m_chart_drag_inertia_timer.SetOwner(this, DRAG_INERTIA_TIMER);
   m_chart_drag_inertia_active = false;
 
+  m_easeTimer.SetOwner(this, JUMP_EASE_TIMER);
+  m_animationActive = false;
+
   m_panx = m_pany = 0;
   m_panspeed = 0;
   m_panx_target_final = m_pany_target_final = 0;
@@ -610,7 +613,6 @@ ChartCanvas::ChartCanvas(wxFrame *frame, int canvasIndex, wxWindow *nmea_log)
 
   m_upMode = NORTH_UP_MODE;
   m_bLookAhead = false;
-  m_VPRotate = 0;
 
   // Set some benign initial values
 
@@ -1530,6 +1532,8 @@ bool ChartCanvas::DoCanvasUpdate(void) {
   double tLat, tLon;    // Chart Stack location
   double vpLat, vpLon;  // ViewPort location
   bool blong_jump = false;
+  meters_to_shift = 0;
+  dir_to_shift = 0;
 
   bool bNewChart = false;
   bool bNewView = false;
@@ -1602,9 +1606,8 @@ bool ChartCanvas::DoCanvasUpdate(void) {
 
       double angle = cog_to_use + (GetVPRotation() * 180. / PI);
 
-      double pixel_deltay =
-          fabs(cos(angle * PI / 180.)) * GetCanvasHeight() / 4;
-      double pixel_deltax = fabs(sin(angle * PI / 180.)) * GetCanvasWidth() / 4;
+      double pixel_deltay = (cos(angle * PI / 180.)) * GetCanvasHeight() / 4;
+      double pixel_deltax = (sin(angle * PI / 180.)) * GetCanvasWidth() / 4;
 
       double pixel_delta_tent =
           sqrt((pixel_deltay * pixel_deltay) + (pixel_deltax * pixel_deltax));
@@ -1615,25 +1618,24 @@ bool ChartCanvas::DoCanvasUpdate(void) {
       //    avoid jumping of the vp center point during slow maneuvering, or at
       //    anchor....
       if (!std::isnan(gSog)) {
-        if (gSog < 1.0)
+        if (gSog < 2.0)
           pixel_delta = 0.;
-        else if (gSog >= 3.0)
-          pixel_delta = pixel_delta_tent;
         else
-          pixel_delta = pixel_delta_tent * (gSog - 1.0) / 2.0;
+          pixel_delta = pixel_delta_tent;
       }
 
-      double meters_to_shift = 0;
-      double dir_to_shift = 0;
+      meters_to_shift = 0;
+      dir_to_shift = 0;
       if (!std::isnan(gCog)) {
         meters_to_shift = cos(gLat * PI / 180.) * pixel_delta / GetVPScale();
         dir_to_shift = cog_to_use;
-        // printf("                      look:  %g %g\n", meters_to_shift,
-        // dir_to_shift);
         ll_gc_ll(gLat, gLon, dir_to_shift, meters_to_shift / 1852., &vpLat,
                  &vpLon);
+      } else {
+        vpLat = gLat;
+        vpLon = gLon;
       }
-    } else if (m_bLookAhead && !bGPSValid) {
+    } else if (m_bLookAhead && (!bGPSValid || m_MouseDragging)) {
       m_OSoffsetx = 0;  // center ownship on loss of GPS
       m_OSoffsety = 0;
       vpLat = gLat;
@@ -1742,8 +1744,7 @@ bool ChartCanvas::DoCanvasUpdate(void) {
       double pixlg = fabs(vpLon - m_vLon) * 1852 * 60 * GetVPScale();
       if (wxMax(pixlt, pixlg) > GetCanvasWidth()) super_jump = true;
     }
-
-    if (m_bFollow && g_btenhertz && !super_jump) {
+    if (m_bFollow && g_btenhertz && !super_jump && !m_bLookAhead) {
       int nstep = 5;
       if (blong_jump) nstep = 20;
       StartTimedMovementVP(vpLat, vpLon, nstep);
@@ -2894,6 +2895,7 @@ void ChartCanvas::OnKeyDown(wxKeyEvent &event) {
         // testing
         bool b = GetEnableTenHertzUpdate();
         EnableTenHertzUpdate(!b);
+        UpdateGPSCompassStatusBox(true);
       } else
         ToggleChartOutlines();
       break;
@@ -3411,25 +3413,16 @@ void ChartCanvas::SetUpMode(int mode) {
 
 bool ChartCanvas::DoCanvasCOGSet(void) {
   if (GetUpMode() == NORTH_UP_MODE) return false;
-
   double cog_use = g_COGAvg;
   if (g_btenhertz) cog_use = gCog;
 
-  if (std::isnan(cog_use)) return true;
-
-  double old_VPRotate = m_VPRotate;
-
+  double rotation = 0;
   if ((GetUpMode() == HEAD_UP_MODE) && !std::isnan(gHdt)) {
-    m_VPRotate = -gHdt * PI / 180.;
-  } else if (GetUpMode() == COURSE_UP_MODE)
-    m_VPRotate = -cog_use * PI / 180.;
+    rotation = -gHdt * PI / 180.;
+  } else if ((GetUpMode() == COURSE_UP_MODE) && !std::isnan(cog_use))
+    rotation = -cog_use * PI / 180.;
 
-  // SetVPRotation(m_VPRotate);
-  VPoint.rotation = m_VPRotate;
-  // bool bnew_chart = DoCanvasUpdate();
-
-  // if ((bnew_chart) || (old_VPRotate != m_VPRotate)) ReloadVP();
-
+  SetVPRotation(rotation);
   return true;
 }
 
@@ -3607,10 +3600,7 @@ void ChartCanvas::DoTimedMovementVP() {
   SetViewPoint(new_lat, new_lon);  // Embeds a refresh
 }
 
-void ChartCanvas::StopMovementVP() {
-  // printf("Stop\n");
-  m_timed_move_vp_active = false;
-}
+void ChartCanvas::StopMovementVP() { m_timed_move_vp_active = false; }
 
 void ChartCanvas::MovementVPTimerEvent(wxTimerEvent &) { DoTimedMovementVP(); }
 
@@ -4765,17 +4755,26 @@ void ChartCanvas::DoZoomCanvas(double factor, bool can_zoom_to_cursor) {
       GetVPScale() * (GetVP().chart_scale / proposed_scale_onscreen);
 
   if (b_do_zoom) {
-    if (can_zoom_to_cursor && g_bEnableZoomToCursor) {
+    // Disable ZTC if lookahead is ON, and currently b_follow is active
+    bool b_allow_ztc = true;
+    if (m_bFollow && m_bLookAhead) b_allow_ztc = false;
+    if (can_zoom_to_cursor && g_bEnableZoomToCursor && b_allow_ztc) {
+      if (m_bLookAhead) {
+        double brg, distance;
+        ll_gc_ll_reverse(gLat, gLon, GetVP().clat, GetVP().clon, &brg,
+                         &distance);
+        dir_to_shift = brg;
+        meters_to_shift = distance * 1852;
+      }
       //  Arrange to combine the zoom and pan into one operation for smoother
       //  appearance
       SetVPScale(new_scale, false);  // adjust, but deferred refresh
-
       wxPoint r;
       GetCanvasPointPix(zlat, zlon, &r);
-      PanCanvas(r.x - mouse_x, r.y - mouse_y);  // this will give the Refresh()
+      // this will emit the Refresh()
+      PanCanvas(r.x - mouse_x, r.y - mouse_y);
     } else {
       SetVPScale(new_scale);
-
       if (m_bFollow) DoCanvasUpdate();
     }
   }
@@ -4838,13 +4837,6 @@ void ChartCanvas::ClearbFollow(void) {
 }
 
 void ChartCanvas::SetbFollow(void) {
-  JumpToPosition(gLat, gLon, GetVPScale());
-  m_bFollow = true;
-
-  parent_frame->SetMenubarItemState(ID_MENU_NAV_FOLLOW, true);
-
-  UpdateFollowButtonState();
-
   // Is the OWNSHIP on-screen?
   // If not, then reset the OWNSHIP offset to 0 (center screen)
   if ((fabs(m_OSoffsetx) > VPoint.pix_width / 2) ||
@@ -4852,6 +4844,22 @@ void ChartCanvas::SetbFollow(void) {
     m_OSoffsetx = 0;
     m_OSoffsety = 0;
   }
+
+  // Apply the present b_follow offset values to ship position
+  wxPoint2DDouble p;
+  GetDoubleCanvasPointPix(gLat, gLon, &p);
+  p.m_x += m_OSoffsetx;
+  p.m_y -= m_OSoffsety;
+
+  // compute the target center screen lat/lon
+  double dlat, dlon;
+  GetCanvasPixPoint(p.m_x, p.m_y, dlat, dlon);
+
+  JumpToPosition(dlat, dlon, GetVPScale());
+  m_bFollow = true;
+
+  parent_frame->SetMenubarItemState(ID_MENU_NAV_FOLLOW, true);
+  UpdateFollowButtonState();
 
   if (!g_bSmoothRecenter) {
     DoCanvasUpdate();
@@ -4885,7 +4893,7 @@ void ChartCanvas::UpdateFollowButtonState(void) {
 }
 
 void ChartCanvas::JumpToPosition(double lat, double lon, double scale_ppm) {
-  if (g_bSmoothRecenter) {
+  if (g_bSmoothRecenter && !m_routeState) {
     if (StartSmoothJump(lat, lon, scale_ppm))
       return;
     else {
@@ -4966,9 +4974,9 @@ bool ChartCanvas::StartSmoothJump(double lat, double lon, double scale_ppm) {
   StopMovement();
   m_bFollow = false;
 
-  m_easeTimer.SetOwner(this);
   // Start the timer with ~60 FPS (16 ms). Tweak as needed.
   m_easeTimer.Start(16, wxTIMER_CONTINUOUS);
+  m_animationActive = true;
 
   return true;
 }
@@ -4997,6 +5005,7 @@ void ChartCanvas::OnJumpEaseTimer(wxTimerEvent &event) {
   // If we reached the end, stop the timer and finalize
   if (t >= 1.0) {
     m_easeTimer.Stop();
+    m_animationActive = false;
     UpdateFollowButtonState();
     DoCanvasUpdate();
     ReloadVP();
@@ -5111,9 +5120,6 @@ bool ChartCanvas::PanCanvas(double dx, double dy) {
 
     m_OSoffsetx = d_east_mod * VPoint.view_scale_ppm;
     m_OSoffsety = -d_north_mod * VPoint.view_scale_ppm;
-
-    //   m_OSoffsetx = offx * VPoint.view_scale_ppm;
-    //   m_OSoffsety = offy * VPoint.view_scale_ppm;
 
     if (m_bFollow && ((fabs(m_OSoffsetx) > VPoint.pix_width / 2) ||
                       (fabs(m_OSoffsety) > VPoint.pix_height / 2))) {
@@ -5308,14 +5314,12 @@ bool ChartCanvas::SetVPRotation(double angle) {
   return SetViewPoint(VPoint.clat, VPoint.clon, VPoint.view_scale_ppm,
                       VPoint.skew, angle);
 }
-
 bool ChartCanvas::SetViewPoint(double lat, double lon, double scale_ppm,
                                double skew, double rotation, int projection,
                                bool b_adjust, bool b_refresh) {
   bool b_ret = false;
   if (skew > PI) /* so our difference tests work, put in range of +-Pi */
     skew -= 2 * PI;
-
   //  Any sensible change?
   if (VPoint.IsValid()) {
     if ((fabs(VPoint.view_scale_ppm - scale_ppm) / scale_ppm < 1e-5) &&
@@ -5326,7 +5330,6 @@ bool ChartCanvas::SetViewPoint(double lat, double lon, double scale_ppm,
          projection == PROJECTION_UNKNOWN))
       return false;
   }
-
   if (VPoint.m_projection_type != projection)
     VPoint.InvalidateTransformCache();  // invalidate
 
@@ -5864,6 +5867,7 @@ void ChartCanvas::ShipDrawLargeScale(ocpnDC &dc,
 void ChartCanvas::ShipIndicatorsDraw(ocpnDC &dc, int img_height,
                                      wxPoint GPSOffsetPixels,
                                      wxPoint2DDouble lGPSPoint) {
+  if (m_animationActive) return;
   // Develop a uniform length for course predictor line dash length, based on
   // physical display size Use this reference length to size all other graphics
   // elements

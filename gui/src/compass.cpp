@@ -42,6 +42,7 @@ extern ocpnStyle::StyleManager* g_StyleManager;
 extern bool g_bSatValid;
 extern int g_SatsInView;
 extern bool g_bopengl;
+extern bool g_btenhertz;
 
 #ifndef GL_RGBA8
 #define GL_RGBA8 0x8058
@@ -431,6 +432,15 @@ void ocpnCompass::CreateBmp(bool newColorScheme) {
   iconBm = ConvertTo24Bit(wxColor(0, 0, 0), iconBm);
 
   mdc.DrawBitmap(iconBm, offset);
+
+  if (g_btenhertz) {
+    mdc.SetPen(wxPen(GetGlobalColor("BLUE3"), 1));
+    mdc.SetBrush(wxBrush(GetGlobalColor("BLUE3"), wxBRUSHSTYLE_SOLID));
+    int hight = m_StatBmp.GetHeight();
+    int dot_diam = wxMax(2, hight / 12);
+    mdc.DrawCircle(5, hight - 5, dot_diam);
+  }
+
   offset.x += iconBm.GetWidth();
   offset.x += style->GetToolSeparation();
 

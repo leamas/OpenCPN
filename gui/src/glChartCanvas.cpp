@@ -2277,8 +2277,33 @@ void glChartCanvas::ShipDraw(ocpnDC &dc) {
   float pCog = std::isnan(gCog) ? 0 : gCog;
   float pSog = std::isnan(gSog) ? 0 : gSog;
 
-  m_pParentCanvas->GetDoubleCanvasPointPixVP(m_pParentCanvas->GetVP(), gLat,
-                                             gLon, &lGPSPoint);
+  // In "b_follow" mode, we have a-priori information about the desired screen
+  // coordinates of ownship
+  // Here, calculate the ownship location on screen, and make it so.
+  // Special case:  No need for such precision on chart drag operations
+  double shift_dx = 0;
+  double shift_dy = 0;
+  if (m_pParentCanvas->m_bFollow && !m_pParentCanvas->m_MouseDragging) {
+    lGPSPoint.m_x = m_pParentCanvas->GetVP().pix_width / 2;
+    lGPSPoint.m_y = m_pParentCanvas->GetVP().pix_height / 2;
+    if (m_pParentCanvas->m_bLookAhead) {
+      double angle = m_pParentCanvas->dir_to_shift * PI / 180.;
+      angle += m_pParentCanvas->GetVPRotation();
+      shift_dx = m_pParentCanvas->meters_to_shift * sin(angle) *
+                 m_pParentCanvas->GetVPScale();
+      lGPSPoint.m_x -= shift_dx / cos(gLat * PI / 180.);
+      shift_dy = m_pParentCanvas->meters_to_shift * cos(angle) *
+                 m_pParentCanvas->GetVPScale();
+      lGPSPoint.m_y += shift_dy / cos(gLat * PI / 180.);
+    } else {
+      lGPSPoint.m_x -= m_pParentCanvas->m_OSoffsetx;
+      lGPSPoint.m_y += m_pParentCanvas->m_OSoffsety;
+    }
+  } else {
+    m_pParentCanvas->GetDoubleCanvasPointPixVP(m_pParentCanvas->GetVP(), gLat,
+                                               gLon, &lGPSPoint);
+  }
+
   lShipMidPoint = lGPSPoint;
 
   //  Draw the icon rotated to the COG
@@ -2541,7 +2566,6 @@ void glChartCanvas::ShipDraw(ocpnDC &dc) {
         RenderSingleTexture(dc, coords, uv, m_pParentCanvas->GetpVP(),
                             lShipMidPoint.m_x, lShipMidPoint.m_y,
                             icon_rad - PI / 2);
-
         glDisable(GL_TEXTURE_2D);
       } else if (g_OwnShipIconType == 1) {  // Scaled Bitmap
 
