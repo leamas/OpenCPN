@@ -377,7 +377,7 @@ public:
     AppendId(filters, Id::kNewFilter, _("Create new..."));
     AppendId(filters, Id::kEditFilter, _("Edit..."));
     AppendId(filters, Id::kDeleteFilter, _("Delete..."));
-    // AppendSubMenu(filters, _("Filters..."));    FIXME: leamas: Implement
+    AppendSubMenu(filters, _("Filters..."));
 
     auto logging = new wxMenu("");
     AppendId(logging, Id::kLogFile, _("Log file..."));
@@ -389,8 +389,6 @@ public:
     auto view = new wxMenu("");
     AppendRadioId(view, Id::kViewStdColors, _("Standard Colors"));
     AppendRadioId(view, Id::kViewNoColors, _("No Colors"));
-    // AppendCheckId(view, Id::kViewSource, _("Add message source"));
-    // AppendCheckId(view, Id::kViewTimestamps, _("Add timestamps"));
     AppendId(view, Id::kViewCopy, _("Copy messages to clipboard"));
     AppendSubMenu(view, _("View..."));
 
