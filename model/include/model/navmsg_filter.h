@@ -95,7 +95,7 @@ public:
   static NavmsgFilter Parse(const fs::path& path);
 
   /** Output parsable JSON string representation. */
-  std::string to_string();
+  std::string to_string() const;
 
   /** Return true if message is not matched by filter. */
   bool Pass(NavmsgStatus status, const std::shared_ptr<const NavMsg>& msg);
