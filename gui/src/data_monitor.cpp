@@ -34,6 +34,7 @@
 #include "data_monitor_src.h"
 #include "svg_icons.h"
 #include "tty_scroll.h"
+#include "filter_dlg.h"
 
 #include "std_filesystem.h"
 
@@ -418,6 +419,18 @@ public:
 
         case Id::kViewCopy:
           CopyToClipboard();
+          break;
+
+        case Id::kNewFilter:
+          CreateFilterDlg(parent);
+          break;
+
+        case Id::kEditFilter:
+          EditFilterDlg(parent);
+          break;
+
+        case Id::kDeleteFilter:
+          RemoveFilterDlg(parent);
           break;
 
         default:

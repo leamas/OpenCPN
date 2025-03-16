@@ -256,7 +256,7 @@ NavmsgFilter NavmsgFilter::Parse(const std::string& string) {
   return filter;
 }
 
-std::string NavmsgFilter::to_string() {
+std::string NavmsgFilter::to_string() const {
   wxJSONValue root;
   root["filter"]["name"] = m_name;
   root["filter"]["description"] = m_description;
