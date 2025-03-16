@@ -78,6 +78,6 @@ TEST(Filter, Create) {
 }
 
 TEST(Filter, ListSystemFilters) {
-  auto filters = NavmsgFilter::GetSystemFilters(FILTER_DIR);
+  auto filters = NavmsgFilter::GetFilters(FILTER_DIR);
   ASSERT_EQ(filters.size(), 6);
 }
