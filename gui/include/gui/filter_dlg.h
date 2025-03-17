@@ -25,12 +25,15 @@
 #ifndef FILTER_DLG_H__
 #define FILTER_DLG_H__
 
+#include <functional>
+
 #include <wx/window.h>
 
 void CreateFilterDlg(wxWindow* parent);
 
 void RemoveFilterDlg(wxWindow* parent);
 
-void EditFilterDlg(wxWindow* parent);
+void EditFilterDlg(wxWindow* parent,
+                   std::function<void(const std::string&)> on_update);
 
 #endif  // FILTER_DLG_H__
