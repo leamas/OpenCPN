@@ -27,9 +27,13 @@
 #include <string>
 
 #include <wx/app.h>
+#include <wx/button.h>
+#include <wx/frame.h>
 #include <wx/log.h>
 #include <wx/choicdlg.h>
 #include <wx/msgdlg.h>
+#include <wx/sizer.h>
+#include <wx/statline.h>
 #include <wx/textdlg.h>
 
 #include "model/filters_on_disk.h"
@@ -60,9 +64,40 @@ public:
 			     GetUserFilters()) {}
 };
 
+class SelectFilterDlg : public wxSingleChoiceDialog {
+public:
+  SelectFilterDlg(wxWindow* parent)
+      : wxSingleChoiceDialog(wxTheApp->GetTopWindow(),
+		             _("Edit filter (name):"), _("Edit filter"),
+			     GetUserFilters()) {}
+};
+
 class BadFilterNameDlg : public wxMessageDialog {
 public:
   BadFilterNameDlg(wxWindow* parent) : wxMessageDialog(parent, kFilterExists) {}
+};
+
+class EditFilterFrame : public wxFrame {
+  class Buttons: public wxStdDialogButtonSizer {
+  public:
+     Buttons(wxWindow* parent) : wxStdDialogButtonSizer() {
+       Add(new wxButton(parent, wxID_APPLY));
+       Add(new wxButton(parent, wxID_CLOSE));
+       Realize();
+     }
+  };
+
+public:
+  EditFilterFrame(wxWindow* parent, const std::string name) 
+	  : wxFrame(parent, wxID_ANY, _("Edit filter")) {
+    SetName("EditFilterFrame");
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    vbox->Add(new wxStaticLine(this));
+    vbox->Add(new Buttons(this), wxSizerFlags().Expand());
+    SetSizer(vbox);
+    Layout();
+    Hide();
+  }
 };
 
 void CreateFilterDlg(wxWindow* parent) {
@@ -90,7 +125,20 @@ void RemoveFilterDlg(wxWindow* parent) {
   } else {
     wxMessageDialog dlg(wxTheApp->GetTopWindow(), _("Cannot remove filter"));
   }
-
 }
 
-void EditFilterDlg(wxWindow* parent) {}
+
+
+void EditFilterDlg(wxWindow* parent) {
+  SelectFilterDlg dlg(parent);
+  int sts = dlg.ShowModal();
+  if (sts != wxID_OK) return;
+  auto name = dlg.GetStringSelection().ToStdString();
+  wxWindow* frame = wxWindow::FindWindowByName("EditFilterFrame");
+  if (!frame) {
+    new EditFilterFrame(parent, name);
+    frame = wxWindow::FindWindowByName("EditFilterFrame");
+  }
+  assert(frame && "Cannot create EditFilter frame");
+  frame->Show();
+}

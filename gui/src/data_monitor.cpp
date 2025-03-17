@@ -6,6 +6,7 @@
 #include "data_monitor.h"
 #include "data_monitor_src.h"
 
+#include <wx/app.h>
 #include <wx/button.h>
 #include <wx/choice.h>
 #include <wx/filedlg.h>
@@ -426,7 +427,7 @@ public:
           break;
 
         case Id::kEditFilter:
-          EditFilterDlg(parent);
+          EditFilterDlg(wxTheApp->GetTopWindow());
           break;
 
         case Id::kDeleteFilter:
