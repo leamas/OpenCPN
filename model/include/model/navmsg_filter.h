@@ -82,11 +82,14 @@ public:
 
   NavmsgFilter(bool is_valid) : m_is_valid(is_valid) {}
 
-  /** Return list fo pre-defined filters shipped with application. */
+  /** Return list of pre-defined filters shipped with application. */
   static std::vector<NavmsgFilter> GetSystemFilters();
 
-  /** Return list fo pre-defined filters shipped with app, test hook. */
-  static std::vector<NavmsgFilter> GetSystemFilters(const fs::path& path);
+  /** Return list of pre-defined filters shipped with app, test hook. */
+  static std::vector<NavmsgFilter> GetFilters(const fs::path& path);
+
+  /** Return list of all filters, system + user defined. */
+  static std::vector<NavmsgFilter> GetAllFilters();
 
   /** Parse text as created by to_string(). */
   static NavmsgFilter Parse(const std::string& s);
@@ -115,9 +118,9 @@ public:
   std::set<NavAddr::Bus> buses;
   std::set<std::string> include_msg;  // Set of message ids included
   std::set<std::string> exclude_msg;  // Set of message ids excluded
-  std::set<std::string> interfaces;
-  std::set<N2kPGN> pgns;       // Nmea200 only
-  std::set<N2kName> src_pgns;  // Nmea200 only
+  std::set<std::string> interfaces;   // Set of included interfaces
+  std::set<N2kPGN> pgns;              // Nmea200 only
+  std::set<N2kName> src_pgns;         // Nmea200 only
 };
 
 #endif  // MONITOR_FILTER

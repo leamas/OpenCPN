@@ -160,7 +160,7 @@ static void ParseSource(NavmsgFilter& filter, wxJSONValue json_val) {
   }
 }
 
-std::vector<NavmsgFilter> NavmsgFilter::GetSystemFilters(const fs::path& dir) {
+std::vector<NavmsgFilter> NavmsgFilter::GetFilters(const fs::path& dir) {
   std::vector<NavmsgFilter> filters;
   try {
     for (auto& entry : fs::directory_iterator(dir)) {
@@ -179,8 +179,19 @@ std::vector<NavmsgFilter> NavmsgFilter::GetSystemFilters(const fs::path& dir) {
 
 std::vector<NavmsgFilter> NavmsgFilter::GetSystemFilters() {
   fs::path dirpath(g_BasePlatform->GetSharedDataDir().ToStdString());
-  dirpath /= "filters";
-  return NavmsgFilter::GetSystemFilters(dirpath);
+  return NavmsgFilter::GetFilters(dirpath / "filters");
+}
+
+std::vector<NavmsgFilter> GetUserFilters() {
+  fs::path dirpath(g_BasePlatform->GetPrivateDataDir().ToStdString());
+  return NavmsgFilter::GetFilters(dirpath / "filters");
+}
+
+std::vector<NavmsgFilter> NavmsgFilter::GetAllFilters() {
+  std::vector<NavmsgFilter> filters = GetSystemFilters();
+  std::vector user_filters = GetUserFilters();
+  filters.insert(filters.end(), user_filters.begin(), user_filters.end());
+  return filters;
 }
 
 bool NavmsgFilter::Pass(NavmsgStatus msg_status,
@@ -201,7 +212,7 @@ bool NavmsgFilter::Pass(NavmsgStatus msg_status,
     if (exclude_msg.find(msg->key()) != exclude_msg.end()) return false;
   }
   if (interfaces.size() > 0) {
-    if (interfaces.find(msg->source->iface) != interfaces.end()) return false;
+    if (interfaces.find(msg->source->iface) == interfaces.end()) return false;
   }
   auto n2k_msg = std::dynamic_pointer_cast<const Nmea2000Msg>(msg);
   if (n2k_msg) {
