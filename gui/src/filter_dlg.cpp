@@ -186,6 +186,7 @@ private:
   const int kTextEntryId;
 };
 
+/** checkbox and wxCheckListBox, interface to allowed interfaces. */
 class InterfacePanel : public wxPanel {
 public:
   InterfacePanel(wxWindow* parent, NavmsgFilter& filter,
@@ -209,19 +210,25 @@ public:
     auto listbox = new wxCheckListBox(this, kListboxId, wxDefaultPosition,
                                       wxDefaultSize, choices);
     hbox->Add(listbox, flags);
-
     vbox->Add(hbox);
     SetSizer(vbox);
-    Layout();
 
     LoadFromFilter();
+    checkbox->SetValue(m_filter.interfaces.empty() ||
+                       m_filter.interfaces.size() == listbox->GetCount());
     listbox->Show(!checkbox->IsChecked());
+    Layout();
+
     checkbox->Bind(wxEVT_CHECKBOX, [&](wxCommandEvent&) { OnCheckboxClick(); });
     listbox->Bind(wxEVT_CHECKLISTBOX,
                   [&](wxCommandEvent& ev) { OnItemCheck(ev.GetInt()); });
   }
 
 private:
+  /**
+   * user clicked on checkbox. Update m_filter and eventually invoke
+   * m_on_update.
+   */
   void OnCheckboxClick() {
     auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
     auto checkbox = GetWindowById<wxCheckBox>(kCheckboxId);
@@ -239,17 +246,26 @@ private:
     GetParent()->Fit();
   }
 
+  /** Update GUI from data in m_filter. */
   void LoadFromFilter() {
     auto checkbox = GetWindowById<wxCheckBox>(kCheckboxId);
-    checkbox->SetValue(true);
+    checkbox->SetValue(m_filter.interfaces.empty());
     auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
-    for (unsigned i = 0; i < listbox->GetCount(); i += 1) {
-      if (m_filter.interfaces.count(listbox->GetString(i).ToStdString()) > 0)
-        listbox->Check(i);
-      if (!listbox->IsChecked(i)) checkbox->SetValue(false);
+    if (m_filter.interfaces.empty()) {
+      for (unsigned i = 0; i < listbox->GetCount(); i++) listbox->Check(i);
+      checkbox->SetValue(true);
+    } else {
+      for (unsigned i = 0; i < listbox->GetCount(); i += 1) {
+        if (m_filter.interfaces.count(listbox->GetString(i).ToStdString()) > 0)
+          listbox->Check(i);
+      }
     }
   }
 
+  /**
+   * User checked/unchecked an item. If the list of active filters becomes
+   * empty refuse the update. Otherwise update m_filter from data in GUI.
+   */
   void OnItemCheck(int ix) {
     auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
     int checked = 0;
@@ -262,15 +278,18 @@ private:
     }
     UpdateFilter();
   }
+
+  /** Update m_filter from GUI data. */
   void UpdateFilter() {
     auto checkbox = GetWindowById<wxCheckBox>(kCheckboxId);
-    m_filter.interfaces.clear();
     auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
+    m_filter.interfaces.clear();
     for (unsigned i = 0; i < listbox->GetCount(); i += 1) {
       if (!listbox->IsChecked(i)) continue;
       auto iface = listbox->GetString(i).ToStdString();
       m_filter.interfaces.insert(iface);
     }
+    if (m_filter.buses.size() == listbox->GetCount()) m_filter.buses.clear();
     m_on_update();
   }
 
@@ -280,7 +299,122 @@ private:
   const int kListboxId;
 };
 
-class BusPanel : public wxPanel {};
+class BusPanel : public wxPanel {
+public:
+  BusPanel(wxWindow* parent, NavmsgFilter& filter,
+           std::function<void()> on_update)
+      : wxPanel(parent, wxID_ANY),
+        m_filter(filter),
+        m_on_update(on_update),
+        kCheckboxId(wxWindow::NewControlId()),
+        kListboxId(wxWindow::NewControlId()) {
+    auto flags = wxSizerFlags().Border();
+    auto vbox = new wxStaticBoxSizer(wxVERTICAL, this, _("Buses"));
+    auto hbox = new wxBoxSizer(wxHORIZONTAL);
+    hbox->Add(new wxStaticText(this, wxID_ANY, _("Use buses:")), flags);
+    auto checkbox = new wxCheckBox(this, kCheckboxId, _("All"));
+    hbox->Add(checkbox, flags);
+
+    wxArrayString choices;
+    choices.Add("nmea0183");
+    choices.Add("nmea2000");
+    choices.Add("SignalK");
+    choices.Add("Onenet");
+    choices.Add("Plugin");
+    auto listbox = new wxCheckListBox(this, kListboxId, wxDefaultPosition,
+                                      wxDefaultSize, choices);
+    hbox->Add(listbox, flags);
+    vbox->Add(hbox);
+    SetSizer(vbox);
+
+    LoadFromFilter();
+    checkbox->SetValue(m_filter.buses.empty() ||
+                       m_filter.buses.size() == listbox->GetCount());
+    listbox->Show(!checkbox->IsChecked());
+    Layout();
+
+    checkbox->Bind(wxEVT_CHECKBOX, [&](wxCommandEvent&) { OnCheckboxClick(); });
+    listbox->Bind(wxEVT_CHECKLISTBOX,
+                  [&](wxCommandEvent& ev) { OnItemCheck(ev.GetInt()); });
+  }
+
+private:
+  /**
+   * user clicked on checkbox. Update m_filter and eventually invoke
+   * m_on_update.
+   */
+  void OnCheckboxClick() {
+    auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
+    auto checkbox = GetWindowById<wxCheckBox>(kCheckboxId);
+
+    UpdateFilter();
+    if (checkbox->IsChecked()) {
+      m_filter.interfaces.clear();
+      for (unsigned i = 0; i < listbox->GetCount(); i += 1) {
+        listbox->Check(i);
+        NavAddr::Bus bus =
+            NavAddr::StringToBus(listbox->GetString(i).ToStdString());
+        m_filter.buses.insert(bus);
+      }
+    }
+    m_on_update();
+    listbox->Show(!checkbox->IsChecked());
+    GetParent()->Fit();
+  }
+
+  /** Update GUI from data in m_filter. */
+  void LoadFromFilter() {
+    auto checkbox = GetWindowById<wxCheckBox>(kCheckboxId);
+    auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
+    if (m_filter.interfaces.empty()) {
+      for (unsigned i = 0; i < listbox->GetCount(); i++) listbox->Check(i);
+      checkbox->SetValue(true);
+    } else {
+      for (unsigned i = 0; i < listbox->GetCount(); i += 1) {
+        NavAddr::Bus bus =
+            NavAddr::StringToBus(listbox->GetString(i).ToStdString());
+        if (m_filter.buses.count(bus) > 0) listbox->Check(i);
+      }
+    }
+  }
+
+  /**
+   * User checked/unchecked an item. If the list of active filters becomes
+   * empty refuse the update. Otherwise update m_filter from data in GUI.
+   */
+  void OnItemCheck(int ix) {
+    auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
+    int checked = 0;
+    for (unsigned i = 0; i < listbox->GetCount(); i += 1)
+      if (listbox->IsChecked(i)) checked += 1;
+    if (checked == 0) {
+      // Refuse to create a filter with no interfaces.
+      listbox->Check(ix);
+      return;
+    }
+    UpdateFilter();
+  }
+
+  /** Update m_filter from GUI data. */
+  void UpdateFilter() {
+    auto checkbox = GetWindowById<wxCheckBox>(kCheckboxId);
+    auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
+    m_filter.buses.clear();
+    for (unsigned i = 0; i < listbox->GetCount(); i += 1) {
+      if (!listbox->IsChecked(i)) continue;
+      NavAddr::Bus bus =
+          NavAddr::StringToBus(listbox->GetString(i).ToStdString());
+      m_filter.buses.insert(bus);
+    }
+    if (m_filter.buses.size() == listbox->GetCount()) m_filter.buses.clear();
+    m_on_update();
+  }
+
+  NavmsgFilter& m_filter;
+  std::function<void()> m_on_update;
+  const int kCheckboxId;
+  const int kListboxId;
+};
 
 class DirectionPanel : public wxPanel {};
 
@@ -321,8 +455,9 @@ public:
     SetSizer(vbox);
     vbox->Add(new DescriptionPanel(this, m_filter, [&] { Update(); }), flags);
     vbox->Add(new InterfacePanel(this, m_filter, [&] { Update(); }), flags);
+    vbox->Add(new BusPanel(this, m_filter, [&] { Update(); }), flags);
     vbox->Add(new Buttons(this), flags);
-    Layout();
+    Fit();
     Hide();
 
     Bind(wxEVT_CLOSE_WINDOW, [&](wxCloseEvent&) { Destroy(); });

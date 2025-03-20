@@ -115,7 +115,7 @@ public:
   std::set<NavmsgStatus::Direction> directions;
   std::set<NavmsgStatus::State> status;
   std::set<NavmsgStatus::Accepted> accepted;
-  std::set<NavAddr::Bus> buses;
+  std::set<NavAddr::Bus> buses;       // Set of buses included
   std::set<std::string> include_msg;  // Set of message ids included
   std::set<std::string> exclude_msg;  // Set of message ids excluded
   std::set<std::string> interfaces;   // Set of included interfaces
