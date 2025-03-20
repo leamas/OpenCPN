@@ -77,9 +77,14 @@ public:
   bool IsActive() const override;
 
 private:
+  void OnFilterListChange();
+  void OnFilterUpdate(const std::string& name);
+
   DataMonitorSrc m_monitor_src;
   wxWindow* m_quick_filter;
   DataLogger m_logger;
+  ObsListener m_filter_list_lstnr;
+  ObsListener m_filter_update_lstnr;
 };
 
 #endif  //  DATA_MONITOR_DLG__

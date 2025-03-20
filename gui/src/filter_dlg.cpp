@@ -205,6 +205,7 @@ public:
     wxArrayString choices;
     for (auto& driver : CommDriverRegistry::GetInstance().GetDrivers())
       choices.Add(driver->iface);
+    choices.Add("Internal");
     auto listbox = new wxCheckListBox(this, kListboxId, wxDefaultPosition,
                                       wxDefaultSize, choices);
     hbox->Add(listbox, flags);
@@ -216,33 +217,54 @@ public:
     LoadFromFilter();
     listbox->Show(!checkbox->IsChecked());
     checkbox->Bind(wxEVT_CHECKBOX, [&](wxCommandEvent&) { OnCheckboxClick(); });
-    listbox->Bind(wxEVT_CHECKLISTBOX, [&](wxCommandEvent&) { UpdateFilter(); });
+    listbox->Bind(wxEVT_CHECKLISTBOX,
+                  [&](wxCommandEvent& ev) { OnItemCheck(ev.GetInt()); });
   }
 
 private:
   void OnCheckboxClick() {
-    UpdateFilter();
     auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
     auto checkbox = GetWindowById<wxCheckBox>(kCheckboxId);
+
+    UpdateFilter();
+    if (checkbox->IsChecked()) {
+      m_filter.interfaces.clear();
+      for (unsigned i = 0; i < listbox->GetCount(); i += 1) {
+        listbox->Check(i);
+        m_filter.interfaces.insert(listbox->GetString(i).ToStdString());
+      }
+    }
+    m_on_update();
     listbox->Show(!checkbox->IsChecked());
     GetParent()->Fit();
   }
 
   void LoadFromFilter() {
     auto checkbox = GetWindowById<wxCheckBox>(kCheckboxId);
-    checkbox->SetValue(m_filter.interfaces.empty());
+    checkbox->SetValue(true);
     auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
     for (unsigned i = 0; i < listbox->GetCount(); i += 1) {
       if (m_filter.interfaces.count(listbox->GetString(i).ToStdString()) > 0)
         listbox->Check(i);
+      if (!listbox->IsChecked(i)) checkbox->SetValue(false);
     }
   }
 
+  void OnItemCheck(int ix) {
+    auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
+    int checked = 0;
+    for (unsigned i = 0; i < listbox->GetCount(); i += 1)
+      if (listbox->IsChecked(i)) checked += 1;
+    if (checked == 0) {
+      // Refuse to create a filter with no interfaces.
+      listbox->Check(ix);
+      return;
+    }
+    UpdateFilter();
+  }
   void UpdateFilter() {
     auto checkbox = GetWindowById<wxCheckBox>(kCheckboxId);
     m_filter.interfaces.clear();
-    if (checkbox->IsChecked()) return;
-
     auto listbox = GetWindowById<wxCheckListBox>(kListboxId);
     for (unsigned i = 0; i < listbox->GetCount(); i += 1) {
       if (!listbox->IsChecked(i)) continue;
@@ -336,6 +358,7 @@ void CreateFilterDlg(wxWindow* parent) {
     NavmsgFilter filter;
     filter.m_name = name;
     filters_on_disk::Write(filter, name);
+    FilterEvents::GetInstance().filter_list_change.Notify();
   }
 }
 
@@ -351,24 +374,29 @@ void RemoveFilterDlg(wxWindow* parent) {
 
   fs::path path(dlg.GetStringSelection().ToStdString());
   if (filters_on_disk::Remove(path.stem())) {
+    FilterEvents::GetInstance().filter_list_change.Notify();
     wxMessageDialog dlg(wxTheApp->GetTopWindow(), _("Filter removed"));
   } else {
     wxMessageDialog dlg(wxTheApp->GetTopWindow(), _("Cannot remove filter"));
   }
 }
 
-void EditFilterDlg(wxWindow* parent,
-                   std::function<void(const std::string&)> on_update) {
+void EditFilterDlg(wxWindow* parent) {
   SelectFilterDlg dlg(parent);
   int sts = dlg.ShowModal();
   if (sts != wxID_OK) return;
   auto name = dlg.GetStringSelection().ToStdString();
   auto window_name = std::string("EditFilterFrame::") + name;
   wxWindow* frame = wxWindow::FindWindowByName(window_name);
+  auto on_update = [](const std::string& name) {
+    FilterEvents::GetInstance().filter_list_change.Notify();
+  };
   if (frame) {
     frame->Raise();
   } else {
-    new EditFilterFrame(parent, name, on_update);
+    new EditFilterFrame(parent, name, [](const std::string& _name) {
+      FilterEvents::GetInstance().filter_update.Notify(_name);
+    });
     frame = wxWindow::FindWindowByName(window_name);
   }
   assert(frame && "Cannot create EditFilter frame");

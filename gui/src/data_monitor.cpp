@@ -28,6 +28,7 @@
 #include "androidUTIL.h"
 #endif
 
+#include "model/filters_on_disk.h"
 #include "model/navmsg_filter.h"
 #include "model/nmea_log.h"
 #include "model/gui.h"
@@ -49,6 +50,8 @@
 #else
 #define _(s) wxGetTranslation((s)).ToStdString()
 #endif
+
+static const char* const kFilterChoiceName = "FilterChoiceWindow";
 
 // clang-format: off
 static const std::unordered_map<NavAddr::Bus, std::string> kSourceByBus = {
@@ -272,11 +275,45 @@ class FilterChoice : public wxChoice {
 public:
   FilterChoice(wxWindow* parent, TtyPanel* tty_panel)
       : wxChoice(parent, wxID_ANY), m_tty_panel(tty_panel) {
-    m_filters = NavmsgFilter::GetSystemFilters();
+    SetName(kFilterChoiceName);
     Bind(wxEVT_CHOICE, [&](wxCommandEvent&) { OnChoice(); });
     OnFilterListChange();
     int ix = FindString(_("All data"));
     if (ix != wxNOT_FOUND) SetSelection(ix);
+  }
+
+  void OnFilterListChange() {
+    m_filters = NavmsgFilter::GetAllFilters();
+    int select_ix = GetSelection();
+    std::string selected;
+    if (select_ix != wxNOT_FOUND) selected = GetString(select_ix).ToStdString();
+    Clear();
+    for (auto& filter : m_filters) {
+      try {
+        Append(kLabels.at(filter.m_name));
+      } catch (std::out_of_range&) {
+        if (filter.m_description.empty())
+          Append(filter.m_name);
+        else
+          Append(filter.m_description);
+      }
+    }
+    if (!selected.empty()) {
+      int ix = FindString(selected);
+      SetSelection(ix == wxNOT_FOUND ? 0 : ix);
+    }
+  }
+
+  void OnFilterUpdate(const std::string& name) {
+    m_filters = NavmsgFilter::GetAllFilters();
+    int select_ix = GetSelection();
+    if (select_ix == wxNOT_FOUND) return;
+
+    std::string selected = GetString(select_ix).ToStdString();
+    if (selected != name) return;
+
+    NavmsgFilter filter = filters_on_disk::Read(name);
+    m_tty_panel->SetFilter(filter);
   }
 
 private:
@@ -298,18 +335,6 @@ private:
     wxString label = GetString(GetSelection());
     NavmsgFilter filter = FilterByLabel(label.ToStdString());
     m_tty_panel->SetFilter(filter);
-  }
-
-  void OnFilterListChange() {
-    Clear();
-    for (auto& filter : m_filters) {
-      try {
-        Append(kLabels.at(filter.m_name));
-      } catch (std::out_of_range&) {
-        Append(filter.m_description);
-      }
-    }
-    if (!m_filters.empty()) SetSelection(0);
   }
 
   NavmsgFilter FilterByLabel(const std::string label) {
@@ -427,7 +452,7 @@ public:
           break;
 
         case Id::kEditFilter:
-          EditFilterDlg(wxTheApp->GetTopWindow(), [](const std::string) {});
+          EditFilterDlg(wxTheApp->GetTopWindow());
           break;
 
         case Id::kDeleteFilter:
@@ -685,6 +710,11 @@ DataMonitor::DataMonitor(wxWindow* parent)
   Show();
 
   Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent& ev) { Hide(); });
+  m_filter_list_lstnr.Init(FilterEvents::GetInstance().filter_list_change,
+                           [&](ObservedEvt&) { OnFilterListChange(); });
+  m_filter_update_lstnr.Init(
+      FilterEvents::GetInstance().filter_update,
+      [&](ObservedEvt& ev) { OnFilterUpdate(ev.GetString().ToStdString()); });
 }
 
 void DataMonitor::Add(const Logline& ll) {
@@ -696,6 +726,22 @@ bool DataMonitor::IsActive() const {
   wxWindow* w = wxWindow::FindWindowByName("TtyPanel");
   assert(w && "No TtyPanel found");
   return w->IsShownOnScreen();
+}
+
+void DataMonitor::OnFilterListChange() {
+  wxWindow* w = wxWindow::FindWindowByName(kFilterChoiceName);
+  if (!w) return;
+  auto filter_choice = dynamic_cast<FilterChoice*>(w);
+  assert(filter_choice && "Wrong FilterChoice type (!)");
+  filter_choice->OnFilterListChange();
+}
+
+void DataMonitor::OnFilterUpdate(const std::string& name) {
+  wxWindow* w = wxWindow::FindWindowByName(kFilterChoiceName);
+  if (!w) return;
+  auto filter_choice = dynamic_cast<FilterChoice*>(w);
+  assert(filter_choice && "Wrong FilterChoice type (!)");
+  filter_choice->OnFilterUpdate(name);
 }
 
 #pragma clang diagnostic pop

@@ -28,12 +28,32 @@
 #include <functional>
 
 #include <wx/window.h>
+#include "observable_evtvar.h"
+
+class FilterEvents {
+public:
+  static FilterEvents& GetInstance() {
+    static FilterEvents the_instance;
+    return the_instance;
+  }
+
+  FilterEvents(const FilterEvents&) = delete;
+  FilterEvents& operator=(const FilterEvents&) = delete;
+
+  /** Notified without data when user creates or removes a filter. */
+  EventVar filter_list_change;
+
+  /** Notified with filter name when filter is updated on disk. */
+  EventVar filter_update;
+
+private:
+  FilterEvents() = default;
+};
 
 void CreateFilterDlg(wxWindow* parent);
 
 void RemoveFilterDlg(wxWindow* parent);
 
-void EditFilterDlg(wxWindow* parent,
-                   std::function<void(const std::string&)> on_update);
+void EditFilterDlg(wxWindow* parent);
 
 #endif  // FILTER_DLG_H__
