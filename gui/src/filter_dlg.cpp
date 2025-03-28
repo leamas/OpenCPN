@@ -472,6 +472,9 @@ private:
       return NavAddr::StringToBus(listbox->GetString(i).ToStdString());
     else if constexpr (std::is_same<T, NavmsgStatus::Direction>::value)
       return StringToDirection(listbox->GetString(i).ToStdString());
+    else if constexpr (std::is_same<T, NavmsgStatus::Accepted>::value)
+      return NavmsgStatus::StringToAccepted(
+          listbox->GetString(i).ToStdString());
     else
       assert(false && "bad type...");
   }
@@ -611,7 +614,22 @@ private:
   }
 };
 
-class AcceptedPanel : public wxPanel {};
+class AcceptedPanel : public SetPanel<NavmsgStatus::Accepted> {
+public:
+  AcceptedPanel(wxWindow* parent, NavmsgFilter& filter,
+                std::function<void()> on_update)
+      : SetPanel<NavmsgStatus::Accepted>(
+            parent, filter.accepted, std::move(on_update),
+            _("Use Accepted states"),
+            [&]() { return AcceptedPanel::GetChoices(); }) {}
+
+private:
+  wxArrayString GetChoices() const {
+    static const char* choices[] = {"Ok", "FilteredNoOutput", "FilteredDropped",
+                                    "None"};
+    return {4, choices};
+  }
+};
 
 /** Description entry with optional editing. */
 class DescriptionPanel : public wxPanel {
@@ -665,6 +683,8 @@ public:
     vbox->Add(new BusPanel(this, m_filter, [&] { Update(); }), flags);
     vbox->Add(new wxStaticLine(this), flags.Expand());
     vbox->Add(new DirectionPanel(this, m_filter, [&] { Update(); }), flags);
+    vbox->Add(new wxStaticLine(this), flags.Expand());
+    vbox->Add(new AcceptedPanel(this, m_filter, [&] { Update(); }), flags);
     vbox->Add(new MsgTypePanel(this, m_filter, [&] { Update(); }), flags);
     vbox->Add(new Buttons(this), flags);
     Fit();
