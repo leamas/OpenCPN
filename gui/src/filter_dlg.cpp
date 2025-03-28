@@ -625,9 +625,8 @@ public:
 
 private:
   wxArrayString GetChoices() const {
-    static const char* choices[] = {"Ok", "FilteredNoOutput", "FilteredDropped",
-                                    "None"};
-    return {4, choices};
+    static const char* choices[] = {"Ok", "FilteredNoOutput", "FilteredDropped"};
+    return {3, choices};
   }
 };
 
