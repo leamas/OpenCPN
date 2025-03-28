@@ -57,8 +57,7 @@
 #include "std_filesystem.h"
 
 /**
- * Packed representation of message status as determined by the
- * multiplexer
+ * Representation of message status as determined by the multiplexer
  */
 class NavmsgStatus {
 public:
@@ -66,14 +65,20 @@ public:
   enum class Accepted { kOk, kFilteredNoOutput, kFilteredDropped, kNone };
   enum class State { kOk, kChecksumError, kMalformed, kTxError, kNone };
 
-  Direction direction : 3;
-  State status : 3;
-  Accepted accepted : 2;
-
   NavmsgStatus()
       : direction(Direction::kInput),
         status(State::kOk),
         accepted(Accepted::kOk) {}
+
+  /** Return string representation of argument. */
+  static std::string AcceptedToString(Accepted);
+
+  /** Return  Accepted value corresponding to argument s. */
+  static Accepted StringToAccepted(const std::string& s);
+
+  Direction direction;
+  State status;
+  Accepted accepted;
 };
 
 class NavmsgFilter {

@@ -38,6 +38,28 @@ using Direction = NavmsgStatus::Direction;
 using State = NavmsgStatus::State;
 using Accepted = NavmsgStatus::Accepted;
 
+static const std::unordered_map<Accepted, std::string> StringByAccepted = {
+    {Accepted::kOk, "Ok"},
+    {Accepted::kFilteredNoOutput, "FilteredNoOutput"},
+    {Accepted::kFilteredDropped, "FilteredDropped"},
+    {Accepted::kNone, "None"}};
+
+std::string NavmsgStatus::AcceptedToString(Accepted a) {
+  try {
+    return StringByAccepted.at(a);
+  } catch (std::out_of_range& e) {
+    std::cout << "Error: " << e.what() << " :" << static_cast<int>(a) << "\n";
+    assert(false && "Bad Accepted state");
+    return "";  // For the compiler
+  }
+}
+
+Accepted NavmsgStatus::StringToAccepted(const std::string& s) {
+  for (auto& kv : StringByAccepted)
+    if (kv.second == s) return kv.first;
+  return Accepted::kNone;
+}
+
 // clang-format: off
 static const std::unordered_map<const char*, Direction> dir_map = {
     {"input", Direction::kInput},
