@@ -75,9 +75,11 @@ static const std::unordered_map<const char*, State> statemap = {
     {"tx-error", State::kTxError}};
 
 static const std::unordered_map<const char*, Accepted> acceptmap = {
-    {"ok", Accepted::kOk},
-    {"dropped", Accepted::kFilteredDropped},
-    {"no-output", Accepted::kFilteredNoOutput}};  // clang-format: on
+    {"Ok", Accepted::kOk},
+    {"FilteredDropped", Accepted::kFilteredDropped},
+    {"FilteredNoOutput", Accepted::kFilteredNoOutput},
+    {"None", Accepted::kNone}
+    };  // clang-format: on
 
 static NavmsgStatus::Direction StringToDirection(const std::string s) {
   for (auto kv : dir_map)
@@ -236,7 +238,10 @@ bool NavmsgFilter::Pass(NavmsgStatus msg_status,
   if (interfaces.size() > 0) {
     if (interfaces.find(msg->source->iface) == interfaces.end()) return false;
   }
-  auto n2k_msg = std::dynamic_pointer_cast<const Nmea2000Msg>(msg);
+  if (accepted.size() > 0) {
+    if (accepted.find(msg_status.accepted) == accepted.end()) return false;
+  }
+   auto n2k_msg = std::dynamic_pointer_cast<const Nmea2000Msg>(msg);
   if (n2k_msg) {
     if (pgns.size() > 0) {
       if (pgns.find(n2k_msg->PGN) == pgns.end()) return false;
