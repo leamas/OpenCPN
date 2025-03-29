@@ -51,10 +51,11 @@ std::vector<std::string> List(bool include_system) {
   std::vector<std::string> v;
   for (const auto& entry : fs::directory_iterator(UserPath()))
     v.push_back(entry.path().filename());
-  if (!include_system) return v;
-
-  for (const auto& entry : fs::directory_iterator(SystemPath()))
-    v.push_back(entry.path().stem());
+  if (include_system) {
+    for (const auto& entry : fs::directory_iterator(SystemPath()))
+      v.push_back(entry.path().stem());
+  }
+  for (auto& filter: v) filter = fs::path(filter).stem();
   return v;
 }
 

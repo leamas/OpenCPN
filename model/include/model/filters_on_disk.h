@@ -1,7 +1,10 @@
 /**
  * \file
  * Filter storage routines. Handles both user defined filters and the
- * readonly system ones shipped with application
+ * readonly system ones shipped with application.
+ *
+ * All methods uses plain names as arguments and return values, actual
+ * filenames and paths are hidden by the interface.
  */
 
 #include <string>
