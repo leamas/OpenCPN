@@ -86,7 +86,7 @@ static NavmsgStatus::Direction StringToDirection(const std::string& s) {
 static wxArrayString GetUserFilters() {
   auto std_filters = filters_on_disk::List(false);
   wxArrayString wx_filters;
-  for (auto& f : std_filters) wx_filters.Add(fs::path(f).stem().string());
+  for (auto& f : std_filters) wx_filters.Add(f);
   return wx_filters;
 }
 
@@ -755,18 +755,9 @@ void RemoveFilterDlg(wxWindow* parent) {
   }
 }
 
-void EditFilterDlg(wxWindow* parent) {
-  if (GetUserFilters().empty()) {
-    wxMessageDialog dlg(wxTheApp->GetTopWindow(), _("No filters created"));
-    dlg.ShowModal();
-    return;
-  }
-  SelectFilterDlg dlg(parent);
-  int sts = dlg.ShowModal();
-  if (sts != wxID_OK) return;
 
-  auto name = dlg.GetStringSelection().ToStdString();
-  std::string window_name = kEditFilterFrameName + name;
+void EditOneFilterDlg(wxWindow* parent, const std::string& filter) {
+  std::string window_name = kEditFilterFrameName + filter;
   wxWindow* frame = wxWindow::FindWindowByName(window_name);
   if (frame) {
     frame->Raise();
@@ -778,8 +769,21 @@ void EditFilterDlg(wxWindow* parent) {
   auto on_apply = [](const std::string& _name) {
     FilterEvents::GetInstance().filter_apply.Notify(_name);
   };
-  new EditFilterFrame(wxTheApp->GetTopWindow(), name, on_update, on_apply);
+  new EditFilterFrame(wxTheApp->GetTopWindow(), filter, on_update, on_apply);
   frame = wxWindow::FindWindowByName(window_name);
   assert(frame && "Cannot create EditFilter frame");
   frame->Show();
+}
+
+void EditFilterDlg(wxWindow* parent) {
+  if (GetUserFilters().empty()) {
+    wxMessageDialog dlg(wxTheApp->GetTopWindow(), _("No filters created"));
+    dlg.ShowModal();
+    return;
+  }
+  SelectFilterDlg dlg(parent);
+  int sts = dlg.ShowModal();
+  if (sts != wxID_OK) return;
+
+  EditOneFilterDlg(parent, dlg.GetStringSelection().ToStdString());
 };
