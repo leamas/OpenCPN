@@ -1593,6 +1593,7 @@ endif ()
 
 
 find_program(ASCIIDOC_PROG NAMES asciidoc)
+execute_process(COMMAND cmake -E rm -f  ${CMAKE_BINARY_DIR}/Authors.html)
 if (ASCIIDOC_PROG)
   message(STATUS "Asciidoc: generating new Authors.html")
   install(CODE "
