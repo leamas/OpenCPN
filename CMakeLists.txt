@@ -1,24 +1,26 @@
 #[[
-Author:    Dave Register
-DEB config from: antonm - Anton Martchukov <anton@martchukov.com>
-Update:   sethdart (Jean-Eudes Onfray) with parts from balp (Anders Arnholm)
+Author : Dave Register DEB config from
+    : antonm -
+      Anton Martchukov<anton @martchukov.com> Update
+    : sethdart(Jean - Eudes Onfray) with parts from balp(Anders Arnholm)
 #]]
 
-
 #[[
-Copyright (C) 2010 by David S. Register
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
+          Copyright(C) 2010 by David S.Register This program is free software;
+you can redistribute it and / or
+    modify it under the terms of the GNU General Public License as published by
+        the Free Software Foundation;
+either version 2 of the License,
+    or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
+        This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the
+along with this program;
+if not, write to the
 Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,  USA.
 #]]
@@ -40,17 +42,25 @@ if (POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW)
 endif ()
 
-# Prefer libGL.so to libOpenGL.so, see CMP0072
+#Prefer libGL.so to libOpenGL.so, see CMP0072
 set(OpenGL_GL_PREFERENCE "LEGACY")
 
 if ("${OCPN_TARGET_TUPLE}" MATCHES "Android")
   message(STATUS "Building for wxQt-Android")
 
-  # Specific NDK setting, avoiding "Unwind" linkage problems with
-  # managed plugins found in later NDK versions.
-  #set( tool_base /home/dsr/Android/Sdk/ndk/22.1.7171670/toolchains/llvm/prebuilt/linux-x86_64)
-  #cmake -DOCPN_TARGET_TUPLE:STRING="Android-arm64;16;arm64"   -Dtool_base="$HOME/Android/Sdk/ndk/22.1.7171670/toolchains/llvm/prebuilt/linux-x86_64" ..
-  #cmake -DOCPN_TARGET_TUPLE:STRING="Android-armhf;16;armhf"   -Dtool_base="$HOME/Android/Sdk/ndk/22.1.7171670/toolchains/llvm/prebuilt/linux-x86_64" ..
+#Specific NDK setting, avoiding "Unwind" linkage problems with
+#managed plugins found in later NDK versions.
+#set(tool_base / home / dsr / Android / Sdk / ndk / 22.1.7171670 / \
+#         toolchains / llvm / prebuilt / linux -                    \
+#     x86_64)
+#cmake - DOCPN_TARGET_TUPLE : STRING =                                             \
+#    "Android-arm64;16;arm64" - Dtool_base =                                        \
+#        "$HOME/Android/Sdk/ndk/22.1.7171670/toolchains/llvm/prebuilt/linux-x86_64" \
+#            ..
+#cmake - DOCPN_TARGET_TUPLE : STRING =                                             \
+#    "Android-armhf;16;armhf" - Dtool_base =                                        \
+#        "$HOME/Android/Sdk/ndk/22.1.7171670/toolchains/llvm/prebuilt/linux-x86_64" \
+#            ..
 
   set(CMAKE_TOOLCHAIN_FILE buildandroid/build_android.cmake)
   set(QT_ANDROID "ON")
@@ -78,7 +88,7 @@ endif ()
 
 message(STATUS "cmake version: ${CMAKE_VERSION}")
 
-# Locations where cmake looks for cmake modules.
+#Locations where cmake looks for cmake modules.
 set(
   CMAKE_MODULE_PATH
   ${CMAKE_SOURCE_DIR}/build ${CMAKE_SOURCE_DIR}/ ${CMAKE_SOURCE_DIR}/cmake
@@ -89,7 +99,7 @@ include(CMakeDependentOption)
 include(CheckSymbolExists)
 
 #
-# Options
+#Options
 #
 macro (BUNDLE_DOCS_OPT onoff)
   option(OCPN_BUNDLE_DOCS "Include documentation in package" ${onoff})
@@ -105,13 +115,13 @@ macro (BUNDLE_GSHHS_OPT onoff)
   option(OCPN_BUNDLE_GSHHS "Bundle minimal GSHHS data files" ${onoff})
 endmacro ()
 
-# If on Windows or Apple, build the monolithic package, to override use a non-
-# sense values from the commandline (due to cmake inability to distinguish
-# between not set and set to FALSE): cmake -DOCPN_BUNDLE_DOCS=BLAH
-# -DOCPN_BUNDLE_TCDATA=BLAH
+#If on Windows or Apple, build the monolithic package, to override use a non -
+#sense values from the commandline(due to cmake inability to distinguish
+#between not set and set to FALSE) : cmake - DOCPN_BUNDLE_DOCS = BLAH
+#- DOCPN_BUNDLE_TCDATA = BLAH
 
-# Bundle tcdata and gshhs by default also on linux, to keep the defaults close
-# to the official Debian package.
+#Bundle tcdata and gshhs by default also on linux, to keep the defaults close
+#to the official Debian package.
 bundle_gshhs_opt("ON")
 bundle_tcdata_opt("ON")
 
@@ -207,7 +217,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       "Choose type of build: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE
   )
-  # Set the possible values of build type for cmake-gui
+#Set the possible values of build type for cmake - gui
   set_property(
     CACHE CMAKE_BUILD_TYPE
     PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo"
@@ -281,7 +291,7 @@ if (QT_ANDROID)
   set(OCPN_USE_LZMA OFF)
 endif ()
 
-# Check if a given library should use the bundled source
+#Check if a given library should use the bundled source
 macro (USE_BUNDLED_LIB _result library)
   if ("${OCPN_USE_BUNDLED_LIBS}" STREQUAL "")
     set(OCPN_USE_BUNDLED_LIBS "ON")
@@ -298,7 +308,7 @@ macro (USE_BUNDLED_LIB _result library)
 endmacro ()
 
 #
-# Language, compiler and static checkers setup
+#Language, compiler and static checkers setup
 #
 if (NOT DEFINED ENV{ARCH})
   include(GetArch)
@@ -323,8 +333,8 @@ if (OCPN_ENABLE_CLANG_TIDY)
   )
   if (CLANG_TIDY_EXE)
     message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
-    # For more, see http://clang.llvm.org/extra/clang-tidy/
-    # set(CLANG_TIDY_CHECKS "-*,modernize-*")
+#For more, see http:  // clang.llvm.org/extra/clang-tidy/
+#set(CLANG_TIDY_CHECKS "-*,modernize-*")
     set(CLANG_TIDY_CHECKS "-*,performance-*")
     set(CMAKE_CXX_CLANG_TIDY
         "${CLANG_TIDY_EXE};-checks=${CLANG_TIDY_CHECKS};-header-filter='${CMAKE_SOURCE_DIR}/*'"
@@ -336,8 +346,8 @@ if (OCPN_ENABLE_CLANG_TIDY)
   endif ()
 endif ()
 
-# Add support for address etc sanitizers, part 1/2 (other half after
-# ADD_EXECUTABLE)
+#Add support for address etc sanitizers, part 1 / 2(other half after
+#ADD_EXECUTABLE)
 set_property(
   CACHE ENABLE_SANITIZER
   PROPERTY STRINGS none address memory thread undefined
@@ -350,9 +360,13 @@ if (OCPN_ENABLE_CPPCHECK)
   find_program(CPPCHECK_EXECUTABLE NAMES "cppcheck")
   set(CMAKE_CXX_CPPCHECK ${CPPCHECK_EXECUTABLE})
 endif ()
-# ADD_COMPILE_OPTIONS( "-Wall" "-ansi" "-pedantic" "-Wno-variadic-macros" )
-# TODO: Should we use  -fno-stack-protector IF NOT DEBUGGING CFLAGS="-O2
-# -march=native"
+#ADD_COMPILE_OPTIONS( \
+#    "-Wall"           \
+#    "-ansi"           \
+#    "-pedantic"       \
+#    "-Wno-variadic-macros")
+#TODO : Should we use - fno - stack - protector IF NOT DEBUGGING CFLAGS = "-O2
+#- march = native "
 if (NOT WIN32 AND NOT APPLE)
   add_compile_options("-Wall")
   if (NOT OCPN_PEDANTIC)
@@ -368,9 +382,9 @@ if (NOT WIN32 AND NOT APPLE)
     endif ()
   endif ()
   add_definitions(" -DPREFIX=\\\"${CMAKE_INSTALL_PREFIX}\\\"")
-  # profiling with gprof ADD_COMPILE_OPTIONS( -pg )
-  # SET(CMAKE_EXE_LINKER_FLAGS -pg)
-  # profiling with gcov ADD_COMPILE_OPTIONS( "-fprofile-arcs -ftest- # coverage" )
+#profiling with gprof ADD_COMPILE_OPTIONS(-pg)
+#SET(CMAKE_EXE_LINKER_FLAGS - pg)
+#profiling with gcov ADD_COMPILE_OPTIONS("-fprofile-arcs -ftest- # coverage")
 endif ()
 
 if (APPLE)
@@ -419,13 +433,13 @@ if (MSVC)
   add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_DEPRECATE)
   add_definitions(-DPSAPI_VERSION=1)
   add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS=1)
-  # https://developercommunity.visualstudio.com
-  # /t/error-c2872-byte-ambiguous-symbol/93889 https://shorturl.at/hmJSZ
+# https://developercommunity.visualstudio.com
+# /t/error-c2872-byte-ambiguous-symbol/93889 https://shorturl.at/hmJSZ
   add_definitions(-D_HAS_STD_BYTE=0)
 endif ()
 
 if (MSVC)
-  # /D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR works around https://github.com/actions/runner-images/issues/10004
+#/ D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR works around https: //github.com/actions/runner-images/issues/10004
   set(CMAKE_C_FLAGS_DEBUG "/MP /MDd /Ob0 /Od  /D_DEBUG  /Zi /RTC1")
   set(CMAKE_C_FLAGS_MINSIZEREL "/MP /MD  /O1  /Ob1 /D NDEBUG")
   set(CMAKE_C_FLAGS_RELEASE "/MP /MD  /O2  /Ob2 /D NDEBUG /Zi /wd4068")
@@ -460,7 +474,7 @@ if (QT_ANDROID)
 endif ()
 
 if (ARCH STREQUAL armhf)
-  # See: https://forums.raspberrypi.com/viewtopic.php?t=144115
+#See : https:  // forums.raspberrypi.com/viewtopic.php?t=144115
   add_compile_options(-mcpu=cortex-a53  -mfpu=neon-fp-armv8)
 endif ()   # Assuming at least RPi 3
 
@@ -473,8 +487,8 @@ message(
   STATUS "CMAKE_CXX_FLAGS_RELWITHDEBINFO: ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}"
 )
 
-# Per default, use CMAKE_INSTALL_LIBDIR=lib on Debian (and derivatives) to avoid
-# multilib plugin paths. After all, we do not install any "real" libraries.
+#Per default, use CMAKE_INSTALL_LIBDIR = lib on Debian(and derivatives) to avoid
+#multilib plugin paths.After all, we do not install any "real" libraries.
 if (EXISTS /etc/debian_version AND NOT DEFINED CMAKE_INSTALL_LIBDIR)
   set(CMAKE_INSTALL_LIBDIR "lib")
 endif ()
@@ -485,7 +499,7 @@ set(PREFIX_PKGDATA ${CMAKE_INSTALL_DATADIR}/${PACKAGE_NAME})
 set(PREFIX_LIB "${CMAKE_INSTALL_FULL_LIBDIR}")
 
 #
-# Version handling
+#Version handling
 #
 include(${CMAKE_SOURCE_DIR}/VERSION.cmake)
 
@@ -509,7 +523,7 @@ set(PACKAGE_VERSION
 )
 message(STATUS "Building version ${PACKAGE_VERSION}")
 
-# Detect the Apple Version of the build machine
+#Detect the Apple Version of the build machine
 if (APPLE)
   exec_program(uname ARGS -v OUTPUT_VARIABLE DARWIN_VERSION)
   string(REGEX MATCH "[0-9]+" DARWIN_VERSION ${DARWIN_VERSION})
@@ -522,7 +536,7 @@ endif ()
 message(STATUS "*** Staging to build ${PACKAGE_NAME} ${PACKAGE_VERSION} ***")
 
 #
-# Bundled data: docs, tcdata
+#Bundled data : docs, tcdata
 #
 if (OCPN_BUNDLE_DOCS)
   message(STATUS "*** Package will include documentation ***")
@@ -531,14 +545,14 @@ else (OCPN_BUNDLE_DOCS)
 endif (OCPN_BUNDLE_DOCS)
 
 #
-# Linux: set up GTK (wxWidgets prerequisite).
+#Linux : set up GTK(wxWidgets prerequisite).
 #
 if (LINUX)
   include(OcpnFindGtk)
 endif ()
 
-# set a build flag for arm architecture, to catch any rPI runtime changes
-# required
+#set a build flag for arm architecture, to catch any rPI runtime changes
+#required
 if (ARCH MATCHES "arm*" AND (NOT QT_ANDROID))
   add_definitions(-DocpnARM)
   if (ARCH STREQUAL "armhf")
@@ -548,21 +562,21 @@ endif ()
 
 if (DEFINED _wx_selected_config)
   if (_wx_selected_config MATCHES "androideabi-qt")
-    # MESSAGE (STATUS "Qt_Base: " ${Qt_Base}) MESSAGE (STATUS "wxQt_Base/Build:
-    # " ${wxQt_Base} "/" ${wxQt_Build}) ADD_DEFINITIONS(-DocpnUSE_GLES)
-    # ADD_DEFINITIONS(-DocpnUSE_GL)
+#MESSAGE(STATUS "Qt_Base: " ${Qt_Base}) MESSAGE(STATUS "wxQt_Base/Build:
+#" ${wxQt_Base} " / " ${wxQt_Build}) ADD_DEFINITIONS(-DocpnUSE_GLES)
+#ADD_DEFINITIONS(-DocpnUSE_GL)
 
-    # SET(OPENGLES_FOUND "YES") SET(OPENGL_FOUND "YES")
+#SET(OPENGLES_FOUND "YES") SET(OPENGL_FOUND "YES")
 
-    # ADD_DEFINITIONS(-DUSE_GLU_TESS) SET(USE_GLES2 ON ) MESSAGE (STATUS "Using
-    # GLESv2 for Android") ADD_DEFINITIONS(-DUSE_ANDROID_GLES2)
-    # ADD_DEFINITIONS(-DUSE_GLSL)
+#ADD_DEFINITIONS(-DUSE_GLU_TESS) SET(USE_GLES2 ON) MESSAGE(STATUS "Using
+#GLESv2 for Android ") ADD_DEFINITIONS(-DUSE_ANDROID_GLES2)
+#ADD_DEFINITIONS(-DUSE_GLSL)
     include_directories(${CMAKE_SOURCE_DIR}/libs/glshim/include/GLES)
   endif ()
 endif ()
 
 if (APPLE)
-  # Bundle all of wxWidgets as a courtesy for plugins, see #2153
+#Bundle all of wxWidgets as a courtesy for plugins, see #2153
   set(wxWidgets_FIND_COMPONENTS
       net xml html adv aui core base media propgrid qa ribbon richtext webview
       stc
@@ -596,9 +610,9 @@ if ((NOT OPENGLES_FOUND) AND (NOT QT_ANDROID))
     add_definitions(-DocpnUSE_GL)
     add_definitions(-DocpnUSE_GLSL)
 
-    # We need to remove GLU from the OPENGL_LIBRARIES list
+#We need to remove GLU from the OPENGL_LIBRARIES list
     foreach (_currentLibFile ${OPENGL_LIBRARIES})
-      # MESSAGE (STATUS "    Lib File: " ${_currentLibFile})
+#MESSAGE(STATUS "    Lib File: " ${_currentLibFile})
       set(UCNAME ${_currentLibFile})
       string(TOUPPER ${UCNAME} UCNAME)
       if (NOT ${UCNAME} MATCHES "(.*)GLU(.*)")
@@ -615,7 +629,7 @@ if ((NOT OPENGLES_FOUND) AND (NOT QT_ANDROID))
   endif ()
 endif ()
 
-# configure GLEW
+#configure GLEW
 if (OPENGL_FOUND AND CMAKE_HOST_WIN32)
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/cache/buildwin/include/glew)
   link_libraries(${CMAKE_SOURCE_DIR}/cache/buildwin/glew32.lib)
@@ -627,8 +641,8 @@ endif ()
 
 
 if (NOT QT_ANDROID)
-  # Find wxWidgets here, and the setting get inherited by all plugins. These
-  # options can be used to set the linux widgets build type
+#Find wxWidgets here, and the setting get inherited by all plugins.These
+#options can be used to set the linux widgets build type
   set(wxWidgets_USE_DEBUG OFF)
   set(wxWidgets_USE_UNICODE ON)
   set(wxWidgets_USE_UNIVERSAL OFF)
@@ -639,8 +653,8 @@ if (NOT QT_ANDROID)
   endif ()
 
   if (MSVC)
-    # Exclude wxexpat.lib, since we use our own version. Other things are
-    # excluded as well, but we don't need them
+#Exclude wxexpat.lib, since we use our own version.Other things are
+#excluded as well, but we don't need them
     set(wxWidgets_EXCLUDE_COMMON_LIBRARIES TRUE)
   endif ()
 
@@ -648,7 +662,7 @@ if (NOT QT_ANDROID)
     set(wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --toolkit=gtk3)
   endif ()
 
-  # find_package(wxWidgets COMPONENTS ${wxWidgets_FIND_COMPONENTS} REQUIRED )
+#find_package(wxWidgets COMPONENTS ${wxWidgets_FIND_COMPONENTS} REQUIRED)
   if (APPLE AND OCPN_USE_DEPS_BUNDLE)
     set(wxWidgets_CONFIG_EXECUTABLE
         "${OCPN_DEPS_BUNDLE_PATH}/lib/wx/config/osx_cocoa-unicode-3.2"
@@ -669,7 +683,7 @@ if (NOT QT_ANDROID)
     message(FATAL_ERROR "Cannot find wxWidgets, giving up.")
   endif ()
   if (MSYS)
-    # Convert msys to windows paths, and handle the missing /usr
+#Convert msys to windows paths, and handle the missing / usr
     string(REGEX REPLACE "/usr/local" ";C:/MinGW/msys/1.0/local"
                          wxWidgets_INCLUDE_DIRS "${wxWidgets_INCLUDE_DIRS}"
     )
@@ -680,8 +694,8 @@ if (NOT QT_ANDROID)
   message(STATUS " wxWidgets Include: ${wxWidgets_INCLUDE_DIRS}")
   message(STATUS " wxWidgets Libraries: ${wxWidgets_LIBRARIES}")
 
-  # We need to remove GLU from the wxWidgets_LIBRARIES list It only appears to
-  # get on the list for MSW...
+#We need to remove GLU from the wxWidgets_LIBRARIES list It only appears to
+#get on the list for MSW...
   foreach (_currentLibFile ${wxWidgets_LIBRARIES})
     set(UCNAME ${_currentLibFile})
     string(TOUPPER ${UCNAME} UCNAME)
@@ -696,12 +710,12 @@ if (NOT QT_ANDROID)
   message(STATUS " Revised wxWidgets Libraries: ${wxWidgets_LIBRARIES}")
 endif (NOT QT_ANDROID)
 
-# Handle #1500: Force NDEBUG on gtk3 for wxwidgets < 3.2 (all builds)
+#Handle #1500 : Force NDEBUG on gtk3 for wxwidgets < 3.2(all builds)
 if (GTK3_FOUND)
   set(_VERSPROG
       [=[
-    #include <stdio.h>
-    #include <wx/version.h>
+#include <stdio.h>
+#include <wx/version.h>
     int main(int argc, char**argv) {
       printf("%d\\n", wxMAJOR_VERSION * 10 + wxMINOR_VERSION);
     }
@@ -725,9 +739,9 @@ if (GTK3_FOUND)
   endif ()
 endif ()
 
-# Make sure that the variable "wxWidgets_VERSION_STRING" is set, even on older
-# CMake versions Seems safe to set to "3.0", since OCPN does not support earlier
-# wxWidgets versions
+#Make sure that the variable "wxWidgets_VERSION_STRING" is set, even on older
+#CMake versions Seems safe to set to "3.0", since OCPN does not support earlier
+#wxWidgets versions
 if (wxWidgets_VERSION_STRING)
   message(STATUS "Found wxWidgets_VERSION_STRING: ${wxWidgets_VERSION_STRING}")
 else ()
@@ -737,8 +751,8 @@ else ()
   set(wxWidgets_VERSION_STRING "3.0")
 endif ()
 
-# Enable gestures on all platforms except MacOS There are no touch capable MacOS
-# machines
+#Enable gestures on all platforms except MacOS There are no touch capable MacOS
+#machines
 if ((wxWidgets_VERSION_STRING VERSION_GREATER "3.1.0") AND (NOT APPLE))
   add_definitions("-DHAVE_WX_GESTURE_EVENTS")
 endif ()
@@ -1141,10 +1155,10 @@ if (wxWidgets_VERSION_STRING VERSION_LESS "3.1.6"
   endif ()
 endif ()
 
-# Some of these "find_path" macros generate "false-positives" under Windows,
-# especially if mingw is installed For OpenCPN, these include files and related
-# methods are really only valid in complete linux/unix environments So, pending
-# further information, we disable these tests for non-UNIX-like builds.
+#Some of these "find_path" macros generate "false-positives" under Windows,
+#especially if mingw is installed For OpenCPN, these include files and related
+#methods are really only valid in complete linux / unix environments So, pending
+#further information, we disable these tests for non - UNIX - like builds.
 if (UNIX)
   find_path(HAVE_UNISTD_H NAMES unistd.h)
   find_path(HAVE_LIBGEN_H NAMES libgen.h)
@@ -1161,22 +1175,22 @@ if (UNIX)
 endif ()
 
 #
-# Linux: set up GTK
+#Linux : set up GTK
 #
 if (LINUX)
   include(OcpnFindGtk)
   target_link_libraries(${PACKAGE_NAME} PRIVATE ocpn::gtk)
 endif ()
 
-# Search for opengles, short of running a program to test the speed of
-# acceleration, I simply use gles on "native linux" arm systems
+#Search for opengles, short of running a program to test the speed of
+#acceleration, I simply use gles on "native linux" arm systems
 if (DEFINED _wx_selected_config)
   message(STATUS "selected config ${_wx_selected_config}")
   if (_wx_selected_config MATCHES "androideabi-qt")
-    # message(STATUS "Building for wxQt-Android")
-    # message(STATUS "Qt_Base: " # ${Qt_Base})
-    # message(STATUS "wxQt_Base/Build:  ${wxQt_Base}/${wxQt_Build}")
-    # set(QT_ANDROID "ON")
+#message(STATUS "Building for wxQt-Android")
+#message(STATUS "Qt_Base: " #${Qt_Base})
+#message(STATUS "wxQt_Base/Build:  ${wxQt_Base}/${wxQt_Build}")
+#set(QT_ANDROID "ON")
   endif ()
 endif ()
 
@@ -1191,7 +1205,7 @@ if (ARCH MATCHES "arm*" AND (NOT QT_ANDROID) AND OCPN_USE_GLES_SHIM)
   if (OPENGLESv1_INCLUDE_DIR)
     message(STATUS "Found OpenGLESv1")
     add_definitions(-DocpnUSE_GL) # ocpnUSE_GLES is in config.h
-    # set(OPENGLES_FOUND "YES") set(OPENGL_FOUND "YES")
+#set(OPENGLES_FOUND "YES") set(OPENGL_FOUND "YES")
     set(OPENGL_LIBRARIES "GL_static" "EGL" "X11" "drm")
   endif ()
 endif ()
@@ -1296,13 +1310,13 @@ if (UNIX)
       set(OCPN_HAVE_X11 ON) # => config.h
     endif ()
     if (NOT APPLE)
-      # TinyXML from Homebrew is not good enough for our GpxDocument needs We
-      # should probably replace it with pugixml completely anyway...
+#TinyXML from Homebrew is not good enough for our GpxDocument needs We
+#should probably replace it with pugixml completely anyway...
       find_package(TinyXML)
     endif ()
     if (APPLE)
       if (wxWidgets_VERSION_STRING VERSION_LESS "3.1.6")
-        # Only needed if we build with wxSVG implementation of SVG support
+#Only needed if we build with wxSVG implementation of SVG support
         message(STATUS "Building with wxSVG support")
         find_package(Freetype REQUIRED)
         target_link_libraries(${PACKAGE_NAME} PRIVATE Freetype::Freetype)
@@ -1319,7 +1333,7 @@ if (UNIX)
   endif ()
 endif ()
 
-# check for lzma support for reading compressed charts
+#check for lzma support for reading compressed charts
 if (CMAKE_HOST_WIN32)
   list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cache/buildwin")
   list(APPEND CMAKE_PREFIX_PATH
@@ -1345,7 +1359,7 @@ if (OCPN_USE_SVG)
       include(OcpnFindCairo)
       include(OcpnFindExpat)
       if (CMAKE_HOST_WIN32)
-        # On Windows, we have our own expat and cairo
+#On Windows, we have our own expat and cairo
         file(GLOB gtkdll_files
              "${CMAKE_CURRENT_SOURCE_DIR}/cache/buildwin/gtk/*.dll"
         )
@@ -1358,8 +1372,8 @@ if (OCPN_USE_SVG)
           STATUS "GTK and Expat DLLs bundled into the installer package..."
         )
       else ()
-        # Include(OcpnFindFmpeg)  -- FFMPEG is not enabled currently.
-        # target_link_libraries(${PACKAGE_NAME} ocpn::ffmpeg)
+#Include(OcpnFindFmpeg)-- FFMPEG is not enabled currently.
+#target_link_libraries(${PACKAGE_NAME} ocpn::ffmpeg)
         include(FindEXIF)
         target_link_libraries(
           ${PACKAGE_NAME} PRIVATE ${EXIF_LIBRARIES} ${GTK_LIBRARIES}
@@ -1398,8 +1412,8 @@ if (OCPN_USE_NEWSERIAL)
   message(STATUS "Using new serial library...")
 endif ()
 
-# Search for opengles, short of running a program to test the speed of
-# acceleration, I simply use gles on "native linux" arm systems
+#Search for opengles, short of running a program to test the speed of
+#acceleration, I simply use gles on "native linux" arm systems
 if (ARCH MATCHES "arm*" AND (NOT QT_ANDROID) AND OCPN_USE_GLES_SHIM)
   find_path(OPENGLESv1_INCLUDE_DIR GLES/gl.h)
   if (OPENGLESv1_INCLUDE_DIR)
@@ -1407,8 +1421,8 @@ if (ARCH MATCHES "arm*" AND (NOT QT_ANDROID) AND OCPN_USE_GLES_SHIM)
     add_definitions(-DocpnUSE_GLES)
     add_definitions(-DocpnUSE_GL)
 
-    # set(OPENGLES_FOUND "YES") set(OPENGL_FOUND "YES")
-    # SET(wxWidgets_FIND_COMPONENTS ${wxWidgets_FIND_COMPONENTS} gl )
+#set(OPENGLES_FOUND "YES") set(OPENGL_FOUND "YES")
+#SET(wxWidgets_FIND_COMPONENTS ${wxWidgets_FIND_COMPONENTS} gl)
     add_subdirectory(libs/glshim)
 
     set(OPENGL_LIBRARIES "GL_static" "EGL" "X11" "drm")
@@ -1429,9 +1443,9 @@ if (OPENGL_FOUND)
   )
 endif ()
 
-# Building for QT_ANDROID involves a cross-building environment, So the include
-# directories, flags, etc must be stated explicitly without trying to locate
-# them on the host build system.
+#Building for QT_ANDROID involves a cross - building environment, So the include
+#directories, flags, etc must be stated explicitly without trying to locate
+#them on the host build system.
 if (QT_ANDROID)
   add_definitions(-DocpnUSE_GLES)
   add_definitions(-DocpnUSE_GL)
@@ -1450,16 +1464,16 @@ if (NOT TARGET ocpn::libarchive)
 endif ()
 target_link_libraries(${PACKAGE_NAME} PUBLIC ocpn::libarchive)
 if (APPLE AND OCPN_USE_SYSTEM_LIBARCHIVE)
-  # If we use system libarchive, we do not bundle the dylib and need to comment
-  # it out from the pkg project file
+#If we use system libarchive, we do not bundle the dylib and need to comment
+#it out from the pkg project file
   set(LIBARCHIVE_COMMENT_START "<!--")
   set(LIBARCHIVE_COMMENT_END "-->")
 endif ()
 
-# Add android and windows extra, bundled GL headers
+#Add android and windows extra, bundled GL headers
 target_link_libraries(${PACKAGE_NAME} PUBLIC ocpn::gl-headers)
 
-# Ensure we have ghc::filesystem if std::filesystem is missing.
+#Ensure we have ghc::filesystem if std::filesystem is missing.
 add_subdirectory(libs/std_filesystem)
 target_link_libraries(${PACKAGE_NAME} PRIVATE ocpn::filesystem)
 
@@ -1497,7 +1511,7 @@ else ()
   message(STATUS "Garmin Host Mode support: disabled")
 endif ()
 
-# Compile texcompression support library
+#Compile texcompression support library
 if (OPENGL_FOUND)
   add_subdirectory("libs/texcmp")
   target_link_libraries(${PACKAGE_NAME} PRIVATE ocpn::texcmp)
@@ -1521,7 +1535,7 @@ else ()
   target_link_libraries(${PACKAGE_NAME} PRIVATE LZ4)
 endif ()
 
-# Finalize config.h setup and deploy it.
+#Finalize config.h setup and deploy it.
 include(TargetSetup)
 if ("${wxWidgets_LIBRARIES}" MATCHES "gtk3u")
   if (${PKG_TARGET_VERSION} VERSION_LESS 22.04)
@@ -1546,7 +1560,7 @@ if (CMAKE_HOST_WIN32)
     ${PACKAGE_NAME} PRIVATE setupapi.lib "GLU_static" psapi.lib
                             iphlpapi.lib # glu32.lib
   )
-  # use gdi plus only on MSVC, it is not a free library
+#use gdi plus only on MSVC, it is not a free library
   if (MSVC)
     target_link_libraries(${PACKAGE_NAME} PRIVATE gdiplus.lib)
     target_link_libraries(${PACKAGE_NAME} PRIVATE Shcore.lib)
@@ -1565,8 +1579,8 @@ if (UNIX)
   endif ()
 endif ()
 
-# If we build for windows systems, we also include the resource file containing
-# the manifest, icon and other resources
+#If we build for windows systems, we also include the resource file containing
+#the manifest, icon and other resources
 if (MSVC)
   target_sources(${PACKAGE_NAME} PRIVATE ${CMAKE_BINARY_DIR}/opencpn.rc)
 endif ()
@@ -1611,7 +1625,7 @@ set(basemap_shp
         data/basemap_shp/basemap_low.shp
         )
 
-# Various data files
+#Various data files
 
 set(ssfnData
         data/ssfn/FreeSans.sfn
@@ -1671,11 +1685,11 @@ if (OCPN_BUNDLE_TCDATA)
   )
 endif ()
 
-# Mac has trouble finding libgobject-2.0.dylib We look for it explicitely
+#Mac has trouble finding libgobject - 2.0.dylib We look for it explicitely
 if (xAPPLE)
-  # Assume pkg-config is available.
+#Assume pkg - config is available.
   pkg_search_module(GOBJECT REQUIRED gobject-2.0)
-  # MESSAGE (STATUS "    GOBJECT: " ${GOBJECT_LDFLAGS})
+#MESSAGE(STATUS "    GOBJECT: " ${GOBJECT_LDFLAGS})
 
   target_compile_definitions(${PACKAGE_NAME} PRIVATE ${GOBJECT_LDFLAGS})
   target_link_libraries(${PACKAGE_NAME} PUBLIC "iconv")
@@ -1744,7 +1758,7 @@ if (APPLE)
     ${PACKAGE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/data/ocpn-plugins.xml
   )
 
-  # Known, downloadable plugin icons
+#Known, downloadable plugin icons
   file(GLOB PLUGIN_ICONS ${CMAKE_SOURCE_DIR}/plugins/icons/*)
   foreach (_pluginIcon ${PLUGIN_ICONS})
     set_source_files_properties(
