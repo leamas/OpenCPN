@@ -426,8 +426,8 @@ static void DoHelpDialog(void) {
 
 #else
   if (!g_pAboutDlgLegacy)
-    g_pAboutDlgLegacy =
-        new About(gFrame, GetSharedDataDir(), [] { LaunchLocalHelp(); });
+    g_pAboutDlgLegacy = new About(gFrame, g_Platform->GetSharedDataDir(),
+                                  [] { LaunchLocalHelp(); });
   else
     g_pAboutDlgLegacy->SetFocus();
   g_pAboutDlgLegacy->Show();
