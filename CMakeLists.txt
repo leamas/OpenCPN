@@ -1577,6 +1577,26 @@ if (OCPN_BUNDLE_GSHHS)
   )
 endif ()
 
+
+find_program(ASCIIDOC_PROG NAMES asciidoc)
+if (ASCIIDOC_PROG)
+  message(STATUS "Asciidoc: generating new Authors.html")
+  install(CODE "
+    execute_process(
+      COMMAND ${ASCIIDOC_PROG} -o ${CMAKE_BINARY_DIR}/Authors.html
+          ${CMAKE_SOURCE_DIR}/Authors.adoc
+    )
+  ")
+else ()
+  message(STATUS "Asciidoc: reusing old Authors.html")
+  install(CODE "
+    execute_process(
+      COMMAND cmake -e copy ${CMAKE_SOURCE_DIR}/Authors.adoc
+          ${CMAKE_BINARY_DIR}/Authors.html
+    )
+  ")
+endif ()
+
 set(basemap_shp
         data/basemap_shp/basemap_crude_10x10.cpg
         data/basemap_shp/basemap_crude_10x10.prj
@@ -1696,7 +1716,7 @@ if (APPLE)
   )
 
   set_source_files_properties(
-    data/authors.html PROPERTIES MACOSX_PACKAGE_LOCATION SharedSupport
+    ${CMAKE_BINARY_DIR}/Authors.html PROPERTIES MACOSX_PACKAGE_LOCATION SharedSupport
   )
 
   set_source_files_properties(
@@ -1869,7 +1889,6 @@ if (APPLE)
             ${s57data}
             ${tcData}
             data/license.html
-            data/authors.html
             data/opencpn.png
             data/ocpn-plugins.xml
             data/CoC-909_2013-InlandECDIS_20170308s.pdf
@@ -1884,6 +1903,7 @@ if (APPLE)
             ${MUI_FLAT_SVG_FILES}
             ${DOC_FILES}
             ${CONFIG_FILES}
+            ${CMAKE_BINARY_DIR}/Authors.html
   )
   install(TARGETS ${PACKAGE_NAME} BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR})
 
@@ -2010,7 +2030,7 @@ if (NOT APPLE)
   )
   install(FILES data/copyright DESTINATION ${PREFIX_DATA}/doc/${PACKAGE_NAME})
   install(FILES data/license.html DESTINATION ${PREFIX_PKGDATA})
-  install(FILES data/authors.html DESTINATION ${PREFIX_PKGDATA})
+  install(FILES ${CMAKE_BINARY_DIR}/Authors.html DESTINATION ${PREFIX_PKGDATA})
   install(FILES data/opencpn.png DESTINATION ${PREFIX_PKGDATA})
 
   if (PACKAGE_FORMAT EQUAL "DEB")
