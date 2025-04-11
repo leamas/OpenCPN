@@ -1593,20 +1593,23 @@ endif ()
 
 
 find_program(ASCIIDOC_PROG NAMES asciidoc)
-execute_process(COMMAND cmake -E rm -f  ${CMAKE_BINARY_DIR}/Authors.html)
 if (ASCIIDOC_PROG)
-  message(STATUS "Asciidoc: generating new Authors.html")
-  execute_process(
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/Authors.html
     COMMAND ${ASCIIDOC_PROG} -o ${CMAKE_BINARY_DIR}/Authors.html
         ${CMAKE_SOURCE_DIR}/Authors.adoc
+    COMMENT "Generated Authors.html"
   )
 else ()
   message(STATUS "Asciidoc: reusing old Authors.html")
-  execute_process(
-    COMMAND cmake -e copy ${CMAKE_SOURCE_DIR}/Authors.adoc
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/Authors.html
+    COMMAND cmake -E copy   ${CMAKE_SOURCE_DIR}/Authors.adoc
         ${CMAKE_BINARY_DIR}/Authors.html
+    COMMENT "Reused existing Authors.html"
   )
 endif ()
+add_custom_target(authors ALL DEPENDS ${CMAKE_BINARY_DIR}/Authors.html)
 
 set(basemap_shp
         data/basemap_shp/basemap_crude_10x10.cpg
@@ -1681,6 +1684,8 @@ if (OCPN_BUNDLE_TCDATA)
       data/tcdata/harmonics-dwf-20210110-free.tcd data/tcdata/README.harmonics
   )
 endif ()
+
+set_source_files_properties(${CMAKE_BINARY_DIR}/Authors.html GENERATED)
 
 #Mac has trouble finding libgobject - 2.0.dylib We look for it explicitely
 if (xAPPLE)
