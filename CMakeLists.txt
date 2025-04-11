@@ -1596,20 +1596,16 @@ find_program(ASCIIDOC_PROG NAMES asciidoc)
 execute_process(COMMAND cmake -E rm -f  ${CMAKE_BINARY_DIR}/Authors.html)
 if (ASCIIDOC_PROG)
   message(STATUS "Asciidoc: generating new Authors.html")
-  install(CODE "
-    execute_process(
-      COMMAND ${ASCIIDOC_PROG} -o ${CMAKE_BINARY_DIR}/Authors.html
-          ${CMAKE_SOURCE_DIR}/Authors.adoc
-    )
-  ")
+  execute_process(
+    COMMAND ${ASCIIDOC_PROG} -o ${CMAKE_BINARY_DIR}/Authors.html
+        ${CMAKE_SOURCE_DIR}/Authors.adoc
+  )
 else ()
   message(STATUS "Asciidoc: reusing old Authors.html")
-  install(CODE "
-    execute_process(
-      COMMAND cmake -e copy ${CMAKE_SOURCE_DIR}/Authors.adoc
-          ${CMAKE_BINARY_DIR}/Authors.html
-    )
-  ")
+  execute_process(
+    COMMAND cmake -e copy ${CMAKE_SOURCE_DIR}/Authors.adoc
+        ${CMAKE_BINARY_DIR}/Authors.html
+  )
 endif ()
 
 set(basemap_shp
@@ -1731,7 +1727,9 @@ if (APPLE)
   )
 
   set_source_files_properties(
-    ${CMAKE_BINARY_DIR}/Authors.html PROPERTIES MACOSX_PACKAGE_LOCATION SharedSupport
+    ${CMAKE_BINARY_DIR}/Authors.html
+      GENERATED
+      PROPERTIES MACOSX_PACKAGE_LOCATION SharedSupport
   )
 
   set_source_files_properties(
