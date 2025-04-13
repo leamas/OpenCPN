@@ -57,7 +57,7 @@ else ()
   endif ()
   include(FetchContent)
   FetchContent_Declare(rapidjson_src URL ${src_url} URL_HASH ${src_hash})
-  FetchContent_Populate(rapidjson_src)
+  FetchContent_MakeAvailable(rapidjson_src)
   FetchContent_GetProperties(rapidjson_src SOURCE_DIR src_dir)
   message(STATUS "Using downloaded rapidjson at ${src_dir}/include")
 
