@@ -47,8 +47,14 @@ if (SHAPELIB_FOUND)
   target_include_directories(_SHAPELIB_IF INTERFACE ${Shapelib_INCLUDE_DIRS})
   return ()
 endif ()
+
 if (${CMAKE_VERSION} VERSION_LESS 3.20)
   message(WARNING "Using downloaded sources requires cmake >= 3.20")
+endif ()
+
+if (POLICY CMP0169)
+  # FetchContent_Populate cannot be used if NEW
+  cmake_policy(SET CMP0169 OLD)
 endif ()
 
 include(FetchContent)
@@ -69,7 +75,7 @@ foreach (patch ${patches})
   )
 endforeach ()
 
-if (NOT TARGET shapelib::shapelib)
+if (NOT TARGET shp)
   set(BUILD_TESTING OFF CACHE BOOL "")
   add_subdirectory(${src_dir} shapelib_dir)
 endif ()
