@@ -35,6 +35,8 @@ if (POLICY CMP0135)
   cmake_policy(SET CMP0135 NEW)
 endif ()
 
+list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
+
 add_library(_SHAPELIB_IF INTERFACE)
 add_library(ocpn::shapelib ALIAS _SHAPELIB_IF)
 
