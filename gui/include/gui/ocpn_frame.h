@@ -261,6 +261,7 @@ public:
   double GetBestVPScale(ChartBase* pchart);
 
   DataMonitor* GetDataMonitor() const { return m_data_monitor; }
+  NmeaLog* GetNmeaLog() const { return dynamic_cast<NmeaLog>(m_data_monitor); }
 
   ColorScheme GetColorScheme();
   void SetAndApplyColorScheme(ColorScheme cs);
