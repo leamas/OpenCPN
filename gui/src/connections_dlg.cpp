@@ -152,7 +152,7 @@ public:
   }
 
   wxSize GetBestSize(wxGrid& grid, wxGridCellAttr& attr, wxDC& dc, int row,
-                     int col) {
+                     int col) override {
     // Return the size of the bitmap as the best size for the cell
     return wxSize(m_bitmap.GetWidth(), m_bitmap.GetHeight());
   }
@@ -289,9 +289,9 @@ public:
     GetGridWindow()->Bind(wxEVT_MOUSEWHEEL,
                           [&](const wxMouseEvent& ev) { OnWheel(ev); });
     Bind(wxEVT_GRID_LABEL_LEFT_CLICK,
-         [&](const wxGridEvent& ev) { HandleSort(ev.GetCol()); });
+         [&](wxGridEvent& ev) { HandleSort(ev.GetCol()); });
     Bind(wxEVT_GRID_CELL_LEFT_CLICK,
-         [&](const wxGridEvent& ev) { OnClickCell(ev.GetRow(), ev.GetCol()); });
+         [&](wxGridEvent& ev) { OnClickCell(ev.GetRow(), ev.GetCol()); });
     Bind(wxEVT_PAINT, [&](wxPaintEvent& ev) {
       SetColAttributes(static_cast<wxWindow*>(ev.GetEventObject()));
       ev.Skip();
