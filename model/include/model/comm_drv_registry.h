@@ -74,7 +74,7 @@ public:
    * Updated by drivers with a shared Navmsg pointer when receiving
    * unparsable data.
    */
-  EventVar evt_unparsable_msg;
+  EventVar evt_undelivered_msg;
 
   /**
    *  Notified for messages from drivers. The generated event contains:

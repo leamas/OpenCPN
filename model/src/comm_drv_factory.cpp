@@ -58,10 +58,10 @@ public:
   void Notify(const AbstractCommDriver& driver) override {}
 
   void Notify(std::shared_ptr<const NavMsg> message) override {
-    if (message->state != NavMsg::State::kCannotParse) {
-      NavMsgBus::GetInstance().Notify(message);
+    if (message->state == NavMsg::State::kCannotParse) {
+      CommDriverRegistry::GetInstance().evt_undelivered_msg.Notify(message);
     } else {
-      CommDriverRegistry::GetInstance().evt_unparsable_msg.Notify(message);
+      NavMsgBus::GetInstance().Notify(message);
     }
   }
 };
