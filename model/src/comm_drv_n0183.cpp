@@ -93,7 +93,8 @@ void CommDriverN0183::SendToListener(const std::string& payload,
     state = NavMsg::State::kOk;
 
   // We notify based on full message, including the Talker ID
-  std::string id = sentence.substr(1, 5);
+  std::string id =
+      state == NavMsg::State::kCannotParse ? "TRASH" : sentence.substr(1, 5);
   auto msg =
       std::make_shared<const Nmea0183Msg>(id, sentence, GetAddress(), state);
   listener.Notify(std::move(msg));

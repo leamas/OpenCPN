@@ -49,7 +49,7 @@ DataMonitorSrc::DataMonitorSrc(const SinkFunc& sink_func)
                      [&](ObservedEvt&) { OnNewMessage(); });
   undelivered_msg_lstnr.Init(
       CommDriverRegistry::GetInstance().evt_undelivered_msg,
-      [&](ObservedEvt&) { OnNewMessage(); });
+      [&](ObservedEvt& ev) { OnMessage(ev); });
 }
 
 void DataMonitorSrc::OnNewMessage() {
