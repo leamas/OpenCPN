@@ -418,7 +418,7 @@ public:
     ClearGrid();
     m_renderer_status_vector.clear();
 
-    for (auto it = connections.begin(); it != connections.end(); ++it++) {
+    for (auto it = connections.begin(); it != connections.end(); ++it) {
       const auto row = static_cast<int>(it - connections.begin());
       EnsureRows(row);
       SetCellValue(row, 0, (*it)->bEnabled ? "1" : "");
@@ -594,7 +594,7 @@ private:
 
   /** Handle mouse movements i.e., the tooltips. */
   void OnMouseMove(const wxMouseEvent& ev) {
-    wxPoint pt = ev.GetPosition();
+    const wxPoint pt = ev.GetPosition();
     int row = YToRow(pt.y);
     int col = XToCol(pt.x);
     if (col < 0 || col >= 7 || row < 0 || row >= GetNumberRows()) return;
@@ -862,7 +862,7 @@ public:
       : wxPanel(parent, wxID_ANY) {
     auto sizer = new wxStaticBoxSizer(wxVERTICAL, this, "");
     sizer->Add(new BearingsCheckbox(this), wxSizerFlags().Expand());
-    sizer->Add(new ExtraRmbRmcCheckbox(this), wxSizerFlags().Expand());
+    sizer->Add(new ExtraRmbRmcLine(this), wxSizerFlags().Expand());
     sizer->Add(new NmeaFilterRow(this), wxSizerFlags().Expand());
     sizer->Add(new TalkerIdRow(this), wxSizerFlags().Expand());
     sizer->Add(new NetmaskRow(this), wxSizerFlags().Expand());
@@ -897,10 +897,25 @@ private:
       void Cancel() override { SetValue(g_always_send_rmb_rmc); }
     };
 
+    class HelpButton : public wxButton {
+    public:
+      explicit HelpButton(wxWindow* parent)
+          : wxButton(parent, wxID_ANY, " ? ", wxDefaultPosition, wxDefaultSize,
+                     wxBU_EXACTFIT) {}
+    };
+
   public:
-    explicit ExtraRmbRmcLine(wxWindow* parent) : wxPanel(parent, wxID_ANY) {}
+    explicit ExtraRmbRmcLine(wxWindow* parent) : wxPanel(parent, wxID_ANY) {
+      auto hbox = new wxBoxSizer(wxHORIZONTAL);
+      hbox->Add(new RmbRmcCheckbox(this), wxSizerFlags().Expand());
+      hbox->Add(1, 1, 1, wxEXPAND);
+      hbox->Add(new HelpButton(this), wxSizerFlags().Border());
+      SetSizer(hbox);
+      wxWindow::Layout();
+      wxWindow::Show();
+    }
   };
-  class ExtraRmbRmcCheckbox : public wxCheckBox, public ApplyCancel {
+  class ExtraRmbRmcCheckbox final : public wxCheckBox, public ApplyCancel {
   public:
     explicit ExtraRmbRmcCheckbox(wxWindow* parent)
         : wxCheckBox(parent, wxID_ANY,
@@ -1041,7 +1056,8 @@ public:
 
     auto advanced_panel = new AdvancedPanel(this, panel_max_size);
     m_advanced_panel = advanced_panel;
-    auto on_toggle = [&, advanced_panel, vbox](bool show) {
+    auto on_toggle = [&, advanced_panel, conn_grid, vbox](bool show) {
+      // FIXME advanced_panel->SetMaxSize({conn_grid->GetSize().x, -1});
       advanced_panel->Show(show);
       vbox->SetSizeHints(this);
       vbox->Fit(this);
