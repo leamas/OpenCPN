@@ -31,6 +31,8 @@
 #include <wx/panel.h>
 #include <wx/sizer.h>
 #include <wx/spinctrl.h>
+#include <wx/statbox.h>
+#include <wx/statline.h>
 #include <wx/textctrl.h>
 #include <wx/window.h>
 
@@ -55,6 +57,8 @@
 #include "priority_gui.h"
 #include "std_filesystem.h"
 #include "svg_utils.h"
+
+#include <wx/gtk/statline.h>
 
 extern OCPNPlatform* g_Platform;
 extern options* g_options;
@@ -905,9 +909,35 @@ private:
     public:
       explicit HelpButton(wxWindow* parent)
           : wxButton(parent, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
-                     wxBU_EXACTFIT | wxBORDER_NONE) {
+                     wxBU_EXACTFIT | wxBORDER_NONE),
+            m_info_panel(new InfoPanel(parent)) {
         SetBitmap(StdIcons(parent).help_info);
+        Bind(wxEVT_COMMAND_BUTTON_CLICKED, [&](wxCommandEvent&) {
+          std::cout << "orvar got clicked\n";
+          m_info_panel->Fit();
+          m_info_panel->Show();
+        });
       }
+
+    private:
+      class InfoPanel : public wxPanel {
+      public:
+        explicit InfoPanel(wxWindow* parent) : wxPanel(parent, wxID_ANY) {
+          auto vbox = new wxBoxSizer(wxVERTICAL);
+          vbox->Add(new wxStaticText(this, wxID_ANY, "Orvar"),
+                    wxSizerFlags().Expand());
+          vbox->Add(new wxStaticLine(this, wxID_ANY), wxSizerFlags().Expand());
+          auto button_sizer = new wxStdDialogButtonSizer();
+          auto ok_btn = new wxButton(this, wxID_OK);
+          ok_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED,
+                       [&](wxCommandEvent&) { Hide(); });
+          button_sizer->SetAffirmativeButton(ok_btn);
+          vbox->Add(button_sizer, wxSizerFlags().Expand());
+          wxWindow::Layout();
+          Hide();
+        }
+      };
+      InfoPanel* m_info_panel;
     };
 
   public:
