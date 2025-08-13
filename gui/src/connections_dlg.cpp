@@ -154,7 +154,8 @@ public:
         open_circle_proto(LoadIcon("circle-off.svg")),
         exclaim_mark_proto(LoadIcon("exclaim_mark.svg")),
         x_mult_proto(LoadIcon("X_mult.svg")),
-        check_mark_proto(LoadIcon("check_mark.svg")) {
+        check_mark_proto(LoadIcon("check_mark.svg")),
+        help_info_proto(LoadIcon("help-info.svg")) {
     trash_bin = trash_bin_proto;
     settings = settings_proto;
     filled_circle = filled_circle_proto;
@@ -162,6 +163,7 @@ public:
     exclaim_mark = exclaim_mark_proto;
     x_mult = x_mult_proto;
     check_mark = check_mark_proto;
+    help_info = help_info_proto;
   }
 
   void SetColorScheme(const ColorScheme cs) {
@@ -184,6 +186,7 @@ public:
   const wxBitmap exclaim_mark_proto;
   const wxBitmap x_mult_proto;
   const wxBitmap check_mark_proto;
+  const wxBitmap help_info_proto;
 
   wxBitmap trash_bin;
   wxBitmap settings;
@@ -192,6 +195,7 @@ public:
   wxBitmap exclaim_mark;
   wxBitmap x_mult;
   wxBitmap check_mark;
+  wxBitmap help_info;
 };
 
 /** Custom renderer class for rendering bitmap in a grid cell */
@@ -900,8 +904,10 @@ private:
     class HelpButton : public wxButton {
     public:
       explicit HelpButton(wxWindow* parent)
-          : wxButton(parent, wxID_ANY, " ? ", wxDefaultPosition, wxDefaultSize,
-                     wxBU_EXACTFIT) {}
+          : wxButton(parent, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                     wxBU_EXACTFIT | wxBORDER_NONE) {
+        SetBitmap(StdIcons(parent).help_info);
+      }
     };
 
   public:
