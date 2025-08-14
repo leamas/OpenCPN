@@ -63,6 +63,15 @@
 extern OCPNPlatform* g_Platform;
 extern options* g_options;
 
+static const char* const kRmbRmcHelp = _(R"---(
+Always transmit RMB and RMC sentences on enabled output
+ports, even when no route is active. Required by some
+instruments that need these sentences to display navigation
+data.
+
+Note: Output filtering rules still apply - ensure RMB
+and RMC are not blocked in connection-specific filters.)---");
+
 static wxString UtfArrowDown() { return wxString::FromUTF8(u8"\u25bc"); }
 static wxString UtfArrowRight() { return wxString::FromUTF8(u8"\u25ba"); }
 static wxString UtfFilledCircle() { return wxString::FromUTF8(u8"\u2b24"); }
@@ -907,37 +916,43 @@ private:
 
     class HelpButton : public wxButton {
     public:
-      explicit HelpButton(wxWindow* parent)
+      explicit HelpButton(wxWindow* parent, const std::string& title,
+                          const std::string& info)
           : wxButton(parent, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
                      wxBU_EXACTFIT | wxBORDER_NONE),
-            m_info_panel(new InfoPanel(parent)) {
+            m_info_frame(new InfoFrame(wxTheApp->GetTopWindow(), title, info)) {
         SetBitmap(StdIcons(parent).help_info);
         Bind(wxEVT_COMMAND_BUTTON_CLICKED, [&](wxCommandEvent&) {
-          std::cout << "orvar got clicked\n";
-          m_info_panel->Fit();
-          m_info_panel->Show();
+          m_info_frame->Fit();
+          m_info_frame->Show();
         });
       }
 
     private:
-      class InfoPanel : public wxPanel {
+      class InfoFrame : public wxFrame {
       public:
-        explicit InfoPanel(wxWindow* parent) : wxPanel(parent, wxID_ANY) {
+        explicit InfoFrame(wxWindow* parent, const std::string& title,
+                           const std::string& info)
+            : wxFrame(parent, wxID_ANY, title, wxDefaultPosition, wxDefaultSize,
+                      wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT) {
           auto vbox = new wxBoxSizer(wxVERTICAL);
-          vbox->Add(new wxStaticText(this, wxID_ANY, "Orvar"),
-                    wxSizerFlags().Expand());
-          vbox->Add(new wxStaticLine(this, wxID_ANY), wxSizerFlags().Expand());
+          auto flags = wxSizerFlags().Expand();
+          vbox->Add(new wxStaticText(this, wxID_ANY, info), flags.Border());
+          vbox->Add(new wxStaticLine(this, wxID_ANY), flags);
           auto button_sizer = new wxStdDialogButtonSizer();
           auto ok_btn = new wxButton(this, wxID_OK);
           ok_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED,
                        [&](wxCommandEvent&) { Hide(); });
           button_sizer->SetAffirmativeButton(ok_btn);
-          vbox->Add(button_sizer, wxSizerFlags().Expand());
+          button_sizer->Realize();
+          vbox->Add(button_sizer, flags.Border());
+          SetSizer(vbox);
           wxWindow::Layout();
           Hide();
         }
       };
-      InfoPanel* m_info_panel;
+
+      InfoFrame* m_info_frame;
     };
 
   public:
@@ -945,12 +960,14 @@ private:
       auto hbox = new wxBoxSizer(wxHORIZONTAL);
       hbox->Add(new RmbRmcCheckbox(this), wxSizerFlags().Expand());
       hbox->Add(1, 1, 1, wxEXPAND);
-      hbox->Add(new HelpButton(this), wxSizerFlags().Border());
+      hbox->Add(new HelpButton(this, "Help", kRmbRmcHelp),
+                wxSizerFlags().Border());
       SetSizer(hbox);
       wxWindow::Layout();
       wxWindow::Show();
     }
   };
+
   class ExtraRmbRmcCheckbox final : public wxCheckBox, public ApplyCancel {
   public:
     explicit ExtraRmbRmcCheckbox(wxWindow* parent)
