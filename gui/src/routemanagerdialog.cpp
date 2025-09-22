@@ -1438,11 +1438,9 @@ void RouteManagerDialog::OnRteDeleteClick(wxCommandEvent &event) {
 
       Route *proute_to_delete = (Route *)m_pRouteListCtrl->GetItemData(item);
 
-      if (proute_to_delete) list.Append(proute_to_delete);
+      if (proute_to_delete) list.push_back(proute_to_delete);
     }
-
-    for (unsigned int i = 0; i < list.GetCount(); i++) {
-      Route *route = list.Item(i)->GetData();
+    for (Route *route : list) {
       if (route) {
         NavObj_dB::GetInstance().DeleteRoute(route);
         g_pRouteMan->DeleteRoute(route);
@@ -1581,7 +1579,7 @@ void RouteManagerDialog::OnRteExportClick(wxCommandEvent &event) {
     Route *proute_to_export = (Route *)m_pRouteListCtrl->GetItemData(item);
 
     if (proute_to_export) {
-      list.Append(proute_to_export);
+      list.push_back(proute_to_export);
       if (proute_to_export->m_RouteNameString != wxEmptyString)
         suggested_name = proute_to_export->m_RouteNameString;
     }
@@ -2328,7 +2326,7 @@ void RouteManagerDialog::TrackToRoute(Track *track) {
 
   Route *route = track->RouteFromTrack(&pprog);
 
-  pRouteList->Append(route);
+  pRouteList->push_back(route);
 
   pprog.Update(101, _("Done."));
 
@@ -2780,7 +2778,7 @@ void RouteManagerDialog::OnWptGoToClick(wxCommandEvent &event) {
   pSelect->AddSelectableRoutePoint(gLat, gLon, pWP_src);
 
   Route *temp_route = new Route();
-  pRouteList->Append(temp_route);
+  pRouteList->push_back(temp_route);
 
   temp_route->AddPoint(pWP_src);
   temp_route->AddPoint(wp);
@@ -3050,16 +3048,12 @@ void RouteManagerDialog::OnLayDeleteClick(wxCommandEvent &event) {
   }
 
   // Process Tracks and Routes in this layer
-  wxRouteListNode *node1 = pRouteList->GetFirst();
-  while (node1) {
-    Route *pRoute = node1->GetData();
-    wxRouteListNode *next_node = node1->GetNext();
+  for (Route *pRoute : *pRouteList) {
     if (pRoute->m_bIsInLayer && (pRoute->m_LayerID == layer->m_LayerID)) {
       pRoute->m_bIsInLayer = false;
       pRoute->m_LayerID = 0;
       g_pRouteMan->DeleteRoute(pRoute);
     }
-    node1 = next_node;
   }
 
   for (Track *pTrack : g_TrackList) {
@@ -3118,13 +3112,10 @@ void RouteManagerDialog::OnLayToggleChartClick(wxCommandEvent &event) {
 
 void RouteManagerDialog::ToggleLayerContentsOnChart(Layer *layer) {
   // Process Tracks and Routes in this layer
-  wxRouteListNode *node1 = pRouteList->GetFirst();
-  while (node1) {
-    Route *pRoute = node1->GetData();
+  for (Route *pRoute : *pRouteList) {
     if (pRoute->m_bIsInLayer && (pRoute->m_LayerID == layer->m_LayerID)) {
       pRoute->SetVisible(layer->IsVisibleOnChart());
     }
-    node1 = node1->GetNext();
   }
 
   for (Track *pTrack : g_TrackList) {
@@ -3165,9 +3156,7 @@ void RouteManagerDialog::OnLayToggleNamesClick(wxCommandEvent &event) {
 
 void RouteManagerDialog::ToggleLayerContentsNames(Layer *layer) {
   // Process Tracks and Routes in this layer
-  wxRouteListNode *node1 = pRouteList->GetFirst();
-  while (node1) {
-    Route *pRoute = node1->GetData();
+  for (Route *pRoute : *pRouteList) {
     if (pRoute->m_bIsInLayer && (pRoute->m_LayerID == layer->m_LayerID)) {
       for (RoutePoint *prp1 : *pRoute->pRoutePointList) {
         if (layer->HasVisibleNames() == wxCHK_UNDETERMINED) {
@@ -3177,7 +3166,6 @@ void RouteManagerDialog::ToggleLayerContentsNames(Layer *layer) {
         }
       }
     }
-    node1 = node1->GetNext();
   }
 
   // Process waypoints in this layer
@@ -3214,13 +3202,10 @@ void RouteManagerDialog::ToggleLayerContentsOnListing(Layer *layer) {
   ::wxBeginBusyCursor();
 
   // Process Tracks and Routes in this layer
-  wxRouteListNode *node1 = pRouteList->GetFirst();
-  while (node1) {
-    Route *pRoute = node1->GetData();
+  for (Route *pRoute : *pRouteList) {
     if (pRoute->m_bIsInLayer && (pRoute->m_LayerID == layer->m_LayerID)) {
       pRoute->SetListed(layer->IsVisibleOnListing());
     }
-    node1 = node1->GetNext();
   }
 
   for (Track *pTrack : g_TrackList) {
@@ -3343,6 +3328,7 @@ void RouteManagerDialog::OnExportClick(wxCommandEvent &event) {
   ExportGPX(this);
 }
 
+#include "navutil.h"
 void RouteManagerDialog::OnBackupClick(wxCommandEvent &event) {
   int result = BackupDatabase(this);
   if (result == wxID_YES) {
