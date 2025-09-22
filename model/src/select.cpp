@@ -43,8 +43,8 @@ Select::Select() {
 }
 
 Select::~Select() {
-  pSelectList->DeleteContents(true);
-  pSelectList->Clear();
+  for (SelectItem *pItem : *pSelectList) delete pItem;
+  pSelectList->clear();
   delete pSelectList;
 }
 
@@ -52,14 +52,10 @@ bool Select::IsSelectableRoutePointValid(RoutePoint *pRoutePoint) {
   SelectItem *pFindSel;
 
   //    Iterate on the select list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
-
-  while (node) {
-    pFindSel = node->GetData();
+  for (SelectItem *pFindSel : *pSelectList) {
     if (pFindSel->m_seltype == SELTYPE_ROUTEPOINT &&
         (RoutePoint *)pFindSel->m_pData1 == pRoutePoint)
       return true;
-    node = node->GetNext();
   }
   return false;
 }
@@ -73,14 +69,13 @@ bool Select::AddSelectableRoutePoint(float slat, float slon,
   pSelItem->m_bIsSelected = false;
   pSelItem->m_pData1 = pRoutePointAdd;
 
-  wxSelectableItemListNode *node;
+  if (pRoutePointAdd->m_bIsInLayer) {
+    pSelectList->push_back(pSelItem);
+  } else {
+    pSelectList->insert(pSelectList->begin(), pSelItem);
+  }
 
-  if (pRoutePointAdd->m_bIsInLayer)
-    node = pSelectList->Append(pSelItem);
-  else
-    node = pSelectList->Insert(pSelItem);
-
-  pRoutePointAdd->SetSelectNode(node);
+  pRoutePointAdd->SetSelectNode(pSelItem);
 
   return true;
 }
@@ -101,29 +96,28 @@ bool Select::AddSelectableRouteSegment(float slat1, float slon1, float slat2,
   pSelItem->m_pData3 = pRoute;
 
   if (pRoute->m_bIsInLayer)
-    pSelectList->Append(pSelItem);
+    pSelectList->push_back(pSelItem);
   else
-    pSelectList->Insert(pSelItem);
+    pSelectList->insert(pSelectList->begin(), pSelItem);
 
   return true;
 }
 
 bool Select::DeleteAllSelectableRouteSegments(Route *pr) {
-  SelectItem *pFindSel;
-
   //    Iterate on the select list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
+  auto node = pSelectList->begin();
 
-  while (node) {
-    pFindSel = node->GetData();
+  while (node != pSelectList->end()) {
+    SelectItem *pFindSel = *node;
     if (pFindSel->m_seltype == SELTYPE_ROUTESEGMENT &&
-        (Route *)pFindSel->m_pData3 == pr) {
-      delete pFindSel;
-      wxSelectableItemListNode *d = node;
-      node = node->GetNext();
-      pSelectList->DeleteNode(d);  // delete node;
-    } else
-      node = node->GetNext();
+        static_cast<Route *>(pFindSel->m_pData3) == pr) {
+      auto pos = std::find(pSelectList->begin(), pSelectList->end(), pFindSel);
+      if (pos == pSelectList->end()) pSelectList->erase(pos);
+      delete pFindSel;  // FIXME (leamas) proper erase idiom
+      ++node;
+    } else {
+      ++node;
+    }
   }
 
   return true;
@@ -133,29 +127,26 @@ bool Select::DeleteAllSelectableRoutePoints(Route *pr) {
   SelectItem *pFindSel;
 
   //    Iterate on the select list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
+  auto node = pSelectList->begin();
 
-  while (node) {
-    pFindSel = node->GetData();
+  while (node != pSelectList->end()) {
+    pFindSel = *node;
     if (pFindSel->m_seltype == SELTYPE_ROUTEPOINT) {
-      RoutePoint *ps = (RoutePoint *)pFindSel->m_pData1;
+      auto *ps = (RoutePoint *)pFindSel->m_pData1;
       //    inner loop iterates on the route's point list
       for (RoutePoint *prp : *pr->pRoutePointList) {
         if (prp == ps) {
           delete pFindSel;
-          pSelectList->DeleteNode(node);  // delete node;
-          prp->SetSelectNode(NULL);
-
-          node = pSelectList->GetFirst();
-
+          auto pos = std::find(pSelectList->begin(), pSelectList->end(), *node);
+          if (pos == pSelectList->end()) pSelectList->erase(pos);
+          prp->SetSelectNode(nullptr);
+          node = pSelectList->begin();
           goto got_next_outer_node;
         }
       }
     }
-
-    node = node->GetNext();
+    ++node;
   got_next_outer_node:
-    continue;
   }
   return true;
 }
@@ -225,27 +216,19 @@ bool Select::UpdateSelectableRouteSegments(RoutePoint *prp) {
   bool ret = false;
 
   //    Iterate on the select list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
-
-  while (node) {
-    pFindSel = node->GetData();
+  for (SelectItem *pFindSel : *pSelectList) {
     if (pFindSel->m_seltype == SELTYPE_ROUTESEGMENT) {
       if (pFindSel->m_pData1 == prp) {
         pFindSel->m_slat = prp->m_lat;
         pFindSel->m_slon = prp->m_lon;
         ret = true;
-        ;
-      }
-
-      else if (pFindSel->m_pData2 == prp) {
+      } else if (pFindSel->m_pData2 == prp) {
         pFindSel->m_slat2 = prp->m_lat;
         pFindSel->m_slon2 = prp->m_lon;
         ret = true;
       }
     }
-    node = node->GetNext();
   }
-
   return ret;
 }
 
@@ -259,7 +242,7 @@ SelectItem *Select::AddSelectablePoint(float slat, float slon,
     pSelItem->m_bIsSelected = false;
     pSelItem->m_pData1 = pdata;
 
-    pSelectList->Append(pSelItem);
+    pSelectList->push_back(pSelItem);
   }
 
   return pSelItem;
@@ -279,15 +262,16 @@ bool Select::DeleteSelectablePoint(void *pdata, int SeltypeToDelete) {
 
   if (NULL != pdata) {
     //    Iterate on the list
-    wxSelectableItemListNode *node = pSelectList->GetFirst();
+    auto node = pSelectList->begin();
 
-    while (node) {
-      pFindSel = node->GetData();
+    while (node != pSelectList->end()) {
+      pFindSel = *node;
       if (pFindSel->m_seltype == SeltypeToDelete) {
         if (pdata == pFindSel->m_pData1) {
+          auto pos =
+              std::find(pSelectList->begin(), pSelectList->end(), pFindSel);
+          if (pos != pSelectList->end()) pSelectList->erase(pos);
           delete pFindSel;
-          delete node;
-
           if (SELTYPE_ROUTEPOINT == SeltypeToDelete) {
             RoutePoint *prp = (RoutePoint *)pdata;
             prp->SetSelectNode(NULL);
@@ -296,7 +280,7 @@ bool Select::DeleteSelectablePoint(void *pdata, int SeltypeToDelete) {
           return true;
         }
       }
-      node = node->GetNext();
+      ++node;
     }
   }
   return false;
@@ -306,46 +290,36 @@ bool Select::DeleteAllSelectableTypePoints(int SeltypeToDelete) {
   SelectItem *pFindSel;
 
   //    Iterate on the list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
+  auto node = pSelectList->begin();
 
-  while (node) {
-    pFindSel = node->GetData();
+  while (node != pSelectList->end()) {
+    pFindSel = *node;
     if (pFindSel->m_seltype == SeltypeToDelete) {
-      delete node;
-
+      auto pos = std::find(pSelectList->begin(), pSelectList->end(), pFindSel);
+      if (pos != pSelectList->end()) pSelectList->erase(pos);
       if (SELTYPE_ROUTEPOINT == SeltypeToDelete) {
         RoutePoint *prp = (RoutePoint *)pFindSel->m_pData1;
         prp->SetSelectNode(NULL);
       }
       delete pFindSel;
 
-      node = pSelectList->GetFirst();
-      goto got_next_node;
+      node = pSelectList->begin();
+      continue;
     }
-
-    node = node->GetNext();
-  got_next_node:
-    continue;
+    ++node;
   }
   return true;
 }
 
 bool Select::DeleteSelectableRoutePoint(RoutePoint *prp) {
-  if (NULL != prp) {
-    wxSelectableItemListNode *node =
-        (wxSelectableItemListNode *)prp->GetSelectNode();
-    if (node) {
-      SelectItem *pFindSel = node->GetData();
-      if (pFindSel) {
-        delete pFindSel;
-        delete node;  // automatically removes from list
-        prp->SetSelectNode(NULL);
-        return true;
-      }
-    } else
-      return DeleteSelectablePoint(prp, SELTYPE_ROUTEPOINT);
-  }
-  return false;
+  if (!prp) return false;
+  auto *pFindSel = static_cast<SelectItem *>(prp->GetSelectNode());
+  if (!pFindSel) return false;
+  auto pos = std::find(pSelectList->begin(), pSelectList->end(), pFindSel);
+  if (pos == pSelectList->end()) pSelectList->erase(pos);
+  delete pFindSel;
+  prp->SetSelectNode(nullptr);
+  return true;
 }
 
 bool Select::ModifySelectablePoint(float lat, float lon, void *data,
@@ -353,10 +327,7 @@ bool Select::ModifySelectablePoint(float lat, float lon, void *data,
   SelectItem *pFindSel;
 
   //    Iterate on the list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
-
-  while (node) {
-    pFindSel = node->GetData();
+  for (SelectItem *pFindSel : *pSelectList) {
     if (pFindSel->m_seltype == SeltypeToModify) {
       if (data == pFindSel->m_pData1) {
         pFindSel->m_slat = lat;
@@ -364,8 +335,6 @@ bool Select::ModifySelectablePoint(float lat, float lon, void *data,
         return true;
       }
     }
-
-    node = node->GetNext();
   }
   return false;
 }
@@ -386,9 +355,9 @@ bool Select::AddSelectableTrackSegment(float slat1, float slon1, float slat2,
   pSelItem->m_pData3 = pTrack;
 
   if (pTrack->m_bIsInLayer)
-    pSelectList->Append(pSelItem);
+    pSelectList->push_back(pSelItem);
   else
-    pSelectList->Insert(pSelItem);
+    pSelectList->insert(pSelectList->begin(), pSelItem);
 
   return true;
 }
@@ -397,18 +366,19 @@ bool Select::DeleteAllSelectableTrackSegments(Track *pt) {
   SelectItem *pFindSel;
 
   //    Iterate on the select list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
+  auto node = pSelectList->begin();
 
-  while (node) {
-    pFindSel = node->GetData();
+  while (node != pSelectList->end()) {
+    pFindSel = *node;
     if (pFindSel->m_seltype == SELTYPE_TRACKSEGMENT &&
         (Track *)pFindSel->m_pData3 == pt) {
+      auto pos = std::find(pSelectList->begin(), pSelectList->end(), pFindSel);
+      if (pos != pSelectList->end()) pSelectList->erase(pos);
       delete pFindSel;
-      wxSelectableItemListNode *d = node;
-      node = node->GetNext();
-      pSelectList->DeleteNode(d);  // delete node;
-    } else
-      node = node->GetNext();
+      ++node;
+    } else {
+      ++node;
+    }
   }
   return true;
 }
@@ -417,19 +387,20 @@ bool Select::DeletePointSelectableTrackSegments(TrackPoint *pt) {
   SelectItem *pFindSel;
 
   //    Iterate on the select list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
+  auto node = pSelectList->begin();
 
-  while (node) {
-    pFindSel = node->GetData();
+  while (node != pSelectList->end()) {
+    pFindSel = *node;
     if (pFindSel->m_seltype == SELTYPE_TRACKSEGMENT &&
         ((TrackPoint *)pFindSel->m_pData1 == pt ||
          (TrackPoint *)pFindSel->m_pData2 == pt)) {
+      auto pos = std::find(pSelectList->begin(), pSelectList->end(), pFindSel);
+      if (pos != pSelectList->end()) pSelectList->erase(pos);
       delete pFindSel;
-      wxSelectableItemListNode *d = node;
-      node = node->GetNext();
-      pSelectList->DeleteNode(d);  // delete node;
-    } else
-      node = node->GetNext();
+      ++node;
+    } else {
+      ++node;
+    }
   }
   return true;
 }
@@ -502,15 +473,10 @@ void Select::CalcSelectRadius(SelectCtx &ctx) {
 SelectItem *Select::FindSelection(SelectCtx &ctx, float slat, float slon,
                                   int fseltype) {
   float a, b, c, d;
-  SelectItem *pFindSel;
-
   CalcSelectRadius(ctx);
 
   //    Iterate on the list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
-
-  while (node) {
-    pFindSel = node->GetData();
+  for (SelectItem *pFindSel : *pSelectList) {
     if (pFindSel->m_seltype == fseltype) {
       switch (fseltype) {
         case SELTYPE_ROUTEPOINT:
@@ -542,8 +508,6 @@ SelectItem *Select::FindSelection(SelectCtx &ctx, float slat, float slon,
           break;
       }
     }
-
-    node = node->GetNext();
   }
 
   return NULL;
@@ -554,14 +518,11 @@ find_ok:
 bool Select::IsSelectableSegmentSelected(SelectCtx &ctx, float slat, float slon,
                                          SelectItem *pFindSel) {
   bool valid = false;
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
-
-  while (node) {
-    if (pFindSel == node->GetData()) {
+  for (SelectItem *si : *pSelectList) {
+    if (pFindSel == si) {
       valid = true;
       break;
     }
-    node = node->GetNext();
   }
 
   if (valid == false) {
@@ -598,11 +559,7 @@ SelectableItemList Select::FindSelectionList(SelectCtx &ctx, float slat,
 
   CalcSelectRadius(ctx);
 
-  //    Iterate on the list
-  wxSelectableItemListNode *node = pSelectList->GetFirst();
-
-  while (node) {
-    pFindSel = node->GetData();
+  for (SelectItem *pFindSel : *pSelectList) {
     if (pFindSel->m_seltype == fseltype) {
       switch (fseltype) {
         case SELTYPE_ROUTEPOINT:
@@ -611,7 +568,7 @@ SelectableItemList Select::FindSelectionList(SelectCtx &ctx, float slat,
             if (is_selectable_wp(ctx, (RoutePoint *)pFindSel->m_pData1))
               if (((RoutePoint *)pFindSel->m_pData1)
                       ->IsVisibleSelectable(ctx.chart_scale))
-                ret_list.Append(pFindSel);
+                ret_list.push_back(pFindSel);
           break;
         case SELTYPE_TIDEPOINT:
         case SELTYPE_CURRENTPOINT:
@@ -620,7 +577,7 @@ SelectableItemList Select::FindSelectionList(SelectCtx &ctx, float slat,
           if ((fabs(slat - pFindSel->m_slat) < selectRadius) &&
               (fabs(slon - pFindSel->m_slon) < selectRadius)) {
             if (is_selectable_wp(ctx, (RoutePoint *)pFindSel->m_pData1))
-              ret_list.Append(pFindSel);
+              ret_list.push_back(pFindSel);
           }
           break;
         case SELTYPE_ROUTESEGMENT:
@@ -634,7 +591,7 @@ SelectableItemList Select::FindSelectionList(SelectCtx &ctx, float slat,
             if (ctx.show_nav_objects ||
                 (fseltype == SELTYPE_ROUTESEGMENT &&
                  ((Route *)pFindSel->m_pData3)->m_bRtIsActive)) {
-              ret_list.Append(pFindSel);
+              ret_list.push_back(pFindSel);
             }
           }
 
@@ -644,8 +601,6 @@ SelectableItemList Select::FindSelectionList(SelectCtx &ctx, float slat,
           break;
       }
     }
-
-    node = node->GetNext();
   }
 
   return ret_list;
