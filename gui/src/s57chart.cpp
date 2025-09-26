@@ -52,7 +52,6 @@
 #include "ocpn_pixel.h"
 #include "ocpndc.h"
 #include "s52utils.h"
-#include "model/wx28compat.h"
 #include "model/chartdata_input_stream.h"
 
 #include "gdal/cpl_csv.h"

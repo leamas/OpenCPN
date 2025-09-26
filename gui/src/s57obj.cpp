@@ -49,7 +49,6 @@
 #include "ocpn_pixel.h"
 #include "ocpndc.h"
 #include "s52utils.h"
-#include "model/wx28compat.h"
 
 #include "gdal/cpl_csv.h"
 #include "setjmp.h"
