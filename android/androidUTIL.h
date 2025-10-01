@@ -35,7 +35,7 @@
 #include <QString>
 #include <string>
 
-#include "OCPN_Sound.h"
+#include "o_sound/sound.h"
 #include "android_jvm.h"
 #include "model/datetime.h"
 #include "model/base_platform.h"
