@@ -423,6 +423,7 @@ void CommDriverSignalKNet::handle_SK_sentence(
     wxLogMessage(msg);
   }
 
+  m_self = "-";
   if (root.HasMember("self")) {
     if (strncmp(root["self"].GetString(), "vessels.", 8) == 0)
       m_self = (root["self"].GetString());  // for java server, and OpenPlotter
@@ -432,6 +433,7 @@ void CommDriverSignalKNet::handle_SK_sentence(
                    .append(root["self"].GetString());  // for Node.js server
   }
 
+  m_context = "-";
   if (root.HasMember("context") && root["context"].IsString()) {
     m_context = root["context"].GetString();
   }
