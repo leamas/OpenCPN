@@ -883,6 +883,7 @@ set(GUI_HDRS
     ${GUI_HDR_DIR}/tty_scroll.h
     ${GUI_HDR_DIR}/udev_rule_mgr.h
     ${GUI_HDR_DIR}/undo.h
+    ${GUI_HDR_DIR}/undo_handler.h
     ${GUI_HDR_DIR}/tooltip.h
     ${GUI_HDR_DIR}/update_mgr.h
     ${GUI_HDR_DIR}/usb_devices.h
