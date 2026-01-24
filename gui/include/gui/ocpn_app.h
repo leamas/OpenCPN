@@ -42,8 +42,9 @@
 #include "model/usb_watch_daemon.h"
 
 #include "data_monitor.h"
+#include "ocpn_plugin.h"
 
-class MyApp : public wxApp {
+class MyApp : public wxApp, public Api121Support {
 public:
   MyApp();
   ~MyApp() {};
@@ -64,6 +65,11 @@ public:
   void OnActivateApp(wxActivateEvent& event);
   bool OpenFile(const std::string& path);
   void OnUnhandledException() override;
+
+
+  std::unordered_map<std::string, std::function<void()>>& GetMsgTypeCallbacks() {
+    return m_msg_type_callbacks;
+  }
 
 #ifdef LINUX_CRASHRPT
   //! fatal exeption handling
@@ -98,6 +104,7 @@ private:
   void InitRestListeners();
   ObsListener rest_activate_listener;
   ObsListener rest_reverse_listener;
+  std::unordered_map<std::string, std::function<void()>> m_msg_type_callbacks;
 };
 
 wxDECLARE_APP(MyApp);
