@@ -1330,6 +1330,16 @@ bool MyApp::OnInit() {
     });
   }
 
+  std::cout << "Testing GetActiveMessages()\n";
+  std::shared_ptr<HostApi> host_api = std::move(GetHostApi());
+  auto api_121 = std::dynamic_pointer_cast<HostApi121>(host_api);
+  api_121->RegisterNewMsgTypeCallback("testing", [api_121] {
+    auto types = api_121->GetActiveMessages();
+    for (const auto &t : types) std::cout << t << " ";
+    std::cout << "\n";
+  });
+  api_121->RegisterNewMsgTypeCallback("testing", nullptr);
+
   return TRUE;
 }
 
