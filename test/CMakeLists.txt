@@ -7,6 +7,27 @@ message(STATUS "Building tests")
 
 enable_testing ()
 
+add_executable(test_config   ${CMAKE_SOURCE_DIR}/test/test_config.cpp)
+target_link_libraries(test_config  PRIVATE ${wxWidgets_LIBRARIES})
+if (NOT "${ENABLE_SANITIZER}" STREQUAL "none")
+  target_link_libraries(test_config  PRIVATE -fsanitize=${ENABLE_SANITIZER})
+endif ()
+target_include_directories(test_config  PRIVATE ${wxWidgets_INCLUDE_DIRS})
+
+add_custom_command(
+  OUTPUT ${CMAKE_BINARY_DIR}/test_config.h
+  COMMAND test_config
+  WORKING_DIRECTORY  ${CMAKE_BINARY_DIR}
+  VERBATIM
+  COMMENT "Running test_config "
+)
+
+add_custom_target(config_tests
+  DEPENDS ${CMAKE_BINARY_DIR}/test_config.h
+  COMMAND cmake -E
+      copy ${CMAKE_BINARY_DIR}/test_config.h ${CMAKE_BINARY_DIR}/include
+)
+
 add_library(win32_libs INTERFACE)
 if (MSVC)
   target_link_libraries(win32_libs
@@ -18,7 +39,13 @@ endif ()
 
 set(MODEL_SRC_DIR ${CMAKE_SOURCE_DIR}/model/src)
 
-set(SRC tests.cpp filter_tests.cpp navutil_base_tests.cpp route_point_tests.cpp ${CMAKE_SOURCE_DIR}/cli/api_shim.cpp)
+set(SRC
+  tests.cpp filter_tests.cpp
+  navutil_base_tests.cpp
+  route_point_tests.cpp
+  ${CMAKE_SOURCE_DIR}/cli/api_shim.cpp
+)
+
 if ("${OCPN_WX_VERSION}" GREATER_EQUAL 32)
   list(APPEND SRC datetime_tests.cpp)
 endif ()
@@ -36,6 +63,8 @@ if (CURL)
 endif ()
 
 add_executable(tests ${SRC})
+
+
 if (DEFINED ENV{FLATPAK_ID})
   target_compile_definitions(tests PRIVATE OCPN_FLATPAK)
 endif ()
@@ -55,6 +84,7 @@ target_compile_definitions(tests
     FILTER_DIR="${CMAKE_SOURCE_DIR}/data/filters"
     UNIT_TESTS
 )
+add_dependencies(tests config_tests)
 
 target_link_libraries(tests PRIVATE ocpn::model-src ocpn::gtest win32_libs)
 if (NOT "${ENABLE_SANITIZER}" STREQUAL "none")
