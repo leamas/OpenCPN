@@ -25,10 +25,18 @@
 #include <ctime>
 #include <fstream>
 
+#ifdef _MSC_VER
+#include <windows.h>
+#endif
+
 #include <wx/intl.h>
 
 #if wxCHECK_VERSION(3, 1, 6)
 #include <wx/uilocale.h>
+#endif
+
+#ifdef _MSC_VER
+#define setenv(var, value, force) _putenv_s(var, value)
 #endif
 
 int main(int argc, char** argv) {
@@ -47,6 +55,8 @@ int main(int argc, char** argv) {
 #else
   stream << "\n";
 #endif
+
+  // DateTimeFormatTest.LocalTimezoneEST support.
   struct tm tm;
   tm.tm_sec = 57;
   tm.tm_min = 45;
@@ -55,6 +65,7 @@ int main(int argc, char** argv) {
   tm.tm_mday = 22;
   tm.tm_year = 123;
   tm.tm_wday = 3;
+  setenv("TZ", "EST+5", true);
   char buf[128];
   std::strftime(buf, sizeof(buf), "%A, %B %d, %Y %H:%M:%S", &tm);
   stream << "#define LOCALTIME_DATE \"" << buf << "\"\n";
