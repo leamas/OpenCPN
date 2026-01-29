@@ -232,7 +232,8 @@ TEST_F(DateTimeFormatTest, LocalTimezoneEST) {
                                    .SetTimezone("Local Time");
   wxString result = ocpn::toUsrDateTimeFormat(testDate, opts, us_locale);
   std::string s = result.ToStdString();
-  EXPECT_TRUE(s.find(LOCALTIME_DATE) == 0) << "Actual date/time: " << result;
+  EXPECT_TRUE(s.find(LOCALTIME_DATE) == 0)
+      << "Actual date/time: " << result << ", expected: " LOCALTIME_DATE;
   // Check for timezone abbreviation since we set it to EST
   EXPECT_TRUE(result.Contains(" EST") || result.Contains("LOC"))
       << "Actual timezone: " << result;
