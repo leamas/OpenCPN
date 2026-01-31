@@ -717,34 +717,35 @@ if (NOT QT_ANDROID)
 endif (NOT QT_ANDROID)
 
 # Handle #1500: Force NDEBUG on gtk3 for wxwidgets < 3.2 (all builds)
-if (GTK3_FOUND)
-  set(_VERSPROG
-      [=[
-    #include <stdio.h>
-    #include <wx/version.h>
-    int main(int argc, char**argv) {
-      printf("%d", wxMAJOR_VERSION * 10 + wxMINOR_VERSION);
-    }
-  ]=]
-  )
-  set(TRY_COMPILE
-      "echo '${_VERSPROG}' > wx-32.c; cc $(${wxWidgets_CONFIG_EXECUTABLE} --cflags) wx-32.c; ./a.out"
-  )
-  execute_process(
-    COMMAND "/bin/sh" "-c" "${TRY_COMPILE}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    OUTPUT_VARIABLE _WX_VERSION
-    ERROR_VARIABLE _WX_ERRORS
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-  if (NOT "${_WX_ERRORS}" STREQUAL "" OR "${_WX_VERSION}" STREQUAL "")
-    message(FATAL_ERROR "Cannot run wxWidgets  version test (!)")
-  elseif ("${_WX_VERSION}" LESS 32)
-    add_definitions("-DNDEBUG")
-    message(STATUS "Forcing -NDEBUG on gtk3 build (#1500).")
-  endif ()
-  set(OCPN_WX_VERSION ${_WX_VERSION})
+# and export wxwidgets version as OCPN_WX_VERSION
+set(_VERSPROG
+    [=[
+  #include <stdio.h>
+  #include <wx/version.h>
+  int main(int argc, char**argv) {
+    printf("%d", wxMAJOR_VERSION * 10 + wxMINOR_VERSION);
+  }
+]=]
+)
+set(TRY_COMPILE
+    "echo '${_VERSPROG}' > wx-32.c; cc $(${wxWidgets_CONFIG_EXECUTABLE} --cflags) wx-32.c; ./a.out"
+)
+
+execute_process(
+  COMMAND "/bin/sh" "-c" "${TRY_COMPILE}"
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  OUTPUT_VARIABLE _WX_VERSION
+  ERROR_VARIABLE _WX_ERRORS
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+if (NOT "${_WX_ERRORS}" STREQUAL "" OR "${_WX_VERSION}" STREQUAL "")
+  message(FATAL_ERROR "Cannot run wxWidgets  version test (!)")
+elseif ("${_WX_VERSION}" LESS 3 AND GTK3_FOUND)
+  add_definitions("-DNDEBUG")
+  message(STATUS "Forcing -NDEBUG on gtk3 build (#1500).")
 endif ()
+message(STATUS "_WX_VERSION: ${_WX_VERSION}")
+set(OCPN_WX_VERSION ${_WX_VERSION})
 
 # Make sure that the variable "wxWidgets_VERSION_STRING" is set, even on older
 # CMake versions Seems safe to set to "3.0", since OCPN does not support earlier
