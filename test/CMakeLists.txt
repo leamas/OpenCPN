@@ -23,7 +23,9 @@ add_custom_command(
 )
 
 add_custom_target(config_tests
+  COMMENT "Installing test_config.h"
   DEPENDS ${CMAKE_BINARY_DIR}/test_config.h
+  COMMAND cmake -E cat ${CMAKE_BINARY_DIR}/test_config.h
   COMMAND cmake -E
       copy ${CMAKE_BINARY_DIR}/test_config.h ${CMAKE_BINARY_DIR}/include
 )
