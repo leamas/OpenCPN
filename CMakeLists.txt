@@ -723,7 +723,7 @@ if (GTK3_FOUND)
     #include <stdio.h>
     #include <wx/version.h>
     int main(int argc, char**argv) {
-      printf("%d\\n", wxMAJOR_VERSION * 10 + wxMINOR_VERSION);
+      printf("%d", wxMAJOR_VERSION * 10 + wxMINOR_VERSION);
     }
   ]=]
   )

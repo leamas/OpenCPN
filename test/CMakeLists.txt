@@ -48,6 +48,7 @@ set(SRC
   ${CMAKE_SOURCE_DIR}/cli/api_shim.cpp
 )
 
+message(STATUS "OCPN_WX_VERSION: ${OCPN_WX_VERSION}")
 if ("${OCPN_WX_VERSION}" GREATER_EQUAL 32)
   list(APPEND SRC datetime_tests.cpp)
 endif ()
