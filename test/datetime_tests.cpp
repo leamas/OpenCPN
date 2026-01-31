@@ -215,11 +215,12 @@ TEST_F(DateTimeFormatTest, ShowTimezoneDefault) {
 #ifdef HAS_EN_US
 // Test with Local Time in EST timezone
 TEST_F(DateTimeFormatTest, LocalTimezoneEST) {
-  // Set timezone to EST for this test (UTC-5)
-  SetTimezone("EST+5");
-
   wxDateTime testDate(22, wxDateTime::Feb, 2023, 12, 45, 57);
   testDate.MakeFromTimezone(wxDateTime::UTC);
+
+  // Set timezone to EST for this test (UTC-5)
+  SetTimezone("EST");
+
   // Set the UI local locale to US English to ensure consistent formatting
   // regardless of the system locale where the test is run.
   wxUILocale us_locale = wxUILocale::FromTag("en_US.UTF-8");
@@ -232,8 +233,8 @@ TEST_F(DateTimeFormatTest, LocalTimezoneEST) {
                                    .SetTimezone("Local Time");
   wxString result = ocpn::toUsrDateTimeFormat(testDate, opts, us_locale);
   std::string s = result.ToStdString();
-  EXPECT_TRUE(s.find(LOCALTIME_DATE) == 0)
-      << "Actual date/time: " << result << ", expected: " LOCALTIME_DATE;
+  EXPECT_TRUE(s.find("Wednesday, February 22, 2023 07:45:57") == 0)
+      << "Actual date/time: " << s << ", expected: " LOCALTIME_DATE;
   // Check for timezone abbreviation since we set it to EST
   EXPECT_TRUE(result.Contains(" EST") || result.Contains("LOC"))
       << "Actual timezone: " << result;
@@ -243,7 +244,7 @@ TEST_F(DateTimeFormatTest, LocalTimezoneEST) {
   // $weekday_short_date_time
   opts = DateTimeFormatOptions().SetTimezone("Local Time");
   result = ocpn::toUsrDateTimeFormat(testDate, opts, us_locale);
-  EXPECT_TRUE(result.Contains("Wed 02/22/2023 01:45:57 PM"))
+  EXPECT_TRUE(result.Contains("Wed 02/22/2023 07:45:57 AM"))
       << "Actual date/time: " << result;
 
   // Test 3: request with date/time format set to $weekday_short_date_time
@@ -251,7 +252,7 @@ TEST_F(DateTimeFormatTest, LocalTimezoneEST) {
              .SetFormatString("$weekday_short_date_time")
              .SetTimezone("Local Time");
   result = ocpn::toUsrDateTimeFormat(testDate, opts, us_locale);
-  EXPECT_TRUE(result.Contains("Wed 02/22/2023 01:45:57 PM"))
+  EXPECT_TRUE(result.Contains("Wed 02/22/2023 07:45:57 AM"))
       << "Actual date/time: " << result;
 
   // Test 4: request to format date/time in UTC.
@@ -259,6 +260,7 @@ TEST_F(DateTimeFormatTest, LocalTimezoneEST) {
              .SetFormatString("%A, %B %d, %Y %H:%M:%S")
              .SetTimezone("UTC");
   result = ocpn::toUsrDateTimeFormat(testDate, opts, us_locale);
+  // FIXME: returns EST date
   EXPECT_EQ(result, "Wednesday, February 22, 2023 12:45:57 UTC")
       << "Actual date/time: '" << result << "'";
 
@@ -269,8 +271,8 @@ TEST_F(DateTimeFormatTest, LocalTimezoneEST) {
              .SetTimezone("Local Time");
   result = ocpn::toUsrDateTimeFormat(testDate, opts, us_locale);
   std::string str = result.ToStdString();
-  EXPECT_TRUE(str.find("01:45:57 PM EST") != std::string::npos ||
-              str.find("01:45:57 PM LOC") != std::string::npos)
+  EXPECT_TRUE(str.find("07:45:57 AM EST") != std::string::npos ||
+              str.find("07:45:57 AM LOC") != std::string::npos)
       << "Actual date/time: '" << result << "'";
 }
 
