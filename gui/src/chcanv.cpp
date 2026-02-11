@@ -8854,11 +8854,12 @@ bool ChartCanvas::MouseEventProcessObjects(wxMouseEvent &event) {
             stop = length;
           } else {  // inserting
             start = 1;
-            stop = connect;
+            stop = std::max(1, connect);
             m_pMouseRoute->RemovePoint(
                 m_pMouseRoute
                     ->GetLastPoint());  // Remove the first and only point
           }
+          assert(tail->GetnPoints() > 0);
           for (i = start; i <= stop; i++) {
             m_pMouseRoute->AddPointAndSegment(tail->GetPoint(i), false);
             if (m_pMouseRoute)
