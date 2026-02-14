@@ -2,6 +2,28 @@
 
 Very little of the OpenCPN internals is documented, the docs here are
 just some sporadic notes on various spots in the code.
-This makes this manual to a Work In progress in the true sense.
+This makes this manual to a Work In progress in the true sense.*
 
-Expand left sidebar to navigate.
+== Compiling
+[%hardbreaks]
+xref:cmake.adoc[CMake]
+xref:android.adoc[Android]
+xref:linux.adoc[Linux]
+xref:linux.adoc#_flatpak[Flatpak]
+xref:windows.adoc[Windows]
+xref:mac-osx.adoc[MacOS]
+xref:docker.adoc[Docker container]
+xref:create-deb-package.adoc[Create Debian packages]
+
+== xref:unit-tests.adoc[Unit tests]
+== xref:rest-interface.adoc[REST server]
+== xref:plugin-api.adoc[Plugin API]
+== xref:odraw-messaging.adoc[ODraw Messaging API]
+== xref:plugin-messaging.adoc[New Message Plugin API]
+== xref:messaging-debug.adoc[Data Monitor concepts]
+== xref:gui-model.adoc[Model - Gui code organization]
+== xref:comm-overview.adoc[Communication Overview]
+== xref:coding-guidelines.adoc[Coding Guidelines]
+== xref:user-interface-styling.adoc[User Interface Styling]
+== xref:troubleshooting.adoc[Troubleshooting]
+== xref:stacktrace.adoc[Creating a stack trace]
