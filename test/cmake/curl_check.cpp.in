@@ -1,0 +1,5 @@
+#include  <stdlib.h>
+int main(int argc, char**argv) {
+  int status = system("@CURL@ --insecure https://localhost:3389/foo/bar");
+  exit(WEXITSTATUS(status));
+}

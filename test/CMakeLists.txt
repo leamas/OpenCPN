@@ -7,7 +7,9 @@ message(STATUS "Building tests")
 
 enable_testing ()
 
-add_executable(test_config   ${CMAKE_SOURCE_DIR}/test/test_config.cpp)
+
+
+add_executable(test_config ${CMAKE_SOURCE_DIR}/test/test_config.cpp)
 target_link_libraries(test_config  PRIVATE ${wxWidgets_LIBRARIES})
 if (NOT "${ENABLE_SANITIZER}" STREQUAL "none")
   target_link_libraries(test_config  PRIVATE -fsanitize=${ENABLE_SANITIZER})
@@ -64,7 +66,29 @@ if (CURL)
   list(APPEND SRC rest-tests.cpp)
 endif ()
 
+configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/curl_check.cpp.in
+               ${CMAKE_BINARY_DIR}/curl_check.cpp)
+
+add_executable(curl_check ${CMAKE_BINARY_DIR}/curl_check.cpp)
+
+configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/curl_check.cmake.in
+               ${CMAKE_BINARY_DIR}/curl_check.cmake COPYONLY)
+
+add_custom_target(have_working_curl
+  COMMAND cmake
+      -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+      -DPROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+      -Dcurl_check=$<TARGET_FILE:curl_check>
+      -DCURL=${CURL}
+      -P ${CMAKE_BINARY_DIR}/curl_check.cmake
+  DEPENDS ${CMAKE_BINARY_DIR}/curl_check.cmake curl_check
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  VERBATIM
+  COMMENT "Configuring ${CMAKE_BINARY_DIR}/include/curl_config.h, curl_check:"
+)
+
 add_executable(tests ${SRC})
+add_dependencies(tests have_working_curl)
 
 if (DEFINED ENV{FLATPAK_ID})
   target_compile_definitions(tests PRIVATE OCPN_FLATPAK)

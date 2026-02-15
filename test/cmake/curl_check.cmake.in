@@ -1,0 +1,17 @@
+set(HAVE_WORKING_CURL FALSE)
+execute_process(
+  COMMAND ${curl_check}
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  RESULT_VARIABLE _curl_check_status
+  ERROR_VARIABLE _curl_check_stderr
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+if (${_curl_check_status} EQUAL 7)    # Cannot open host i.e., OK
+  set(HAVE_WORKING_CURL TRUE)
+  message(STATUS "Found working curl")
+else ()
+  message(STATUS "Curl not usable in system(3) calls")
+  set(HAVE_WORKING_CURL FALSE1)
+endif ()
+configure_file(${PROJECT_SOURCE_DIR}/cmake/curl_config.h.in
+               ${CMAKE_BINARY_DIR}/include/curl_config.h)
