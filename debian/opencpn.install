@@ -1,7 +1,7 @@
 usr/bin/opencpn
 usr/bin/opencpn-cmd
-usr/bin/opencpn-glutil
 usr/lib/opencpn/*.so
+usr/libexec/opencpn-glutil
 usr/share/applications/opencpn.desktop
 usr/share/icons/hicolor/*/apps/opencpn.*
 usr/share/metainfo/opencpn.appdata.xml
