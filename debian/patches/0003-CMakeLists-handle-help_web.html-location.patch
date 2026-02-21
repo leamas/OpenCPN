@@ -1,27 +1,28 @@
+From 536c8f63cb3d370080fdbc0f566e6bd12521eed5 Mon Sep 17 00:00:00 2001
 From: Alec Leamas <leamas.alec@gmail.com>
-Date: Sun, 13 Apr 2025 06:06:47 +0200
-Subject: CMakeLists: handle help_web.html location
+Date: Sat, 21 Feb 2026 22:22:38 +0100
+Subject: [PATCH 3/3]  CMakeLists: handle help_web.html location
 
 ---
  CMakeLists.txt | 8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 53bfbd4..3c5511a 100644
+index b61d4d1f6..120c7669f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -1825,7 +1825,7 @@ if (APPLE)
+@@ -1859,7 +1859,7 @@ if (APPLE)
    )
- 
+
    set_source_files_properties(
 -    data/doc/help_web.html PROPERTIES MACOSX_PACKAGE_LOCATION SharedSupport/doc
 +    data/help_web.html PROPERTIES MACOSX_PACKAGE_LOCATION SharedSupport/doc
    )
- 
+
    if (OCPN_BUNDLE_DOCS)
-@@ -1865,11 +1865,11 @@ if (APPLE)
+@@ -1899,11 +1899,11 @@ if (APPLE)
    set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.opencpn")
- 
+
    if (OCPN_BUNDLE_DOCS)
 -    set(DOC_FILES data/doc/help_web.html
 +    set(DOC_FILES data/help_web.html
@@ -31,14 +32,16 @@ index 53bfbd4..3c5511a 100644
 -    set(DOC_FILES data/doc/help_web.html)
 +    set(DOC_FILES data/help_web.html)
    endif ()
- 
+
    target_sources(
-@@ -2033,7 +2033,7 @@ if (NOT APPLE)
+@@ -2069,7 +2069,7 @@ if (NOT APPLE)
    if (OCPN_BUNDLE_DOCS)
      install(DIRECTORY data/doc DESTINATION ${PREFIX_PKGDATA})
    else ()
 -    install(FILES data/doc/help_web.html DESTINATION ${PREFIX_PKGDATA}/doc)
 +    install(FILES data/help_web.html DESTINATION ${PREFIX_PKGDATA}/doc)
    endif ()
- 
+
    if (UNIX)
+--
+2.52.0
