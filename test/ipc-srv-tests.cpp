@@ -42,9 +42,9 @@
 
 #include <gtest/gtest.h>
 
-#include "model/base_platform.h"
-#include "observable_evtvar.h"
+#include "observe/eventvar.h"
 
+#include "model/base_platform.h"
 #include "model/ipc_api.h"
 #include "model/local_api.h"
 #include "model/logger.h"
@@ -95,7 +95,7 @@ private:
     }
 
   private:
-    ObservableListener m_listener;
+    obs::BaseListener m_listener;
   };
 
   std::string GetSocketPath() {

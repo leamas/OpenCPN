@@ -78,6 +78,8 @@
 
 #include "config.h"
 
+#include "observe/eventvar.h"
+#include "observe/globalvar.h"
 #include "o_sound/o_sound.h"
 
 #include "model/ais_decoder.h"
@@ -110,8 +112,6 @@
 #include "font_mgr.h"
 #include "mark_info.h"
 #include "navutil.h"
-#include "observable_evtvar.h"
-#include "observable_globvar.h"
 #include "ocpn_platform.h"
 #include "options.h"
 #include "s52plib.h"
@@ -1481,7 +1481,7 @@ options::options(wxWindow* parent, OptionsCallbacks callbacks, wxWindowID id,
   RecalculateSize(size.x, size.y);
 
   wxDEFINE_EVENT(EVT_COMPAT_OS_CHANGE, wxCommandEvent);
-  GlobalVar<wxString> compat_os(&g_compatOS);
+  obs::GlobalVar<wxString> compat_os(&g_compatOS);
   compat_os_listener.Listen(compat_os, this, EVT_COMPAT_OS_CHANGE);
   Bind(EVT_COMPAT_OS_CHANGE, [&](wxCommandEvent&) {
     PluginLoader::GetInstance()->LoadAllPlugIns(false);
@@ -4826,9 +4826,9 @@ public:
   o_sound::Sound* m_sound;
 
   /** Notified with a OCPN_Sound* pointer when sound has completed. */
-  EventVar m_on_sp_sound_done;
+  obs::EventVar m_on_sp_sound_done;
 
-  ObsListener m_sound_sp_done_listener;
+  obs::Listener m_sound_sp_done_listener;
   bool m_soundPlaying;
 
   DECLARE_EVENT_TABLE()
@@ -8772,7 +8772,7 @@ void options::DoOnPageChange(size_t page) {
       ::wxEndBusyCursor();
 
       wxDEFINE_EVENT(EVT_COMPAT_OS_CHANGE, wxCommandEvent);
-      GlobalVar<wxString> compat_os(&g_compatOS);
+      obs::GlobalVar<wxString> compat_os(&g_compatOS);
     }
     k_plugins = TOOLBAR_CHANGED;
     // TODO  Only if o-charts is touched?

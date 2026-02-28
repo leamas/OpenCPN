@@ -32,9 +32,10 @@
 #include <wx/stattext.h>
 #include <wx/timer.h>
 
+#include "observe/observable.h"
+
 #include "model/conn_params.h"
 
-#include "observable.h"
 #include "expand_icon.h"
 #include "options.h"
 #include "conn_params_panel.h"
@@ -219,7 +220,7 @@ public:
   wxTimer m_BTScanTimer;
   wxArrayString m_choice_CANSource_choices;
 
-  ObsListener new_device_listener;
+  obs::Listener new_device_listener;
   ConnectionParams *m_cp_original;
 
   std::function<void(ConnectionParams *, bool, bool)> m_on_edit_click;

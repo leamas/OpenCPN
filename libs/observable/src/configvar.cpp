@@ -28,11 +28,11 @@
 #include <wx/string.h>
 #include <wx/config.h>
 
-#include "observable_confvar.h"
+#include "observe/configvar.h"
 
 /**
  * Add >> support for wxString, for some reason missing in wxWidgets 3.0,
- * required by ConfigVar::get()
+ * required by obs::ConfigVar::get()
  */
 std::istream& operator>>(std::istream& input, wxString& ws) {
   std::string s;
@@ -41,10 +41,10 @@ std::istream& operator>>(std::istream& input, wxString& ws) {
   return input;
 }
 
-/* ConfigVar implementation. */
+/* obs::ConfigVar implementation. */
 
 template <typename T>
-ConfigVar<T>::ConfigVar(const std::string& section_, const std::string& key_,
+obs::ConfigVar<T>::ConfigVar(const std::string& section_, const std::string& key_,
                         wxConfigBase* cb)
     : Observable(section_ + "/" + key_),
       section(section_),
@@ -52,7 +52,7 @@ ConfigVar<T>::ConfigVar(const std::string& section_, const std::string& key_,
       config(cb) {}
 
 template <typename T>
-const T ConfigVar<T>::Get(const T& default_val) {
+const T obs::ConfigVar<T>::Get(const T& default_val) {
   std::istringstream iss;
   config->SetPath(section);
   auto value = config->Read(key, "").ToStdString();
@@ -63,7 +63,7 @@ const T ConfigVar<T>::Get(const T& default_val) {
 }
 
 template <typename T>
-void ConfigVar<T>::Set(const T& arg) {
+void obs::ConfigVar<T>::Set(const T& arg) {
   std::ostringstream oss;
   oss << arg;
   if (oss.fail()) {
@@ -79,9 +79,9 @@ void ConfigVar<T>::Set(const T& arg) {
   Observable::Notify();
 }
 
-/* Explicitly instantiate the ConfigVar types supported. */
-template class ConfigVar<bool>;
-template class ConfigVar<double>;
-template class ConfigVar<int>;
-template class ConfigVar<std::string>;
-template class ConfigVar<wxString>;
+/* Explicitly instantiate the obs::ConfigVar types supported. */
+template class obs::ConfigVar<bool>;
+template class obs::ConfigVar<double>;
+template class obs::ConfigVar<int>;
+template class obs::ConfigVar<std::string>;
+template class obs::ConfigVar<wxString>;

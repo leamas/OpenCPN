@@ -24,8 +24,9 @@
 #define _AIS_INFO_GUI_H
 
 #include "o_sound/o_sound.h"
+#include "observe/observable.h"
+
 #include "model/ais_target_data.h"
-#include "observable.h"
 
 class AisInfoGui;             // forward
 extern AisInfoGui* g_pAISGUI; /**< Global instance */
@@ -50,10 +51,10 @@ public:
   wxDateTime m_lastMMSItime;
 
   o_sound::Sound* m_AIS_Sound;
-  ObservableListener ais_info_listener;
-  ObservableListener ais_touch_listener;
-  ObservableListener ais_wp_listener;
-  ObservableListener ais_new_track_listener;
-  ObservableListener ais_del_track_listener;
+  obs::BaseListener ais_info_listener;
+  obs::BaseListener ais_touch_listener;
+  obs::BaseListener ais_wp_listener;
+  obs::BaseListener ais_new_track_listener;
+  obs::BaseListener ais_del_track_listener;
 };
 #endif  // ais_info_gui

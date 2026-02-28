@@ -3,7 +3,7 @@
 In the time of writing the core OpenCPN codebase consists of more than
 300000 lines. A code base this large requires some kind of organization.
 
-The traditional way to organize GUI applications like OpenCPN is the 
+The traditional way to organize GUI applications like OpenCPN is the
 Model - View - Controller (MVC) pattern.
 However, for various reasons OpenCPN does not follow this.
 Instead, a late push has been done to split the code into two pieces
@@ -14,8 +14,8 @@ The overall picture thus becomes:
 
        ┌──────────────────────────────────┐
        │     Gui (View + Controller)      │
-       └──────────────────────────────────┘           
-       
+       └──────────────────────────────────┘
+
        ┌──────────────────────────────────┐
        │            Model                 │
        └──────────────────────────────────┘
@@ -28,25 +28,25 @@ In the traditional layered software approach this means:
 Violating these rules typically leads to linker errors when linking
 the tests and/or opencpn-cmd targets.
 
-Typical Model parts are communication drivers, databases like 
-routes and configuration data, various datatypes, plugin loading, 
+Typical Model parts are communication drivers, databases like
+routes and configuration data, various datatypes, plugin loading,
 etc.
 Having these in a model part means that they can be updated, tested
 and used without paying attention to the Gui as long as the interface
 is kept stable.
 This considerably simplifies code maintenance.
 
-The model files indeed lives in the _model/_ subdirectory and the gui parts 
+The model files indeed lives in the _model/_ subdirectory and the gui parts
 in _gui/_
 
 == Model -> Gui communication.
 
-From time to time Model code still needs to invoke the Gui. 
+From time to time Model code still needs to invoke the Gui.
 One example could be a communication driver which needs some user data
-which should be retrieved using a dialog box. 
+which should be retrieved using a dialog box.
 Another example could be that the same driver needs to send a message
 to all plugins using the BroadcastToAllPlugins() method which currently
-resides in the Gui. 
+resides in the Gui.
 There are three possible ways to handle this.
 
 1. Refactor the code so that the called method is moved to a Model component.
@@ -58,7 +58,7 @@ However, things like a dialog just cannot be moved, it will always have
 Gui dependencies.
 
 Otherwise, sending a signal is the simplest solution.
-It should be used when possible. 
+It should be used when possible.
 The basic limitation is that this is an asynchronous fire-and-forget approach,
 the model will not get anything back from the Gui.
 
@@ -70,16 +70,16 @@ This is synchronous, and the Model can get a return value from the Gui
 Sending signals is done using an ```EventVar```.
 This is declared in the _observable_evtvar.h_ header file.
 
-The Model part defines and signals to the EventVar. 
+The Model part defines and signals to the EventVar.
 The declaration is done in the header:
-   
-    #include "observable_evtvar.h"
+
+    #include "observe/eventvar.h"
     class ModelClass {
     public:
       /** Notified on SomeChange with a strinng available in GetString(). */
       EventVar some_change;
 
-Note the comment, an ```EventVar``` without a comment is hard to track down. 
+Note the comment, an ```EventVar``` without a comment is hard to track down.
 
 In the implementation file:
 
@@ -92,11 +92,11 @@ In the implementation file:
 There are many overloads for ```Notify()``` which could be used to carry not only
 strings but also pointers, int/bool, etc.
 
-This is basically it from the Model perspective. 
+This is basically it from the Model perspective.
 One more more Gui component could listen to SomeChange, but this does not
 affect ModelClass.
 
-The Gui performs the listening. 
+The Gui performs the listening.
 First, in the header declare an ObsListener
 
     #include "model_class.h"
@@ -108,7 +108,7 @@ First, in the header declare an ObsListener
     }
 
 
-And then, typically in the constructor, set up the listening in the 
+And then, typically in the constructor, set up the listening in the
 implementation .cpp file:
 
     void GuiClass::GuiClass(ModelClass& model_class) {
@@ -118,15 +118,15 @@ implementation .cpp file:
       }
       some_change_listener.Init(model_class.some_change, action);
 
-Here, GuiClass obviously needs to have access to an instance of ModelClass to 
+Here, GuiClass obviously needs to have access to an instance of ModelClass to
 be able to listen to it.
 In our case this is often a global variable, but this varies and could be more
 or less complicated.
 
 == Using a callback
 
-To use a callback, the model part defines it in a header, where there also 
-is a accessor for the Gui to set it. 
+To use a callback, the model part defines it in a header, where there also
+is a accessor for the Gui to set it.
 The example assumes the function takes a string argument and returns a bool.
 This is just an example, the signature could be anything.
 
@@ -144,9 +144,9 @@ This is just an example, the signature could be anything.
 
 In the implementation .cpp file we first ensure that m_callback always have
 a defined, default value which basically does nothing without
-crashing 
+crashing
 
-    ModelClass::ModelClass() 
+    ModelClass::ModelClass()
             : m_callback([](const std::string) { return false; }) {
       ...
     }
@@ -160,7 +160,7 @@ Gui (assuming that ```SetCallback()``` has been called):
       ...
     }
 
-In the Gui the callback is set, typically using a lambda in the 
+In the Gui the callback is set, typically using a lambda in the
 constructor like
 
     #include "model_class.h"
@@ -176,5 +176,3 @@ And that's it. The model can now effectively call a function in the Gui
 without any knowledge of it.
 This upholds the basic promise that the model is not linked to the Gui
 in any way.
- 
-  

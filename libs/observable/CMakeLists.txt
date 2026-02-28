@@ -5,12 +5,12 @@ if (TARGET observable::observable)
 endif ()
 
 set(SRC
-  include/observable_confvar.h
-  include/observable_evt.h
-  include/observable_evtvar.h
-  include/observable_globvar.h
-  include/observable.h
-  src/observable_confvar.cpp
+  include/observe/eventvar.h
+  include/observe/globalvar.h
+  include/observe/configvar.h
+  include/observe/event.h
+  include/observe/observable.h
+  src/configvar.cpp
   src/observable.cpp
 )
 add_library(_OBSERVABLE STATIC ${SRC})

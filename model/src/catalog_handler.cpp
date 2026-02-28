@@ -32,6 +32,9 @@
 #include <wx/jsonreader.h>
 #include <wx/log.h>
 
+#include "observe/eventvar.h"
+#include "observe/globalvar.h"
+
 #include "model/base_platform.h"
 #include "model/catalog_handler.h"
 #include "model/catalog_parser.h"
@@ -39,8 +42,6 @@
 #include "model/downloader.h"
 #include "model/ocpn_utils.h"
 #include "model/plugin_handler.h"
-#include "observable_evtvar.h"
-#include "observable_globvar.h"
 
 #ifdef _WIN32
 static const std::string SEP("\\");
@@ -233,7 +234,7 @@ std::vector<std::string> CatalogHandler::GetChannels() { return channels; }
 bool CatalogHandler::SetActiveChannel(const char* channel) {
   for (auto c : channels) {
     if (c == channel) {
-      GlobalVar<wxString> catalog_channel(&g_catalog_channel);
+      obs::GlobalVar<wxString> catalog_channel(&g_catalog_channel);
       catalog_channel.Set(channel);
       return true;
     }

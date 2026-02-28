@@ -32,7 +32,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "observable.h"
+#include "observe/observable.h"
+
 #include "comm_navmsg.h"
 
 enum class CommStatus { Ok, NotImplemented, NotSupported, NameInUse };

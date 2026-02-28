@@ -48,6 +48,7 @@
 #endif
 #endif
 
+#include "observe/observable.h"
 #include "o_sound/o_sound.h"
 
 #include "model/ais_target_data.h"
@@ -58,7 +59,6 @@
 #include "model/semantic_vers.h"
 
 #include "chartimg.h"
-#include "observable.h"
 #include "ocpndc.h"
 #include "ocpn_plugin.h"
 #include "s57chart.h"  // for Object list
@@ -284,26 +284,26 @@ private:
   bool CheckBlacklistedPlugin(opencpn_plugin* plugin);
   void OnNewMessageType();
 
-  ObservableListener evt_ais_json_listener;
-  ObservableListener evt_blacklisted_plugin_listener;
-  ObservableListener evt_download_failed_listener;
-  ObservableListener evt_download_ok_listener;
-  ObservableListener evt_load_directory_listener;
-  ObservableListener evt_load_plugin_listener;
-  ObservableListener evt_plugin_loadall_finalize_listener;
-  ObservableListener evt_pluglist_change_listener;
-  ObservableListener evt_update_chart_types_listener;
-  ObservableListener evt_json_to_all_plugins_listener;
-  ObservableListener evt_routeman_json_listener;
-  ObservableListener evt_routeman_leginfo_listener;
+  obs::BaseListener evt_ais_json_listener;
+  obs::BaseListener evt_blacklisted_plugin_listener;
+  obs::BaseListener evt_download_failed_listener;
+  obs::BaseListener evt_download_ok_listener;
+  obs::BaseListener evt_load_directory_listener;
+  obs::BaseListener evt_load_plugin_listener;
+  obs::BaseListener evt_plugin_loadall_finalize_listener;
+  obs::BaseListener evt_pluglist_change_listener;
+  obs::BaseListener evt_update_chart_types_listener;
+  obs::BaseListener evt_json_to_all_plugins_listener;
+  obs::BaseListener evt_routeman_json_listener;
+  obs::BaseListener evt_routeman_leginfo_listener;
 
-  ObservableListener m_listener_SignalK;
+  obs::BaseListener m_listener_SignalK;
 
-  ObsListener m_new_msgtype_lstnr;
+  obs::Listener m_new_msgtype_lstnr;
 
-  ObsListener m_on_msg_sent_listener;
+  obs::Listener m_on_msg_sent_listener;
 
-  std::unordered_map<std::string, ObsListener> m_0183_listeners;
+  std::unordered_map<std::string, obs::Listener> m_0183_listeners;
 
   wxBitmap* BuildDimmedToolBitmap(wxBitmap* pbmp_normal,
                                   unsigned char dim_ratio);
@@ -401,7 +401,7 @@ protected:
   wxStaticText* m_catalogText;
   wxWindow* m_parent;
   PluginListPanel* m_PluginListPanel;
-  ObservableListener catalog_listener;
+  obs::BaseListener catalog_listener;
 };
 
 #define ID_CMD_BUTTON_PERFORM_ACTION 27663

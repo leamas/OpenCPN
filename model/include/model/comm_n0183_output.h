@@ -31,11 +31,12 @@
 #include <wx/wx.h>
 #endif
 
+#include "observe/eventvar.h"
+
 #include "model/nmea_log.h"
 #include "model/multiplexer.h"
 #include "model/route.h"
 #include "model/route_point.h"
-#include "observable_evtvar.h"
 
 /**
  * Failed to initialize Garmin device.
@@ -51,7 +52,7 @@
 #define ERR_GPS_DRIVER_NOT_AVAILAIBLE -3
 
 void BroadcastNMEA0183Message(const wxString& msg, NmeaLog* nmea_log,
-                              EventVar& on_msg_sent);
+                              obs::EventVar& on_msg_sent);
 
 class N0183DlgCtx {
 public:

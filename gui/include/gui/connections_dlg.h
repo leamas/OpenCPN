@@ -29,8 +29,9 @@
 #include <wx/panel.h>
 #include <wx/scrolwin.h>
 
+#include "observe/eventvar.h"
+
 #include "model/conn_params.h"
-#include "observable_evtvar.h"
 #include "color_types.h"
 
 /**
@@ -73,7 +74,7 @@ private:
   const std::vector<ConnectionParams*>& m_connections;
 
   /** Notified without data when a new connection is added. */
-  EventVar m_evt_add_connection;
+  obs::EventVar m_evt_add_connection;
 };
 
 #endif  //  CONNECT_NEW_DLG_

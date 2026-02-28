@@ -8,6 +8,8 @@
 
 #include <wx/app.h>
 
+#include "observe/configvar.h"
+
 #include "config.h"
 
 #include "model/ais_state_vars.h"
@@ -21,7 +23,6 @@
 #include "model/comm_navmsg_bus.h"
 #include "model/config_vars.h"
 #include "model/conn_params.h"
-#include "observable_confvar.h"
 #include "model/ocpn_types.h"
 #include "model/own_ship.h"
 #include "model/routeman.h"

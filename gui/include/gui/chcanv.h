@@ -35,6 +35,9 @@
 #include <wx/glcanvas.h>
 #endif
 
+#include "observe/eventvar.h"
+#include "observe/observable.h"
+
 #include "model/route.h"
 #include "model/route_point.h"
 #include "model/select_item.h"
@@ -53,8 +56,6 @@
 #include "idx_entry.h"
 #include "mui_bar.h"
 #include "notification_manager_gui.h"
-#include "observable_evtvar.h"
-#include "observable.h"
 #include "ocp_cursor.h"
 #include "ocpn_pixel.h"
 #include "ocpn_plugin.h"
@@ -893,7 +894,7 @@ public:
    * Notified with message targeting all plugins. Contains a message type
    * string and a wxJSONValue shared_ptr.
    */
-  EventVar json_msg;
+  obs::EventVar json_msg;
 
   bool m_inPinch;
 
@@ -1371,7 +1372,7 @@ private:
 
   NotificationButton *m_notification_button;
   NotificationsList *m_NotificationsList;
-  ObservableListener evt_notificationlist_change_listener;
+  obs::BaseListener evt_notificationlist_change_listener;
 
   wxStopWatch m_sw_left_down;
   wxStopWatch m_sw_left_up;

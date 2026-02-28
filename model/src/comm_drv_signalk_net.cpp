@@ -37,7 +37,7 @@
 #include "model/sys_events.h"
 #include "wxServDisc.h"
 
-#include "observable.h"
+#include "observe/observable.h"
 
 #include "ixwebsocket/IXNetSystem.h"
 #include "ixwebsocket/IXWebSocket.h"
@@ -126,7 +126,7 @@ private:
   CommDriverSignalKNet* m_parentStream;
   std::string m_token;
   ix::WebSocket ws;
-  ObsListener resume_listener;
+  obs::Listener resume_listener;
   DriverStats m_driver_stats;
   mutable std::mutex m_stats_mutex;
 };

@@ -34,6 +34,8 @@
 
 #include "observable.h"
 
+namespace obs {
+
 /**
  *  Wrapper for configuration variables which lives in a wxBaseConfig
  *  object. Supports int, bool, double, std::string and wxString. Besides
@@ -82,5 +84,7 @@ private:
   const std::string key;
   wxConfigBase* const config;
 };
+
+}  // namespace
 
 #endif  // OBSERVABLE_CONFVAR_H

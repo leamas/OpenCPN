@@ -33,6 +33,8 @@
 #include <wx/image.h>
 #include <wx/jsonval.h>
 
+#include "observe/globalvar.h"
+
 #include "model/ais_decoder.h"
 #include "model/autopilot_output.h"
 #include "model/base_platform.h"
@@ -48,8 +50,6 @@
 #include "model/route.h"
 #include "model/routeman.h"
 #include "model/track.h"
-
-#include "observable_globvar.h"
 
 #ifdef __ANDROID__
 #include "androidUTIL.h"
@@ -95,7 +95,7 @@ Routeman::Routeman(struct RoutePropDlgCtx ctx,
       m_NMEA0183(NmeaCtxFactory()),
       m_prop_dlg_ctx(ctx),
       m_route_dlg_ctx(route_dlg_ctx) {
-  GlobalVar<wxString> active_route(&g_active_route);
+  obs::GlobalVar<wxString> active_route(&g_active_route);
   auto route_action = [&](wxCommandEvent) {
     if (g_persist_active_route) ActivatePersistedRoute(this);
   };

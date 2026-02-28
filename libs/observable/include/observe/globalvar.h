@@ -26,7 +26,9 @@
 #ifndef OBSERVABLE_GLOBVAR_H
 #define OBSERVABLE_GLOBVAR_H
 
-#include "observable.h"
+#include "observe/observable.h"
+
+namespace obs {
 
 /**
  *  Wrapper for global variable, supports notification events when value
@@ -81,5 +83,7 @@ private:
 
   T* const variable;
 };
+
+}  // namespace
 
 #endif  // OBSERVABLE_GLOBVAR_H

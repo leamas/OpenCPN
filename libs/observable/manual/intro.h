@@ -44,7 +44,7 @@ There are three mechanisms available out of the box:
   the listener and notifying side. It is described in the
   _observable_evtvar.h_ header.
 
-- The ConfigVar mechanism allows for listening to configuration
+- The obs::ConfigVar mechanism allows for listening to configuration
   variable changes, and to notify about such changes. It is described
   in the _observable_confvar.h_ header
 
@@ -89,4 +89,3 @@ the GPL licence, version 2 or later. See the source files for details.
 [1] https://github.com/opencpn/OpenCPN
 
 **/
-

@@ -33,6 +33,8 @@
 #include <wx/event.h>
 #include <wx/string.h>
 
+#include "observe/eventvar.h"
+
 #include "rapidjson/fwd.h"
 #include "model/ais_bitstring.h"
 #include "model/ais_defs.h"
@@ -41,7 +43,6 @@
 #include "model/ocpn_types.h"
 #include "model/select.h"
 #include "model/track.h"
-#include "observable_evtvar.h"
 
 using N0183MsgPtr = std::shared_ptr<const Nmea0183Msg>;
 using N2000MsgPtr = std::shared_ptr<const Nmea2000Msg>;
@@ -136,22 +137,22 @@ public:
    * Notified when AIS user dialogs should update. Event contains an
    * AIS_Target_data pointer.
    */
-  EventVar info_update;
+  obs::EventVar info_update;
 
   /** Notified when gFrame->TouchAISActive() should be invoked */
-  EventVar touch_state;
+  obs::EventVar touch_state;
 
   /** Notified when new AIS wp is created. Contains a RoutePoint* pointer. */
-  EventVar new_ais_wp;
+  obs::EventVar new_ais_wp;
 
   /** Notified on new track creation. Contains a Track* pointer. */
-  EventVar new_track;
+  obs::EventVar new_track;
 
   /** Notified when about to delete track. Contains a MmsiProperties* ptr */
-  EventVar delete_track;
+  obs::EventVar delete_track;
 
   /** A JSON message should be sent. Contains a AisTargetData* pointer. */
-  EventVar plugin_msg;
+  obs::EventVar plugin_msg;
 
 private:
   void OnTimerAIS(wxTimerEvent &event);
@@ -196,23 +197,23 @@ private:
   AIS_Target_Name_Hash *AISTargetNamesC;
   AIS_Target_Name_Hash *AISTargetNamesNC;
 
-  ObservableListener listener_N0183_VDM;
-  ObservableListener listener_N0183_FRPOS;
-  ObservableListener listener_N0183_CDDSC;
-  ObservableListener listener_N0183_CDDSE;
-  ObservableListener listener_N0183_TLL;
-  ObservableListener listener_N0183_TTM;
-  ObservableListener listener_N0183_OSD;
-  ObservableListener listener_N0183_WPL;
-  ObservableListener listener_SignalK;
+  obs::BaseListener listener_N0183_VDM;
+  obs::BaseListener listener_N0183_FRPOS;
+  obs::BaseListener listener_N0183_CDDSC;
+  obs::BaseListener listener_N0183_CDDSE;
+  obs::BaseListener listener_N0183_TLL;
+  obs::BaseListener listener_N0183_TTM;
+  obs::BaseListener listener_N0183_OSD;
+  obs::BaseListener listener_N0183_WPL;
+  obs::BaseListener listener_SignalK;
 
-  ObservableListener listener_N2K_129038;
-  ObservableListener listener_N2K_129039;
-  ObservableListener listener_N2K_129041;
-  ObservableListener listener_N2K_129794;
-  ObservableListener listener_N2K_129809;
-  ObservableListener listener_N2K_129810;
-  ObservableListener listener_N2K_129793;
+  obs::BaseListener listener_N2K_129038;
+  obs::BaseListener listener_N2K_129039;
+  obs::BaseListener listener_N2K_129041;
+  obs::BaseListener listener_N2K_129794;
+  obs::BaseListener listener_N2K_129809;
+  obs::BaseListener listener_N2K_129810;
+  obs::BaseListener listener_N2K_129793;
 
   bool m_busy;
   wxTimer TimerAIS;

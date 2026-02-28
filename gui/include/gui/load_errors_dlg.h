@@ -21,7 +21,7 @@
 #include <wx/event.h>
 #include <wx/window.h>
 
-#include "observable_evtvar.h"
+#include "observe/eventvar.h"
 
 /**
  * Run a dialog if there are load errors encountered in plugin_loader
@@ -31,7 +31,7 @@ public:
   LoadErrorsDlgCtrl(wxWindow* parent);
 
 private:
-  ObservableListener load_complete_listener;
+  obs::BaseListener load_complete_listener;
   wxWindow* m_parent;
 };
 

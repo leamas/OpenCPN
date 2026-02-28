@@ -34,11 +34,11 @@
 
 #include <wx/event.h>
 
+#include "observe/observable.h"
+
 #include "model/comm_navmsg.h"
 #include "model/comm_navmsg_bus.h"
 #include "model/ocpn_utils.h"
-
-#include "observable.h"
 
 /**
  * Create a stream of input messages.  The
@@ -59,9 +59,9 @@ public:
 
 private:
   SinkFunc m_sink_func;
-  std::unordered_map<std::string, ObsListener> m_listeners;
-  ObsListener new_msg_lstnr;
-  ObsListener undelivered_msg_lstnr;
+  std::unordered_map<std::string, obs::Listener> m_listeners;
+  obs::Listener new_msg_lstnr;
+  obs::Listener undelivered_msg_lstnr;
 
   /** Handle new message type detected. */
   void OnNewMessage();

@@ -32,7 +32,7 @@
 
 /**
  * Listen to OS signals reflecting for example suspend/resume,
- * new USB devicesbeing plugged in, etc; update EventVars in SysEvents
+ * new USB devicesbeing plugged in, etc; update obs::EventVars in SysEvents
  * accordingly
  */
 class WinUsbWatchDaemon : public UsbWatchDaemon {

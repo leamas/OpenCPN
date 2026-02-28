@@ -91,6 +91,8 @@
 #include "config.h"
 #include "pluginmanager.h"
 
+#include "observe/configvar.h"
+#include "observe/globalvar.h"
 #include "o_sound/o_sound.h"
 
 #include "model/ais_decoder.h"
@@ -139,8 +141,6 @@
 #include "gshhs.h"
 #include "mygeom.h"
 #include "navutil.h"
-#include "observable_confvar.h"
-#include "observable_globvar.h"
 #include "ocpn_aui_manager.h"
 #include "ocpndc.h"
 #include "ocpn_pixel.h"
@@ -959,7 +959,7 @@ void PlugInManager::OnNewMessageType() {
     auto key_parts = ocpn::split(msg_key, "::");
     if (key_parts.size() < 2) continue;
     if (NavMsg::GetBusByKey(msg_key) == NavAddr::Bus::N0183) {
-      ObsListener ol(RawKey(key_parts[1]), [&](ObservedEvt& ev) {
+      obs::Listener ol(RawKey(key_parts[1]), [&](ObservedEvt& ev) {
         HandleN0183(UnpackEvtPointer<Nmea0183Msg>(ev));
       });
       m_0183_listeners[msg_key] = std::move(ol);
@@ -2203,7 +2203,7 @@ CatalogMgrPanel::CatalogMgrPanel(wxWindow* parent)
   rowSizer2->AddSpacer(4 * GetCharWidth());
   m_adv_button = new wxButton(this, wxID_ANY, _("Settings..."),
                               wxDefaultPosition, wxDefaultSize, 0);
-  ConfigVar<bool> expert("/PlugIns", "CatalogExpert", pConfig);
+  obs::ConfigVar<bool> expert("/PlugIns", "CatalogExpert", pConfig);
   if (expert.Get(false)) {
     m_adv_button->Bind(wxEVT_COMMAND_BUTTON_CLICKED,
                        &CatalogMgrPanel::OnPluginSettingsButton, this);
@@ -2224,14 +2224,14 @@ CatalogMgrPanel::CatalogMgrPanel(wxWindow* parent)
   SetMinSize(wxSize(m_parent->GetClientSize().x - (4 * GetCharWidth()), -1));
   Fit();
 
-  GlobalVar<wxString> catalog(&g_catalog_channel);
+  obs::GlobalVar<wxString> catalog(&g_catalog_channel);
   wxDEFINE_EVENT(EVT_CATALOG_CHANGE, wxCommandEvent);
   catalog_listener.Listen(catalog, this, EVT_CATALOG_CHANGE);
   Bind(EVT_CATALOG_CHANGE, [&](wxCommandEvent&) { SetUpdateButtonLabel(); });
 
 #else  // __ANDROID__
   SetBackgroundColour(wxColour(0x7c, 0xb0, 0xe9));  // light blue
-  ConfigVar<bool> expert("/PlugIns", "CatalogExpert", pConfig);
+  obs::ConfigVar<bool> expert("/PlugIns", "CatalogExpert", pConfig);
   if (!expert.Get(false)) {
     m_updateButton =
         new wxButton(this, wxID_ANY, _("Update Plugin Catalog: master"),
@@ -3347,7 +3347,8 @@ void PluginPanel::OnPluginEnableToggle(wxCommandEvent& event) {
       PluginLoader::GetPluginVersion(m_plugin, GetMetadataByName));
   if (m_plugin.m_status == PluginStatus::System) {
     // Force pluginmanager to reload all panels. Not kosher --
-    // the EventVar should really only be notified from within PluginLoader.
+    // the obs::EventVar should really only be notified from within
+    // PluginLoader.
     PluginLoader::GetInstance()->evt_pluglist_change.Notify();
   }
   g_Platform->HideBusySpinner();

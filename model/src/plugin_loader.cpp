@@ -66,6 +66,8 @@
 #include <wx/window.h>
 #include <wx/process.h>
 
+#include "observe/configvar.h"
+
 #include "model/base_platform.h"
 #include "model/catalog_handler.h"
 #include "model/catalog_parser.h"
@@ -82,7 +84,6 @@
 #include "model/safe_mode.h"
 #include "model/semantic_vers.h"
 
-#include "observable_confvar.h"
 #include "std_filesystem.h"
 
 #ifdef __ANDROID__
@@ -615,7 +616,7 @@ bool PluginLoader::LoadPluginCandidate(const wxString& file_name,
   // only loading enabled plugins.
   // Make the check late enough to pick up incompatible plugins anyway
   const auto path = std::string("/PlugIns/") + plugin_file.ToStdString();
-  ConfigVar<bool> enabled(path, "bEnabled", TheBaseConfig());
+  obs::ConfigVar<bool> enabled(path, "bEnabled", TheBaseConfig());
   if (pic && load_enabled && !enabled.Get(true)) {
     pic->m_destroy_fn(pic->m_pplugin);
     delete pic;

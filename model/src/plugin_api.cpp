@@ -32,19 +32,19 @@
 #include <wx/jsonreader.h>
 #include <wx/tokenzr.h>
 
+#include "ocpn_plugin.h"
 #include "model/base_platform.h"
 #include "model/comm_appmsg.h"
+#include "model/comm_drv_factory.h"
 #include "model/comm_drv_loopback.h"
 #include "model/comm_drv_n0183_net.h"
 #include "model/comm_drv_n0183_serial.h"
 #include "model/comm_drv_n2k.h"
+#include "model/comm_drv_n2k_net.h"
+#include "model/comm_drv_n2k_serial.h"
 #include "model/comm_drv_registry.h"
 #include "model/comm_navmsg_bus.h"
 #include "model/notification_manager.h"
-#include "ocpn_plugin.h"
-#include "model/comm_drv_factory.h"
-#include "model/comm_drv_n2k_net.h"
-#include "model/comm_drv_n2k_serial.h"
 
 using namespace std;
 

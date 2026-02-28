@@ -43,11 +43,11 @@
 #include <wx/timer.h>
 #include <wx/window.h>
 
+#include "observe/eventvar.h"
+
 #include "model/route.h"
 #include "model/route_point.h"
 #include "model/track.h"
-
-#include "observable_evtvar.h"
 
 //    Constants for SendToPeer... Dialog
 #define ID_STPDIALOG 10006
@@ -111,8 +111,8 @@ private:
   wxStaticText* premtext;
   wxButton* m_RescanButton;
   wxCheckBox* m_activate_chkbox;
-  EventVar progress;
-  ObsListener progress_listener;
+  obs::EventVar progress;
+  obs::Listener progress_listener;
   std::vector<std::string> m_own_ip_addresses;
 
   wxTimer m_autoScanTimer;

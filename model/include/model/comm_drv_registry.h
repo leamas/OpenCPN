@@ -25,8 +25,9 @@
 #ifndef COMMDRIVERREGISTRY_H_
 #define COMMDRIVERREGISTRY_H_
 
+#include "observe/eventvar.h"
+
 #include "model/comm_driver.h"
-#include "observable_evtvar.h"
 
 using DriverPtr = std::unique_ptr<AbstractCommDriver>;
 
@@ -37,7 +38,7 @@ using DriverPtr = std::unique_ptr<AbstractCommDriver>;
  * Also used as exchange point for some driver related events>.
  *
  * This interface is not synchronized and must only be used from main
- * thread. The exception is the various EventVar which can be notified
+ * thread. The exception is the various obs::EventVar which can be notified
  * from driver threads. As usual, listening to these events must be done
  * in main thread.
  */
@@ -58,22 +59,22 @@ public:
   const std::vector<DriverPtr>& GetDrivers() const;
 
   /** Notified by all driverlist updates. */
-  EventVar evt_driverlist_change;
+  obs::EventVar evt_driverlist_change;
 
   /** Notified when receiving --remote --dump_stat on local API. */
-  EventVar evt_dump_stats;
+  obs::EventVar evt_dump_stats;
 
   /** Notified with a printable message on first detected overrun. */
-  EventVar evt_comm_overrun;
+  obs::EventVar evt_comm_overrun;
 
   /** Regularly notified by drivers with a DriverStats shared_ptr */
-  EventVar evt_driver_stats;
+  obs::EventVar evt_driver_stats;
 
   /**
    * Updated by drivers with a shared Navmsg pointer when receiving
    * data otherwise dropped, for example garbage or filtered.
    */
-  EventVar evt_dropped_msg;
+  obs::EventVar evt_dropped_msg;
 
   /**
    *  Notified for messages from drivers. The generated event contains:
@@ -81,7 +82,7 @@ public:
    *  - A string is with a prefix from originating driver class name e. g.,
    *    "CommDriverN2KSerial:  Something happened"
    */
-  EventVar evt_driver_msg;
+  obs::EventVar evt_driver_msg;
 
 private:
   CommDriverRegistry() = default;

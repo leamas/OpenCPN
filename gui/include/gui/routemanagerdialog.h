@@ -38,11 +38,12 @@
 #include <wx/textctrl.h>
 #include <wx/timer.h>
 
+#include "observe/observable.h"
+
 #include "model/route.h"
 #include "model/route_point.h"
 #include "model/track.h"
 
-#include "observable.h"
 #include "layer.h"
 
 #define NAME_COLUMN 2
@@ -237,7 +238,7 @@ private:
   int m_charWidth;
   int m_listIconSize;
 
-  ObsListener routes_update_listener;
+  obs::Listener routes_update_listener;
 };
 
 #endif  // _RouteManagerDialog_h_

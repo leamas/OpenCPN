@@ -33,6 +33,8 @@
 #include <wx/log.h>
 #include <wx/string.h>
 
+#include "observe/event.h"
+
 #include "config.h"
 
 #include "model/config_vars.h"
@@ -45,7 +47,6 @@
 #include "model/rest_server.h"
 
 #include "mongoose.h"
-#include "observable_evt.h"
 #include "model/navobj_db.h"
 
 /** Event from IO thread to main */

@@ -19,14 +19,14 @@ namespace fs = std::filesystem;
 
 #include <gtest/gtest.h>
 
+#include "observe/observable.h"
+
 #include "model/base_platform.h"
 #include "model/comm_buffers.h"
 #include "model/comm_drv_registry.h"
 #include "model/comm_out_queue.h"
 #include "model/logger.h"
 #include "model/ocpn_utils.h"
-
-#include "observable.h"
 
 using namespace std::literals::chrono_literals;
 
@@ -40,7 +40,7 @@ class OverrunEvent : public wxAppConsole {
 public:
   OverrunEvent() {
     bool result = false;
-    ObsListener listener;
+    obs::Listener listener;
     listener.Init(CommDriverRegistry::GetInstance().evt_comm_overrun,
                   [&](ObservedEvt&) { result = true; });
 

@@ -43,7 +43,7 @@
 #include "time_textbox.h"
 #endif
 
-#include "observable_evtvar.h"
+#include "observe/eventvar.h"
 #include "model/routeman.h"
 
 #ifdef __WXOSX__
@@ -59,8 +59,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 class RoutePropDlg : public DIALOG_PARENT {
 private:
-  ObservableListener navobj_del_track_listener;
-  ObservableListener navobj_del_route_listener;
+  obs::BaseListener navobj_del_track_listener;
+  obs::BaseListener navobj_del_route_listener;
 
 protected:
   wxNotebook* m_ntbRteProp;

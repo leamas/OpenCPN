@@ -33,7 +33,9 @@
 #include <memory>
 #include <string>
 
-#include "observable.h"
+#include "observe/observable.h"
+
+namespace obs {
 
 /**
  * Generic event handling between MVC Model and Controller based on a
@@ -115,5 +117,7 @@ private:
     return std::string("!@%/+") + std::to_string(last_ix++);
   }
 };
+
+}  // namespace
 
 #endif  // OBSERVABLE___EVTVAR__H

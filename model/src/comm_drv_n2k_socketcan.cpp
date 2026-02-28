@@ -161,7 +161,7 @@ private:
   wxMutex m_TX_mutex;
   int m_unique_number;
 
-  ObservableListener listener_N2K_59904;
+  obs::BaseListener listener_N2K_59904;
   bool HandleN2K_59904(std::shared_ptr<const Nmea2000Msg> n2k_msg);
 };
 

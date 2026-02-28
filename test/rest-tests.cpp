@@ -22,13 +22,14 @@
 
 #include <gtest/gtest.h>
 
+#include "observe/configvar.h"
+
 #include "ocpn_plugin.h"
 #include "model/certificates.h"
 #include "model/cli_platform.h"
 #include "model/config_vars.h"
 #include "model/comm_navmsg.h"
 #include "model/mdns_query.h"
-#include "observable_confvar.h"
 #include "model/ocpn_types.h"
 #include "model/ocpn_utils.h"
 #include "model/rest_server.h"
@@ -194,7 +195,7 @@ protected:
       s_result = "";
       s_result2 = "";
       fs::path curl_prog(CURLPROG);
-      ObsListener listener;
+      obs::Listener listener;
       listener.Init(PluginMsg("msg1", ""), [&](ObservedEvt ev) {
         auto msg = UnpackEvtPointer<PluginMsg>(ev);
         s_result = msg->name;

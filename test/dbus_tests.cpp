@@ -83,7 +83,7 @@ public:
       m_listener.Listen(kp.GetKey(), this, EVT_OBS_RAISE);
       Bind(EVT_OBS_RAISE, [&](ObservedEvt& o) { bool_result0 = true; });
     }
-    ObservableListener m_listener;
+    obs::BaseListener m_listener;
   };
 
   DbusRaise() {
@@ -119,7 +119,7 @@ public:
     }
 
   private:
-    ObservableListener m_listener;
+    obs::BaseListener m_listener;
   };
 
   DbusQuit() {

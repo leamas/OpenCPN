@@ -22,7 +22,7 @@ There are three out of the box use cases:
   the listener and notifying side. It is described in the
   _observable_evtvar.h_ header.
 
-- The ConfigVar mechanism allows for listening to configuraion
+- The obs::ConfigVar mechanism allows for listening to configuraion
   variable changes, and to notify about such changes. It is described
   in the _observable_confvar.h_ header
 

@@ -38,7 +38,8 @@
 #include <wx/string.h>
 #include <wx/thread.h>  // for wxSemaphore, std::semaphore is c++20
 
-#include "observable_evtvar.h"
+#include "observe/eventvar.h"
+
 #include "std_filesystem.h"
 #include "pugixml.hpp"
 #include "pincode.h"
@@ -222,10 +223,10 @@ public:
   virtual std::string GetEndpoint() = 0;
 
   /** Notified with a string GUID when user wants to activate a route. */
-  EventVar activate_route;
+  obs::EventVar activate_route;
 
   /** Notified with a string GUID when user wants to reverse a route. */
-  EventVar reverse_route;
+  obs::EventVar reverse_route;
 };
 
 /** AbstractRestServer implementation and interface to underlying IO thread. */

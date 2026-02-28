@@ -20,6 +20,8 @@
 
 #include <gtest/gtest.h>
 
+#include "observe/configvar.h"
+
 #include "model/ais_decoder.h"
 #include "model/ais_defs.h"
 #include "model/ais_state_vars.h"
@@ -45,7 +47,6 @@
 #include "model/select.h"
 #include "model/semantic_vers.h"
 #include "model/std_instance_chk.h"
-#include "observable_confvar.h"
 #include "ocpn_plugin.h"
 
 #include "test_config.h"
@@ -175,7 +176,7 @@ class MsgCliApp : public BasicTest {
 public:
   class Sink : public wxEvtHandler {
   private:
-    ObservableListener listener;
+    obs::BaseListener listener;
 
   public:
     Sink() {
@@ -248,7 +249,7 @@ public:
         s_bus = plugin_msg->bus;
       });
     }
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   PluginMsgApp() : BasicTest() {}
@@ -296,7 +297,7 @@ public:
         s_bus = plugin_msg->bus;
       });
     }
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   PluginMsgApp2() : BasicTest() {}
@@ -347,7 +348,7 @@ public:
         s_result3 = plugin_msg->source->iface;
       });
     }
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   Loopback0183App() : BasicTest() { Work(); }
@@ -408,7 +409,7 @@ public:
         s_result3 = plugin_msg->source->iface;
       });
     }
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   LoopbackBad2000App() : BasicTest() { Work(); }
@@ -469,7 +470,7 @@ public:
         s_result3 = plugin_msg->source->iface;
       });
     }
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   Loopback2000App() : BasicTest() { Work(); }
@@ -536,7 +537,7 @@ public:
         s_result3 = plugin_msg->source->iface;
       });
     }
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   LoopbackSignalkApp() : BasicTest() { Work(); }
@@ -582,7 +583,7 @@ public:
         s_bus = n2k_msg->bus;
       });
     }
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   TransportCliApp() : BasicTest() {}
@@ -625,7 +626,7 @@ public:
         s_bus = msg->bus;
       });
     }
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   All0183App() : BasicTest() {}
@@ -658,7 +659,7 @@ public:
   class Sink : public wxEvtHandler {
   public:
     Sink() {
-      ObservableListener listener;
+      obs::BaseListener listener;
       Nmea2000Msg n2k_msg(static_cast<uint64_t>(1234));
       listener.Listen(n2k_msg, this, EVT_FOO);
       listeners.push_back(std::move(listener));
@@ -669,7 +670,7 @@ public:
         s_bus = n2k_msg->bus;
       });
     }
-    std::vector<ObservableListener> listeners;
+    std::vector<obs::BaseListener> listeners;
   };
 
   ListenerCliApp() : BasicTest() {}
@@ -712,7 +713,7 @@ public:
       });
     }
 
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   AppmsgCliApp() : BasicTest() {}
@@ -751,7 +752,7 @@ public:
         auto plugin_msg = std::static_pointer_cast<const PluginMsg>(ptr);
       });
     }
-    ObservableListener listener;
+    obs::BaseListener listener;
   };
 
   NavMsgApp() : BasicTest() {}
@@ -800,7 +801,7 @@ public:
     EXPECT_EQ(log.size(), 14522);
   }
 
-  ObservableListener listener;
+  obs::BaseListener listener;
 };
 
 class FindDriverApp : public BasicTest {
@@ -1003,7 +1004,7 @@ public:
       int_result0++;
     }
 
-    ObservableListener m_listener;
+    obs::BaseListener m_listener;
   };
 
   ObsTorture() {
@@ -1080,20 +1081,19 @@ public:
   static std::string GetSocketPath() {
     wxFileName path;
     try {
-    if (getenv("OCPN_TEST_HOMEDIR"))
-      path = wxFileName(getenv("OCPN_TEST_HOMEDIR"), "opencpn-ipc");
-    else
-      path = wxFileName("~/.opencpn", "opencpn-ipc");
-    path.Normalize(wxPATH_NORM_TILDE);
-    auto dirpath = path.GetPath();
-    if (!wxFileName::DirExists(dirpath)) wxFileName::Mkdir(dirpath);
-    return path.GetFullPath().ToStdString();
+      if (getenv("OCPN_TEST_HOMEDIR"))
+        path = wxFileName(getenv("OCPN_TEST_HOMEDIR"), "opencpn-ipc");
+      else
+        path = wxFileName("~/.opencpn", "opencpn-ipc");
+      path.Normalize(wxPATH_NORM_TILDE);
+      auto dirpath = path.GetPath();
+      if (!wxFileName::DirExists(dirpath)) wxFileName::Mkdir(dirpath);
+      return path.GetFullPath().ToStdString();
     } catch (std::exception& e) {
-        std::string what = e.what();
-        what += ", using path: " + path.GetFullPath().ToStdString();
-        throw std::runtime_error(what);
+      std::string what = e.what();
+      what += ", using path: " + path.GetFullPath().ToStdString();
+      throw std::runtime_error(what);
     }
-
   }
 
 protected:

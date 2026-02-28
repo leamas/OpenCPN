@@ -54,12 +54,13 @@
 #include <wx/socket.h>
 #endif
 
+#include "observe/observable.h"
+
 #include "model/comm_buffers.h"
 #include "model/comm_drv_n0183.h"
 #include "model/comm_drv_stats.h"
 #include "model/conn_params.h"
 #include "model/ocpn_utils.h"
-#include "observable.h"
 
 class MrqContainer;  // forward in .cpp file
 
@@ -136,7 +137,7 @@ private:
   bool m_ok;
   bool m_is_conn_err_reported;
 
-  ObsListener resume_listener;
+  obs::Listener resume_listener;
 };
 
 #endif  // COMMDRIVERN0183NET_H_

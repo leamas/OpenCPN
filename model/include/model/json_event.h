@@ -30,7 +30,7 @@
 
 #include <wx/event.h>
 
-#include "observable_evtvar.h"
+#include "observe/eventvar.h"
 
 /** Handle sending of wxJson messages to all plugins. */
 class JsonEvent {
@@ -45,7 +45,7 @@ public:
   }
 
 private:
-  EventVar event;
+  obs::EventVar event;
 };
 
 #endif

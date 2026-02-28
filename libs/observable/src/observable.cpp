@@ -33,7 +33,7 @@
 
 #include <wx/log.h>
 
-#include "observable.h"
+#include "observe/observable.h"
 
 std::string ptr_key(const void* ptr) {
   std::ostringstream oss;
@@ -99,26 +99,30 @@ void Observable::Notify() { Notify("", nullptr); }
 
 /* ObservableListener implementation. */
 
-void ObservableListener::Listen(const std::string& k, wxEvtHandler* l,
+namespace obs {
+
+void BaseListener::Listen(const std::string& k, wxEvtHandler* l,
                                 wxEventType e) {
-  if (!key.empty()) Unlisten();
-  key = k;
-  listener = l;
-  ev_type = e;
+  if (!m_key.empty()) Unlisten();
+  m_key = k;
+  m_listener = l;
+  m_ev_type = e;
   Listen();
 }
 
-void ObservableListener::Listen() {
-  if (!key.empty()) {
-    assert(listener);
-    Observable(key).Listen(listener, ev_type);
+void BaseListener::Listen() {
+  if (!m_key.empty()) {
+    assert(m_listener);
+    Observable(m_key).Listen(m_listener, m_ev_type);
   }
 }
 
-void ObservableListener::Unlisten() {
-  if (!key.empty()) {
-    assert(listener);
-    Observable(key).Unlisten(listener, ev_type);
-    key = "";
+void BaseListener::Unlisten() {
+  if (!m_key.empty()) {
+    assert(m_listener);
+    Observable(m_key).Unlisten(m_listener, m_ev_type);
+    m_key = "";
   }
 }
+
+}  // namespace

@@ -97,6 +97,7 @@
 #include <wx/stdpaths.h>
 #include <wx/tokenzr.h>
 
+#include "observe/observable.h"
 #include "o_sound/o_sound.h"
 
 #include "model/ais_decoder.h"
@@ -150,7 +151,6 @@
 #include "layer.h"
 #include "mark_info.h"
 #include "navutil.h"
-#include "observable.h"
 #include "ocpn_app.h"
 #include "ocpn_aui_manager.h"
 #include "ocpn_frame.h"

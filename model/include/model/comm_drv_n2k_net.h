@@ -237,7 +237,7 @@ private:
   bool m_TX_available;
   wxTimer m_prodinfo_timer;
 
-  ObsListener resume_listener;
+  obs::Listener resume_listener;
 
   DECLARE_EVENT_TABLE()
 };

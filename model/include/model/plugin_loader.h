@@ -32,12 +32,12 @@
 #include <wx/dynarray.h>
 #include <wx/dynlib.h>
 
-#include "config.h"
+#include "observe/eventvar.h"
 
+#include "config.h"
 #include "model/catalog_parser.h"
 #include "model/plugin_blacklist.h"
 #include "model/semantic_vers.h"
-#include "observable_evtvar.h"
 #include "ocpn_plugin.h"
 
 enum class PluginStatus {
@@ -174,31 +174,31 @@ public:
   static PluginMetadata LatestMetadataByName(const std::string& name);
 
   /** Notified without data when loader starts loading from a new directory. */
-  EventVar evt_load_directory;
+  obs::EventVar evt_load_directory;
 
   /**
    * Notified with a PlugInContainer* pointer when a plugin is loaded.
    * The pointer should be treated as const and is owned by loader
    */
-  EventVar evt_load_plugin;
+  obs::EventVar evt_load_plugin;
 
   /** Notified without data when the GetPlugInArray() list is changed. */
-  EventVar evt_pluglist_change;
+  obs::EventVar evt_pluglist_change;
 
   /**
    * Carries a malloc'ed read-only copy of a PlugInContainer owned: by
    * listener.
    */
-  EventVar evt_deactivate_plugin;
+  obs::EventVar evt_deactivate_plugin;
 
   /** Notified without data after all plugins loaded ot updated. */
-  EventVar evt_update_chart_types;
+  obs::EventVar evt_update_chart_types;
 
   /**
    * Emitted after all plugins are loaded. Event carries
    * a std::vector<LoadError> available though GetSharedPtr()
    */
-  EventVar evt_plugin_loadall_finalize;
+  obs::EventVar evt_plugin_loadall_finalize;
 
   /**
    * Update catalog with imported metadata and load all plugin library files.

@@ -636,8 +636,8 @@ public:
   void OnUXAudioEnableButtonClickDSC(wxCommandEvent &event);
 
   /** Notified with a OCPN_Sound* pointer when sound has completed. */
-  EventVar m_on_sound_done;
-  ObsListener m_sound_done_listener;
+  obs::EventVar m_on_sound_done;
+  obs::Listener m_sound_done_listener;
   wxGenericProgressDialog *m_pCBDSprog;
   void DoDBSUpdate(bool force_full);
   bool m_bTextureCacheingSave;
@@ -689,7 +689,7 @@ private:
   wxScrolledWindow *m_pNMEAForm;
   void resetMarStdList(bool bsetConfig, bool bsetStd);
 
-  ObservableListener compat_os_listener;
+  obs::BaseListener compat_os_listener;
   void ApplyChanges(wxCommandEvent &event);
 
   unsigned int m_screenConfig;
@@ -714,7 +714,7 @@ private:
 
   wxSize m_sliderSize;
   bool m_bneedNew;
-  ObsListener m_OnChartDb_finalize_listener;
+  obs::Listener m_OnChartDb_finalize_listener;
   std::shared_ptr<ConnectionsDlg> comm_dialog;
 
   DECLARE_EVENT_TABLE()

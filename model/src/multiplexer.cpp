@@ -352,14 +352,14 @@ void Multiplexer::OnNewMessageType() {
     switch (NavMsg::GetBusByKey(msg_key)) {
       case NavAddr::Bus::N0183:
         m_listeners[msg_key] =
-            ObsListener(RawKey(key_parts[1]), [&](ObservedEvt &ev) {
+            obs::Listener(RawKey(key_parts[1]), [&](ObservedEvt &ev) {
               HandleN0183(UnpackEvtPointer<Nmea0183Msg>(ev));
             });
         break;
 
       case NavAddr::Bus::N2000:
         m_listeners[msg_key] =
-            ObsListener(RawKey(key_parts[1]), [&](ObservedEvt &ev) {
+            obs::Listener(RawKey(key_parts[1]), [&](ObservedEvt &ev) {
               HandleN2kLog(UnpackEvtPointer<Nmea2000Msg>(ev));
             });
         break;

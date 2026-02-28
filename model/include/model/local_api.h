@@ -39,7 +39,7 @@
 
 #include <wx/cmdline.h>
 
-#include "observable_evtvar.h"
+#include "observe/eventvar.h"
 
 using LocalApiResult = std::pair<bool, std::string>;
 
@@ -69,10 +69,10 @@ public:
   static void ReleaseInstance();
 
   /** Notified on the Raise command. */
-  EventVar on_raise;
+  obs::EventVar on_raise;
 
   /** Notified on the Quit command. */
-  EventVar on_quit;
+  obs::EventVar on_quit;
 
   /** Callback invoked on open command with a file path argument. */
   std::function<bool(const std::string&)> open_file_cb;

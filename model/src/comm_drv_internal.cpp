@@ -38,7 +38,7 @@
 #include "model/comm_navmsg_bus.h"
 #include "model/logger.h"
 
-#include "observable.h"
+#include "observe/observable.h"
 
 CommDriverInternal::CommDriverInternal(DriverListener& listener)
     : AbstractCommDriver(NavAddr::Bus::Plugin, "internal"),

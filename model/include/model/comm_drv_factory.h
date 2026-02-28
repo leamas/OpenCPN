@@ -34,7 +34,7 @@
  * available for both upper layers and plugins.
  *
  * Messages classified as junk, filtered or with bad checksum
- * are handed to the evt_dropped_msg EventVar on
+ * are handed to the evt_dropped_msg obs::EventVar on
  * CommDrvRegistry to be available for the Data Monitor.
  */
 class N0183Listener;

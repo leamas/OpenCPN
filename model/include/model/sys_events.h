@@ -23,7 +23,8 @@
 
 #ifndef SYS__EVENTS_H_
 #define SYS__EVENTS_H_
-#include "observable_evtvar.h"
+
+#include "observe/eventvar.h"
 
 class SystemEvents {
 public:
@@ -36,13 +37,13 @@ public:
   SystemEvents& operator=(SystemEvents&) = delete;
 
   /** Notified when resuming from hibernate. */
-  EventVar evt_resume;
+  obs::EventVar evt_resume;
 
   /**
    * Notified when a new or removed device is detected, usually an USB
    * hotplug event:
    */
-  EventVar evt_dev_change;
+  obs::EventVar evt_dev_change;
 
 private:
   SystemEvents() = default;

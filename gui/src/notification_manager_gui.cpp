@@ -36,6 +36,8 @@
 #include <wx/string.h>
 #include <wx/textwrapper.h>
 
+#include "observe/globalvar.h"
+
 #include "notification_manager_gui.h"
 
 #include "model/datetime.h"
@@ -48,7 +50,6 @@
 #include "gl_chart_canvas.h"
 #include "gui_lib.h"
 #include "navutil.h"
-#include "observable_globvar.h"
 #include "ocpn_platform.h"
 #include "styles.h"
 

@@ -26,9 +26,10 @@
 
 #include <wx/timer.h>
 
+#include "observe/eventvar.h"
+
 #include "notification.h"
 #include "comm_appmsg.h"
-#include "observable_evtvar.h"
 
 class NotificationMsg : public AppMsg {
 public:
@@ -87,7 +88,7 @@ public:
   void ScrubNotificationDirectory(int days_to_retain);
 
   /** Notified without data when a notification is added or removed. */
-  EventVar evt_notificationlist_change;
+  obs::EventVar evt_notificationlist_change;
 
 private:
   NotificationManager();
