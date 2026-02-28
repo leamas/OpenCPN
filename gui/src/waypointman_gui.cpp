@@ -38,7 +38,7 @@
 #include "model/base_platform.h"
 #include "model/config_vars.h"
 #include "model/cutil.h"
-#include "model/MarkIcon.h"
+#include "model/mark_icon.h"
 #include "model/route_point.h"
 #include "model/svg_utils.h"
 

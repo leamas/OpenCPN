@@ -33,7 +33,7 @@
 #include <wx/pen.h>
 #include <wx/string.h>
 
-#include "model/MarkIcon.h"
+#include "model/mark_icon.h"
 
 #include "model/nav_object_database.h"
 #include "model/nmea_log.h"

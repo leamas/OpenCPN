@@ -92,7 +92,7 @@ set(
   ${MODEL_HDR_DIR}/json_event.h
   ${MODEL_HDR_DIR}/local_api.h
   ${MODEL_HDR_DIR}/logger.h
-  ${MODEL_HDR_DIR}/MarkIcon.h
+  ${MODEL_HDR_DIR}/mark_icon.h
   ${MODEL_HDR_DIR}/mdns_query.h
   ${MODEL_HDR_DIR}/mdns_cache.h
   ${MODEL_HDR_DIR}/mdns_service.h

@@ -73,7 +73,7 @@ model/include/model/linux_usb_watch.h
 model/include/model/local_api.h
 model/include/model/logger.h
 model/include/model/macutils.h
-model/include/model/MarkIcon.h
+model/include/model/mark_icon.h
 model/include/model/mdns_cache.h
 model/include/model/mdns_query.h
 model/include/model/mdns_service.h
