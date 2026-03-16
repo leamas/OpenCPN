@@ -26,6 +26,8 @@
  ***************************************************************************
  */
 
+#include <codecvt>
+
 #include "wx/wxprec.h"
 
 #ifndef WX_PRECOMP
@@ -70,6 +72,8 @@
 #include "android_jvm.h"
 #include <jni.h>
 #endif
+
+#include "std_filesystem.h"
 
 #ifdef __WXMAC__
 #define CATALOGS_NAME_WIDTH 300
@@ -1884,11 +1888,13 @@ bool chartdldr_pi::ExtractLibArchiveFiles(const wxString &aArchiveFile,
     if (r < ARCHIVE_WARN) return false;
     if (aStripPath) {
       const char *currentFile = archive_entry_pathname_utf8(entry);
-      std::string fullOutputPath = currentFile;
-      size_t sep = fullOutputPath.find_last_of("\\/");
-      if (sep != std::string::npos)
-        fullOutputPath =
-            fullOutputPath.substr(sep + 1, fullOutputPath.size() - sep - 1);
+      // There is no way in c++17 to force the fs::path ctor to interpret
+      // char* as utf8, this comes in c++20. Go the other way around and
+      // make path using wstring on all platforms.
+      std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+      std::wstring w_current_file = converter.from_bytes(currentFile);
+      fs::path path(w_current_file);
+      std::string fullOutputPath = path.filename().u8string();
       archive_entry_set_pathname_utf8(entry, fullOutputPath.c_str());
     }
     if (aTargetDir != wxEmptyString) {
