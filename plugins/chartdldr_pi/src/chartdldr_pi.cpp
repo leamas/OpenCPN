@@ -1883,16 +1883,16 @@ bool chartdldr_pi::ExtractLibArchiveFiles(const wxString &aArchiveFile,
                                   archive_error_string(a)));
     if (r < ARCHIVE_WARN) return false;
     if (aStripPath) {
-      const char *currentFile = archive_entry_pathname(entry);
+      const char *currentFile = archive_entry_pathname_utf8(entry);
       std::string fullOutputPath = currentFile;
       size_t sep = fullOutputPath.find_last_of("\\/");
       if (sep != std::string::npos)
         fullOutputPath =
             fullOutputPath.substr(sep + 1, fullOutputPath.size() - sep - 1);
-      archive_entry_set_pathname(entry, fullOutputPath.c_str());
+      archive_entry_set_pathname_utf8(entry, fullOutputPath.c_str());
     }
     if (aTargetDir != wxEmptyString) {
-      const char *currentFile = archive_entry_pathname(entry);
+      const char *currentFile = archive_entry_pathname_utf8(entry);
       wxString entryName = wxString::FromUTF8(currentFile);
       wxString fullOutputPath;
 
@@ -1903,7 +1903,7 @@ bool chartdldr_pi::ExtractLibArchiveFiles(const wxString &aArchiveFile,
             entryName);
         continue;
       }
-      archive_entry_set_pathname(entry, fullOutputPath.ToUTF8().data());
+      archive_entry_set_pathname_utf8(entry, fullOutputPath.ToUTF8().data());
     }
     r = archive_write_header(ext, entry);
     if (r < ARCHIVE_OK)
