@@ -138,7 +138,7 @@ END_EVENT_TABLE()
 
 CommDriverN2KNet::CommDriverN2KNet(const ConnectionParams* params,
                                    DriverListener& listener)
-    : CommDriverN2K(params->GetStrippedDSPort()),
+    : CommDriverN2k(params->GetStrippedDSPort()),
       m_params(*params),
       m_listener(listener),
       m_stats_timer(*this, 2s),
@@ -154,7 +154,7 @@ CommDriverN2KNet::CommDriverN2KNet(const ConnectionParams* params,
       m_connection_type(params->Type),
       m_bok(false),
       m_circle(RX_BUFFER_SIZE_NET),
-      m_TX_available(false) {
+      m_tx_available(false) {
   m_addr.Hostname(params->NetworkAddress);
   m_addr.Service(params->NetworkPort);
 
@@ -171,7 +171,7 @@ CommDriverN2KNet::CommDriverN2KNet(const ConnectionParams* params,
   this->attributes["ioDirection"] = DsPortTypeToString(params->IOSelect);
 
   // Prepare the wxEventHandler to accept events from the actual hardware thread
-  Bind(wxEVT_COMMDRIVER_N2K_NET, &CommDriverN2KNet::handle_N2K_MSG, this);
+  Bind(wxEVT_COMMDRIVER_N2K_NET, &CommDriverN2KNet::HandleN2kMsg, this);
 
   m_prodinfo_timer.Connect(
       wxEVT_TIMER, wxTimerEventHandler(CommDriverN2KNet::OnProdInfoTimer), NULL,
@@ -179,14 +179,14 @@ CommDriverN2KNet::CommDriverN2KNet(const ConnectionParams* params,
 
   m_mrq_container = new MrqContainer;
   m_ib = 0;
-  m_bInMsg = false;
-  m_bGotESC = false;
-  m_bGotSOT = false;
+  m_is_in_msg = false;
+  m_got_esc = false;
+  m_got_sot = false;
   rx_buffer = new unsigned char[RX_BUFFER_SIZE_NET + 1];
 
   fast_messages = new FastMessageMap();
   m_order = 0;  // initialize the fast message sequence ID bits, for TX
-  m_n2k_format = N2KFormat_YD_RAW;
+  m_n2k_format = N2KFormatYdRaw;
 
   // Establish the power events response
   resume_listener.Init(SystemEvents::GetInstance().evt_resume,
@@ -203,11 +203,11 @@ CommDriverN2KNet::~CommDriverN2KNet() {
 }
 
 typedef struct {
-  std::string Model_ID;
-  char RT_flag;
-} product_info;
+  std::string model_id;
+  char rt_flag;
+} ProductInfo;
 
-std::unordered_map<uint8_t, product_info> prod_info_map;
+std::unordered_map<uint8_t, ProductInfo> prod_info_map;
 
 bool CommDriverN2KNet::HandleMgntMsg(uint64_t pgn,
                                      std::vector<unsigned char>& payload) {
@@ -216,50 +216,50 @@ bool CommDriverN2KNet::HandleMgntMsg(uint64_t pgn,
   auto msg =
       std::make_shared<const Nmea2000Msg>(pgn, payload, GetAddress(name));
 
-  bool b_handled = false;
+  bool is_handled = false;
   switch (pgn) {
     case 126996: {  // Product information
       uint8_t src_addr = payload.at(7);
       if (src_addr == 75) return false;  // skip simulator mgnt messages
-      product_info pr_info;
-      pr_info.Model_ID = std::string((char*)&payload.data()[17], 32);
-      pr_info.RT_flag = m_TX_flag;
+      ProductInfo pr_info;
+      pr_info.model_id = std::string((char*)&payload.data()[17], 32);
+      pr_info.rt_flag = m_tx_flag;
 
       prod_info_map[src_addr] = pr_info;
-      b_handled = true;
+      is_handled = true;
       break;
     }
     case 59904: {  // ISO request
       uint8_t src_addr = payload.at(7);
-      b_handled = true;
+      is_handled = true;
       break;
     }
     default:
       break;
   }
-  return b_handled;
+  return is_handled;
 }
 
 void CommDriverN2KNet::OnProdInfoTimer(wxTimerEvent& ev) {
   // Check the results of the PGN 126996 capture
-  bool b_found = false;
+  bool is_found = false;
   for (const auto& [key, value] : prod_info_map) {
     auto prod_info = value;
-    if (prod_info.Model_ID.find("YDEN") != std::string::npos) {
+    if (prod_info.model_id.find("YDEN") != std::string::npos) {
       // Found a YDEN device
       // If this configured port is actually connector to YDEN,
       // then the device will have marked the received TCP packet
       // with "T" indicator.  Check it.
-      if (prod_info.RT_flag == 'T') b_found = true;
+      if (prod_info.rt_flag == 'T') is_found = true;
       break;
     }
   }
 
-  if (b_found) m_TX_available = true;
+  if (is_found) m_tx_available = true;
   prod_info_map.clear();
 }
 
-void CommDriverN2KNet::handle_N2K_MSG(CommDriverN2KNetEvent& event) {
+void CommDriverN2KNet::HandleN2kMsg(CommDriverN2KNetEvent& event) {
   auto p = event.GetPayload();
   std::vector<unsigned char>* payload = p.get();
 
@@ -294,11 +294,11 @@ void CommDriverN2KNet::Open() {
   // Create the socket
   switch (m_net_protocol) {
     case TCP: {
-      OpenNetworkTCP(addr);
+      OpenNetworkTcp(addr);
       break;
     }
     case UDP: {
-      OpenNetworkUDP(addr);
+      OpenNetworkUdp(addr);
       break;
     }
     default:
@@ -307,7 +307,7 @@ void CommDriverN2KNet::Open() {
   SetOk(true);
 }
 
-void CommDriverN2KNet::OpenNetworkUDP(unsigned int addr) {
+void CommDriverN2KNet::OpenNetworkUdp(unsigned int addr) {
   if (GetPortType() != DS_TYPE_OUTPUT) {
     //  We need a local (bindable) address to create the Datagram receive socket
     // Set up the receive socket
@@ -358,17 +358,17 @@ void CommDriverN2KNet::OpenNetworkUDP(unsigned int addr) {
   SetConnectTime(wxDateTime::Now());
 }
 
-void CommDriverN2KNet::OpenNetworkTCP(unsigned int addr) {
-  int isServer = ((addr == INADDR_ANY) ? 1 : 0);
-  wxLogMessage(wxString::Format("Opening TCP Server %d", isServer));
+void CommDriverN2KNet::OpenNetworkTcp(unsigned int addr) {
+  int is_server = ((addr == INADDR_ANY) ? 1 : 0);
+  wxLogMessage(wxString::Format("Opening TCP Server %d", is_server));
 
-  if (isServer) {
+  if (is_server) {
     SetSockServer(new wxSocketServer(GetAddr(), wxSOCKET_REUSEADDR));
   } else {
     SetSock(new wxSocketClient());
   }
 
-  if (isServer) {
+  if (is_server) {
     GetSockServer()->SetEventHandler(*this, DS_SERVERSOCKET_ID);
     GetSockServer()->SetNotify(wxSOCKET_CONNECTION_FLAG);
     GetSockServer()->Notify(TRUE);
@@ -575,7 +575,7 @@ static bool isASCII(const std::vector<unsigned char>& packet) {
   return true;
 }
 
-N2K_Format CommDriverN2KNet::DetectFormat(
+N2kFormat CommDriverN2KNet::DetectFormat(
     const std::vector<unsigned char>& packet) {
   // A simplistic attempt at identifying which of the various available
   //    on-wire (or air) formats being emitted by a configured
@@ -584,44 +584,44 @@ N2K_Format CommDriverN2KNet::DetectFormat(
   if (isASCII(packet)) {
     std::string payload = std::string(packet.begin(), packet.end());
     if (payload.find("$PCDIN") != std::string::npos) {
-      return N2KFormat_SeaSmart;
+      return N2kFormatSeaSmart;
     } else if (payload.find("$MXPGN") != std::string::npos) {
       // TODO: Due to the weird fragmentation observed with default settings of
       // the wi-fi part, the payload does not always start with or even contain
       // `$MXPGN`. We now lose the later.
-      return N2KFormat_MiniPlex;
+      return N2kFormatMiniPlex;
     } else if (std::find(packet.begin(), packet.end(), ':') != packet.end()) {
-      return N2KFormat_Actisense_RAW_ASCII;
+      return N2KFormatActisenseRawAscii;
     } else {
-      return N2KFormat_Actisense_N2K_ASCII;
+      return N2KFormatActisenseN2kAscii;
     }
   } else {
     if (packet[2] == 0x95)
-      return N2KFormat_Actisense_RAW;
+      return N2kFormatActisenseRaw;
     else if (packet[2] == 0xd0)
-      return N2KFormat_Actisense_N2K;
+      return N2kFormatActisenseN2k;
     else if (packet[2] == 0x93)
-      return N2KFormat_Actisense_NGT;
+      return N2kFormatActisenseNgt;
   }
-  return N2KFormat_Undefined;
+  return N2kFormatUndefined;
 }
 
-bool CommDriverN2KNet::ProcessActisense_N2K(std::vector<unsigned char> packet) {
+bool CommDriverN2KNet::ProcessActisenseN2k(std::vector<unsigned char> packet) {
   // 1002 d0 1500ff0401f80900684c1b00a074eb14f89052d288 1003
 
   std::vector<unsigned char> data;
-  bool bInMsg = false;
-  bool bGotESC = false;
-  bool bGotSOT = false;
+  bool is_in_msg = false;
+  bool got_esc = false;
+  bool got_sot = false;
 
   while (!m_circle.IsEmpty()) {
     uint8_t next_byte = m_circle.Get();
 
-    if (bInMsg) {
-      if (bGotESC) {
+    if (is_in_msg) {
+      if (got_esc) {
         if (next_byte == ESCAPE) {
           data.push_back(next_byte);
-          bGotESC = false;
+          got_esc = false;
         } else if (next_byte == ENDOFTEXT) {
           // Process packet
           // first 3 bytes are: 1 byte for message type, 2 bytes for rest of
@@ -669,29 +669,29 @@ bool CommDriverN2KNet::ProcessActisense_N2K(std::vector<unsigned char> packet) {
             o_payload.push_back(0x55);  // CRC dummy, not checked
 
             // Message is ready
-            CommDriverN2KNetEvent Nevent(wxEVT_COMMDRIVER_N2K_NET, 0);
+            CommDriverN2KNetEvent net_event(wxEVT_COMMDRIVER_N2K_NET, 0);
             auto n2k_payload =
                 std::make_shared<std::vector<uint8_t>>(o_payload);
-            Nevent.SetPayload(n2k_payload);
-            AddPendingEvent(Nevent);
+            net_event.SetPayload(n2k_payload);
+            AddPendingEvent(net_event);
           }
 
           // reset for next packet
-          bInMsg = false;
-          bGotESC = false;
+          is_in_msg = false;
+          got_esc = false;
           data.clear();
         } else if (next_byte == STARTOFTEXT) {
-          bGotESC = false;
+          got_esc = false;
           data.clear();
         } else {
           data.clear();
-          bInMsg = false;
-          bGotESC = false;
+          is_in_msg = false;
+          got_esc = false;
         }
       } else {
-        bGotESC = (next_byte == ESCAPE);
+        got_esc = (next_byte == ESCAPE);
 
-        if (!bGotESC) {
+        if (!got_esc) {
           data.push_back(next_byte);
         }
       }
@@ -699,15 +699,15 @@ bool CommDriverN2KNet::ProcessActisense_N2K(std::vector<unsigned char> packet) {
 
     else {
       if (STARTOFTEXT == next_byte) {
-        bGotSOT = false;
-        if (bGotESC) {
-          bGotSOT = true;
+        got_sot = false;
+        if (got_esc) {
+          got_sot = true;
         }
       } else {
-        bGotESC = (next_byte == ESCAPE);
-        if (bGotSOT) {
-          bGotSOT = false;
-          bInMsg = true;
+        got_esc = (next_byte == ESCAPE);
+        if (got_sot) {
+          got_sot = false;
+          is_in_msg = true;
 
           data.push_back(next_byte);
         }
@@ -718,24 +718,24 @@ bool CommDriverN2KNet::ProcessActisense_N2K(std::vector<unsigned char> packet) {
   return true;
 }
 
-bool CommDriverN2KNet::ProcessActisense_RAW(std::vector<unsigned char> packet) {
+bool CommDriverN2KNet::ProcessActisenseRaw(std::vector<unsigned char> packet) {
   // 1002 95 0e15870402f8094b  fc e6 20 00 00 ff ff 6f 1003
 
   can_frame frame;
 
   std::vector<unsigned char> data;
-  bool bInMsg = false;
-  bool bGotESC = false;
-  bool bGotSOT = false;
+  bool is_in_msg = false;
+  bool got_esc = false;
+  bool got_sot = false;
 
   while (!m_circle.IsEmpty()) {
     uint8_t next_byte = m_circle.Get();
 
-    if (bInMsg) {
-      if (bGotESC) {
+    if (is_in_msg) {
+      if (got_esc) {
         if (next_byte == ESCAPE) {
           data.push_back(next_byte);
-          bGotESC = false;
+          got_esc = false;
         } else if (next_byte == ENDOFTEXT) {
           // Process packet
           // Create a can_frame, to assemble fast packets.
@@ -754,23 +754,23 @@ bool CommDriverN2KNet::ProcessActisense_RAW(std::vector<unsigned char> packet) {
               HandleCanFrameInput(frame);
 
               // reset for next packet
-              bInMsg = false;
-              bGotESC = false;
+              is_in_msg = false;
+              got_esc = false;
               data.clear();
             }
           }
         } else if (next_byte == STARTOFTEXT) {
-          bGotESC = false;
+          got_esc = false;
           data.clear();
         } else {
           data.clear();
-          bInMsg = false;
-          bGotESC = false;
+          is_in_msg = false;
+          got_esc = false;
         }
       } else {
-        bGotESC = (next_byte == ESCAPE);
+        got_esc = (next_byte == ESCAPE);
 
-        if (!bGotESC) {
+        if (!got_esc) {
           data.push_back(next_byte);
         }
       }
@@ -778,15 +778,15 @@ bool CommDriverN2KNet::ProcessActisense_RAW(std::vector<unsigned char> packet) {
 
     else {
       if (STARTOFTEXT == next_byte) {
-        bGotSOT = false;
-        if (bGotESC) {
-          bGotSOT = true;
+        got_sot = false;
+        if (got_esc) {
+          got_sot = true;
         }
       } else {
-        bGotESC = (next_byte == ESCAPE);
-        if (bGotSOT) {
-          bGotSOT = false;
-          bInMsg = true;
+        got_esc = (next_byte == ESCAPE);
+        if (got_sot) {
+          got_sot = false;
+          is_in_msg = true;
 
           data.push_back(next_byte);
         }
@@ -797,20 +797,20 @@ bool CommDriverN2KNet::ProcessActisense_RAW(std::vector<unsigned char> packet) {
   return true;
 }
 
-bool CommDriverN2KNet::ProcessActisense_NGT(std::vector<unsigned char> packet) {
+bool CommDriverN2KNet::ProcessActisenseNgt(std::vector<unsigned char> packet) {
   std::vector<unsigned char> data;
-  bool bInMsg = false;
-  bool bGotESC = false;
-  bool bGotSOT = false;
+  bool is_in_msg = false;
+  bool got_esc = false;
+  bool got_sot = false;
 
   while (!m_circle.IsEmpty()) {
     uint8_t next_byte = m_circle.Get();
 
-    if (bInMsg) {
-      if (bGotESC) {
+    if (is_in_msg) {
+      if (got_esc) {
         if (next_byte == ESCAPE) {
           data.push_back(next_byte);
-          bGotESC = false;
+          got_esc = false;
         } else if (next_byte == ENDOFTEXT) {
           // Process packet
           CommDriverN2KNetEvent Nevent(wxEVT_COMMDRIVER_N2K_NET, 0);
@@ -819,21 +819,21 @@ bool CommDriverN2KNet::ProcessActisense_NGT(std::vector<unsigned char> packet) {
           AddPendingEvent(Nevent);
 
           // reset for next packet
-          bInMsg = false;
-          bGotESC = false;
+          is_in_msg = false;
+          got_esc = false;
           data.clear();
         } else if (next_byte == STARTOFTEXT) {
-          bGotESC = false;
+          got_esc = false;
           data.clear();
         } else {
           data.clear();
-          bInMsg = false;
-          bGotESC = false;
+          is_in_msg = false;
+          got_esc = false;
         }
       } else {
-        bGotESC = (next_byte == ESCAPE);
+        got_esc = (next_byte == ESCAPE);
 
-        if (!bGotESC) {
+        if (!got_esc) {
           data.push_back(next_byte);
         }
       }
@@ -841,15 +841,15 @@ bool CommDriverN2KNet::ProcessActisense_NGT(std::vector<unsigned char> packet) {
 
     else {
       if (STARTOFTEXT == next_byte) {
-        bGotSOT = false;
-        if (bGotESC) {
-          bGotSOT = true;
+        got_sot = false;
+        if (got_esc) {
+          got_sot = true;
         }
       } else {
-        bGotESC = (next_byte == ESCAPE);
-        if (bGotSOT) {
-          bGotSOT = false;
-          bInMsg = true;
+        got_esc = (next_byte == ESCAPE);
+        if (got_sot) {
+          got_sot = false;
+          is_in_msg = true;
 
           data.push_back(next_byte);
         }
@@ -860,7 +860,7 @@ bool CommDriverN2KNet::ProcessActisense_NGT(std::vector<unsigned char> packet) {
   return true;
 }
 
-bool CommDriverN2KNet::ProcessActisense_ASCII_RAW(
+bool CommDriverN2KNet::ProcessActisenseAsciiRaw(
     std::vector<unsigned char> packet) {
   can_frame frame;
 
@@ -883,13 +883,13 @@ bool CommDriverN2KNet::ProcessActisense_ASCII_RAW(
 
       token = tkz.GetNextToken();  // R/T
       // Record the R/T flag, for use in device detect logic
-      m_TX_flag = token[0];
+      m_tx_flag = token[0];
 
       // can_id;
       token = tkz.GetNextToken();
-      long canID;
-      token.ToLong(&canID, 16);
-      frame.can_id = canID;
+      long can_id;
+      token.ToLong(&can_id, 16);
+      frame.can_id = can_id;
 
       // 8 data bytes, if present, 0 otherwise
       unsigned char bytes[8];
@@ -909,7 +909,7 @@ bool CommDriverN2KNet::ProcessActisense_ASCII_RAW(
   return true;
 }
 
-bool CommDriverN2KNet::ProcessActisense_ASCII_N2K(
+bool CommDriverN2KNet::ProcessActisenseAsciiN2k(
     std::vector<unsigned char> packet) {
   // A001001.732 04FF6 1FA03 C8FBA80329026400
   std::string sentence;
@@ -940,8 +940,8 @@ bool CommDriverN2KNet::ProcessActisense_ASCII_N2K(
 
       // PGN
       wxString sPGN = tkz.GetNextToken();
-      unsigned long PGN;
-      sPGN.ToULong(&PGN, 16);
+      unsigned long pgn;
+      sPGN.ToULong(&pgn, 16);
       // printf("  PGN: %ld\n", PGN);
 
       // data field
@@ -959,9 +959,9 @@ bool CommDriverN2KNet::ProcessActisense_ASCII_N2K(
       o_payload.push_back(0x93);
       o_payload.push_back(0x13);
       o_payload.push_back(priority);  // priority;
-      o_payload.push_back(PGN & 0xFF);
-      o_payload.push_back((PGN >> 8) & 0xFF);
-      o_payload.push_back((PGN >> 16) & 0xFF);
+      o_payload.push_back(pgn & 0xFF);
+      o_payload.push_back((pgn >> 8) & 0xFF);
+      o_payload.push_back((pgn >> 16) & 0xFF);
       o_payload.push_back(destination);  // destination;
       o_payload.push_back(source);       // header.source);
       o_payload.push_back(0xFF);  // FIXME (dave) generate the time fields
@@ -972,7 +972,7 @@ bool CommDriverN2KNet::ProcessActisense_ASCII_N2K(
       for (size_t n = 0; n < data.size(); n++) o_payload.push_back(data[n]);
       o_payload.push_back(0x55);  // CRC dummy, not checked
 
-      if (HandleMgntMsg(PGN, o_payload)) return false;
+      if (HandleMgntMsg(pgn, o_payload)) return false;
 
       // Message is ready
       CommDriverN2KNetEvent Nevent(wxEVT_COMMDRIVER_N2K_NET, 0);
@@ -1001,11 +1001,11 @@ bool CommDriverN2KNet::ProcessSeaSmart(std::vector<unsigned char> packet) {
 
       // Discard first token
       wxString token = tkz.GetNextToken();  // $PCDIN
-      m_TX_flag = 'R';
+      m_tx_flag = 'R';
 
       token = tkz.GetNextToken();  // PGN
-      unsigned long PGN;
-      token.ToULong(&PGN, 16);
+      unsigned long pgn;
+      token.ToULong(&pgn, 16);
 
       token = tkz.GetNextToken();  // Timestamp
       unsigned long timestamp;
@@ -1025,9 +1025,9 @@ bool CommDriverN2KNet::ProcessSeaSmart(std::vector<unsigned char> packet) {
       o_payload.push_back(0x93);
       o_payload.push_back(0x13);
       o_payload.push_back(3);  // priority hardcoded, missing in SeaSmart
-      o_payload.push_back(PGN & 0xFF);
-      o_payload.push_back((PGN >> 8) & 0xFF);
-      o_payload.push_back((PGN >> 16) & 0xFF);
+      o_payload.push_back(pgn & 0xFF);
+      o_payload.push_back((pgn >> 8) & 0xFF);
+      o_payload.push_back((pgn >> 16) & 0xFF);
       o_payload.push_back(0xFF);  // destination hardcoded, missing in SeaSmart
       o_payload.push_back((uint8_t)source);  // header.source);
       o_payload.push_back(timestamp & 0xFF);
@@ -1043,13 +1043,13 @@ bool CommDriverN2KNet::ProcessSeaSmart(std::vector<unsigned char> packet) {
       }
       o_payload.push_back(0x55);  // CRC dummy, not checked
 
-      if (HandleMgntMsg(PGN, o_payload)) return false;
+      if (HandleMgntMsg(pgn, o_payload)) return false;
 
       // Message is ready
-      CommDriverN2KNetEvent Nevent(wxEVT_COMMDRIVER_N2K_NET, 0);
+      CommDriverN2KNetEvent net_Nevent(wxEVT_COMMDRIVER_N2K_NET, 0);
       auto n2k_payload = std::make_shared<std::vector<uint8_t>>(o_payload);
-      Nevent.SetPayload(n2k_payload);
-      AddPendingEvent(Nevent);
+      net_Nevent.SetPayload(n2k_payload);
+      AddPendingEvent(net_Nevent);
     }
   }
   return true;
@@ -1166,11 +1166,11 @@ bool CommDriverN2KNet::ProcessMiniPlex(std::vector<unsigned char> packet) {
 
       // Discard first token
       wxString token = tkz.GetNextToken();  // $MXPGN
-      m_TX_flag = 'R';
+      m_tx_flag = 'R';
 
       token = tkz.GetNextToken();  // PGN
-      unsigned long PGN;
-      token.ToULong(&PGN, 16);
+      unsigned long pgn;
+      token.ToULong(&pgn, 16);
 
       token = tkz.GetNextToken();  // Attribute compound field
       unsigned long attr;
@@ -1191,11 +1191,10 @@ bool CommDriverN2KNet::ProcessMiniPlex(std::vector<unsigned char> packet) {
       wxStringTokenizer datatkz(token, "*");
       wxString data = datatkz.GetNextToken();
 
-      if (data.Length() >
-          16) {  // Payload can never exceed 8 bytes (=16 HEX characters)
+      if (data.Length() > 16) {
+        // Payload can never exceed 8 bytes (=16 HEX characters)
         return false;
       }
-
       can_frame frame;
       memset(&frame.data, 0, 8);
       for (size_t i = 0; i < data.Length(); i += 2) {
@@ -1204,7 +1203,7 @@ bool CommDriverN2KNet::ProcessMiniPlex(std::vector<unsigned char> packet) {
         sbyte.ToULong(&dv, 16);
         frame.data[i / 2] = ((uint8_t)dv);
       }
-      frame.can_id = (uint32_t)BuildCanID(priority, address, 0xFF, PGN);
+      frame.can_id = (uint32_t)BuildCanID(priority, address, 0xFF, pgn);
       HandleCanFrameInput(frame);
     }
   }
@@ -1259,31 +1258,31 @@ void CommDriverN2KNet::OnSocketEvent(wxSocketEvent& event) {
       m_n2k_format = DetectFormat(data);
 
       switch (m_n2k_format) {
-        case N2KFormat_Actisense_RAW_ASCII:
-          ProcessActisense_ASCII_RAW(data);
+        case N2KFormatActisenseRawAscii:
+          ProcessActisenseAsciiRaw(data);
           break;
-        case N2KFormat_YD_RAW:  // RX Byte compatible with Actisense ASCII RAW
-          ProcessActisense_ASCII_RAW(data);
+        case N2KFormatYdRaw:  // RX Byte compatible with Actisense ASCII RAW
+          ProcessActisenseAsciiRaw(data);
           break;
-        case N2KFormat_Actisense_N2K_ASCII:
-          ProcessActisense_ASCII_N2K(data);
+        case N2KFormatActisenseN2kAscii:
+          ProcessActisenseAsciiN2k(data);
           break;
-        case N2KFormat_Actisense_N2K:
-          ProcessActisense_N2K(data);
+        case N2kFormatActisenseN2k:
+          ProcessActisenseN2k(data);
           break;
-        case N2KFormat_Actisense_RAW:
-          ProcessActisense_RAW(data);
+        case N2kFormatActisenseRaw:
+          ProcessActisenseRaw(data);
           break;
-        case N2KFormat_Actisense_NGT:
-          ProcessActisense_NGT(data);
+        case N2kFormatActisenseNgt:
+          ProcessActisenseNgt(data);
           break;
-        case N2KFormat_SeaSmart:
+        case N2kFormatSeaSmart:
           ProcessSeaSmart(data);
           break;
-        case N2KFormat_MiniPlex:
+        case N2kFormatMiniPlex:
           ProcessMiniPlex(data);
           break;
-        case N2KFormat_Undefined:
+        case N2kFormatUndefined:
         default:
           break;
       }
@@ -1306,8 +1305,8 @@ void CommDriverN2KNet::OnSocketEvent(wxSocketEvent& event) {
           break;
         }
         wxDateTime now = wxDateTime::Now();
-        wxTimeSpan since_connect(
-            0, 0, 10);  // ten secs assumed, if connect time is uninitialized
+        wxTimeSpan since_connect(0, 0, 10);
+        // ten secs assumed, if connect time is uninitialized
         if (GetConnectTime().IsValid()) since_connect = now - GetConnectTime();
 
         int retry_time = 5000;  // default
@@ -1393,8 +1392,8 @@ std::vector<unsigned char> MakeSimpleOutMsg(
   std::vector<unsigned char> out_vec;
 
   switch (data_format) {
-    case N2KFormat_YD_RAW:
-    case N2KFormat_Actisense_RAW_ASCII: {
+    case N2KFormatYdRaw:
+    case N2KFormatActisenseRawAscii: {
       // Craft the canID
       unsigned can_id = BuildCanID(6, 0xff, 0xff, pgn);
       std::stringstream ss;
@@ -1417,7 +1416,7 @@ std::vector<unsigned char> MakeSimpleOutMsg(
       out_vec.push_back(0x0a);
       break;
     }
-    case N2KFormat_Actisense_N2K_ASCII: {
+    case N2KFormatActisenseN2kAscii: {
       // Create the time field
       wxDateTime now = wxDateTime::Now();
       wxString stime = now.Format("%H%M%S");
@@ -1454,7 +1453,7 @@ std::vector<unsigned char> MakeSimpleOutMsg(
       out_vec.push_back(0x0a);
       break;
     }
-    case N2KFormat_MiniPlex: {
+    case N2kFormatMiniPlex: {
       out_vec.push_back('$');
       out_vec.push_back('M');
       out_vec.push_back('X');
@@ -1521,9 +1520,9 @@ std::vector<std::vector<unsigned char>> CommDriverN2KNet::GetTxVector(
 
   // Branch based on detected network data format currently in use
   switch (m_n2k_format) {
-    case N2KFormat_YD_RAW:
+    case N2KFormatYdRaw:
       break;
-    case N2KFormat_Actisense_RAW_ASCII: {
+    case N2KFormatActisenseRawAscii: {
       //  00:34:02.718 R 15FD0800 FF 00 01 CA 6F FF FF FF
       if (!IsFastMessagePGN(msg->PGN.pgn) && msg->payload.size() <= 8) {
         // Single packet message
@@ -1636,7 +1635,7 @@ std::vector<std::vector<unsigned char>> CommDriverN2KNet::GetTxVector(
         }  // for loop
       }
     } break;
-    case N2KFormat_Actisense_N2K_ASCII: {
+    case N2KFormatActisenseN2kAscii: {
       // Source: Actisense own documentation `NMEA 2000 ASCII Output
       // format.docx`
       //
@@ -1696,7 +1695,7 @@ std::vector<std::vector<unsigned char>> CommDriverN2KNet::GetTxVector(
 
       break;
     }
-    case N2KFormat_MiniPlex: {
+    case N2kFormatMiniPlex: {
       std::vector<unsigned char> ovec;
       if (!IsFastMessagePGN(msg->PGN.pgn) && msg->payload.size() < 8) {
         // Single packet
@@ -1796,13 +1795,13 @@ std::vector<std::vector<unsigned char>> CommDriverN2KNet::GetTxVector(
         break;
       }
     }
-    case N2KFormat_Actisense_N2K:
+    case N2kFormatActisenseN2k:
       break;
-    case N2KFormat_Actisense_RAW:
+    case N2kFormatActisenseRaw:
       break;
-    case N2KFormat_Actisense_NGT:
+    case N2kFormatActisenseNgt:
       break;
-    case N2KFormat_SeaSmart:
+    case N2kFormatSeaSmart:
       break;
     default:
       break;
@@ -1814,7 +1813,7 @@ std::vector<std::vector<unsigned char>> CommDriverN2KNet::GetTxVector(
   return tx_vector;
 }
 
-bool CommDriverN2KNet::PrepareForTX() {
+bool CommDriverN2KNet::PrepareForTx() {
   // We need to determine several items before TX operations can commence.
   // 1.  Is the gateway configured at my ip present, and if so, which of
   //     the two supported gateways is it?  (YDEN-type, or Actisense-type.
@@ -1831,19 +1830,19 @@ bool CommDriverN2KNet::PrepareForTX() {
   // then we are clearly connected to an actisense device.
   // Nothing else need be done.
 
-  if (m_n2k_format == N2KFormat_Actisense_N2K_ASCII) return true;
+  if (m_n2k_format == N2KFormatActisenseN2kAscii) return true;
 
   // Step 1.2
   // If the detected data format is N2KFormat_MiniPlex,
   // then we are clearly connected to a MiniPlex.
   // Nothing else need be done.
 
-  if (m_n2k_format == N2KFormat_MiniPlex) return true;
+  if (m_n2k_format == N2kFormatMiniPlex) return true;
 
   // Step 1.2
   // If the detected data format is N2KFormat_SeaSmart,
   // then we can't transmit.
-  if (m_n2k_format == N2KFormat_SeaSmart) return false;
+  if (m_n2k_format == N2kFormatSeaSmart) return false;
 
   // Step 2
 
@@ -1852,7 +1851,7 @@ bool CommDriverN2KNet::PrepareForTX() {
   //  so if we get sensible response, the gw must be YDEN type.
 
   // Already tested and found available?
-  if (m_TX_available)
+  if (m_tx_available)
     return true;
   else {
     // Send a broadcast request for PGN 126996, Product Information
@@ -1863,7 +1862,7 @@ bool CommDriverN2KNet::PrepareForTX() {
 
     std::vector<std::vector<unsigned char>> out_data;
     std::vector<unsigned char> msg_vec =
-        MakeSimpleOutMsg(N2KFormat_YD_RAW, 59904, payload);
+        MakeSimpleOutMsg(N2KFormatYdRaw, 59904, payload);
     out_data.push_back(msg_vec);
     SendSentenceNetwork(out_data);
 
@@ -1877,7 +1876,7 @@ bool CommDriverN2KNet::PrepareForTX() {
 
 bool CommDriverN2KNet::SendN2KNetwork(std::shared_ptr<const Nmea2000Msg>& msg,
                                       std::shared_ptr<const NavAddr2000> addr) {
-  PrepareForTX();
+  PrepareForTx();
 
   std::vector<std::vector<unsigned char>> out_data = GetTxVector(msg, addr);
   SendSentenceNetwork(out_data);
@@ -1893,9 +1892,8 @@ bool CommDriverN2KNet::SendN2KNetwork(std::shared_ptr<const Nmea2000Msg>& msg,
 
 bool CommDriverN2KNet::SendSentenceNetwork(
     std::vector<std::vector<unsigned char>> payload) {
-  if (m_txenter)
-    return false;  // do not allow recursion, could happen with non-blocking
-                   // sockets
+  // do not allow recursion, could happen with non-blocking sockets
+  if (m_txenter) return false;
   m_txenter++;
 
   bool ret = true;
@@ -1987,9 +1985,9 @@ bool CommDriverN2KNet::SetOutputSocketOptions(wxSocketBase* tsock) {
   // not inherited.  However, none of OpenCPN's currently
   // supported platforms fall into that category.
 
-  int nagleDisable = 1;
-  ret = tsock->SetOption(IPPROTO_TCP, TCP_NODELAY, &nagleDisable,
-                         sizeof(nagleDisable));
+  int nagle_disable = 1;
+  ret = tsock->SetOption(IPPROTO_TCP, TCP_NODELAY, &nagle_disable,
+                         sizeof(nagle_disable));
 
   //  Drastically reduce the size of the socket output buffer
   //  so that when client goes away without properly closing, the stream will

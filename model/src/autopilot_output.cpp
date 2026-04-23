@@ -301,11 +301,11 @@ bool UpdateAutopilotN2K(Routeman &routeman) {
   if (!found) return false;
 
   // N2K serial drivers require maintenance of an enabled PGN TX list
-  auto drv_serial = dynamic_cast<CommDriverN2KSerial *>(found);
+  auto drv_serial = dynamic_cast<CommDriverN2kSerial *>(found);
   if (drv_serial) {
-    drv_serial->AddTxPGN(129283);
-    drv_serial->AddTxPGN(129284);
-    drv_serial->AddTxPGN(129285);
+    drv_serial->AddTxPgn(129283);
+    drv_serial->AddTxPgn(129284);
+    drv_serial->AddTxPgn(129285);
   }
   if (routeman.IsAnyRouteActive()) {
     fail_any |= !SendPGN129285(routeman, found);

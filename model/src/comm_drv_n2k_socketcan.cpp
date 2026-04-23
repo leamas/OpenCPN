@@ -377,7 +377,7 @@ bool CommDriverN2KSocketCanImpl::SendMessage(
 
 CommDriverN2KSocketCAN::CommDriverN2KSocketCAN(const ConnectionParams* params,
                                                DriverListener& listener)
-    : CommDriverN2K(params->GetStrippedDSPort()),
+    : CommDriverN2k(params->GetStrippedDSPort()),
       m_params(*params),
       m_listener(listener),
       m_stats_timer(*this, 2s),

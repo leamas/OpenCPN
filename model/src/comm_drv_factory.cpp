@@ -87,7 +87,7 @@ void MakeCommDriver(const ConnectionParams* params) {
     case SERIAL:
       switch (params->Protocol) {
         case PROTO_NMEA2000: {
-          auto driver = std::make_unique<CommDriverN2KSerial>(params, msgbus);
+          auto driver = std::make_unique<CommDriverN2kSerial>(params, msgbus);
           registry.Activate(std::move(driver));
           break;
         }

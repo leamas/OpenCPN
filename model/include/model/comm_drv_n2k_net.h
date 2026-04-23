@@ -65,23 +65,23 @@
 #define MsgTypeN2kRequest 0x94
 
 typedef enum {
-  N2KFormat_Undefined = 0,
-  N2KFormat_YD_RAW,
-  N2KFormat_Actisense_RAW_ASCII,
-  N2KFormat_Actisense_N2K_ASCII,
-  N2KFormat_Actisense_N2K,
-  N2KFormat_Actisense_RAW,
-  N2KFormat_Actisense_NGT,
-  N2KFormat_SeaSmart,
-  N2KFormat_MiniPlex
-} N2K_Format;
+  N2kFormatUndefined = 0,
+  N2KFormatYdRaw,
+  N2KFormatActisenseRawAscii,
+  N2KFormatActisenseN2kAscii,
+  N2kFormatActisenseN2k,
+  N2kFormatActisenseRaw,
+  N2kFormatActisenseNgt,
+  N2kFormatSeaSmart,
+  N2kFormatMiniPlex
+} N2kFormat;
 
 typedef enum { TX_FORMAT_YDEN = 0, TX_FORMAT_ACTISENSE } GW_TX_FORMAT;
 
 class MrqContainer;           // forward in .cpp file
 class CommDriverN2KNetEvent;  // Internal
 
-class CommDriverN2KNet : public CommDriverN2K,
+class CommDriverN2KNet : public CommDriverN2k,
                          public wxEvtHandler,
                          public DriverStatsProvider {
 public:
@@ -103,9 +103,9 @@ public:
   void OnTimerSocket(wxTimerEvent& event) { OnTimerSocket(); }
   void OnTimerSocket();
   void OnSocketEvent(wxSocketEvent& event);
-  void OpenNetworkGPSD();
-  void OpenNetworkTCP(unsigned int addr);
-  void OpenNetworkUDP(unsigned int addr);
+  void OpenNetworkGpsd();
+  void OpenNetworkTcp(unsigned int addr);
+  void OpenNetworkUdp(unsigned int addr);
   void OnSocketReadWatchdogTimer(wxTimerEvent& event);
   void HandleResume();
 
@@ -117,7 +117,7 @@ private:
   ConnectionParams m_params;
   DriverListener& m_listener;
 
-  void handle_N2K_MSG(CommDriverN2KNetEvent& event);
+  void HandleN2kMsg(CommDriverN2KNetEvent& event);
   wxString GetNetPort() const { return m_net_port; }
   wxIPV4address GetAddr() const { return m_addr; }
   wxTimer* GetSocketThreadWatchdogTimer() {
@@ -152,15 +152,15 @@ private:
 
   ConnectionType GetConnectionType() const { return m_connection_type; }
 
-  bool ChecksumOK(const std::string& sentence);
+  bool IsChecksumOk(const std::string& sentence);
   void SetOk(bool ok) { m_bok = ok; };
 
-  N2K_Format DetectFormat(const std::vector<unsigned char>& packet);
-  bool ProcessActisense_ASCII_RAW(std::vector<unsigned char> packet);
-  bool ProcessActisense_ASCII_N2K(std::vector<unsigned char> packet);
-  bool ProcessActisense_N2K(std::vector<unsigned char> packet);
-  bool ProcessActisense_RAW(std::vector<unsigned char> packet);
-  bool ProcessActisense_NGT(std::vector<unsigned char> packet);
+  N2kFormat DetectFormat(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseAsciiRaw(std::vector<unsigned char> packet);
+  bool ProcessActisenseAsciiN2k(std::vector<unsigned char> packet);
+  bool ProcessActisenseN2k(std::vector<unsigned char> packet);
+  bool ProcessActisenseRaw(std::vector<unsigned char> packet);
+  bool ProcessActisenseNgt(std::vector<unsigned char> packet);
   bool ProcessSeaSmart(std::vector<unsigned char> packet);
   bool ProcessMiniPlex(std::vector<unsigned char> packet);
 
@@ -172,7 +172,7 @@ private:
       std::shared_ptr<const NavAddr2000> dest_addr);
   bool SendSentenceNetwork(std::vector<std::vector<unsigned char>> payload);
   bool HandleMgntMsg(uint64_t pgn, std::vector<unsigned char>& payload);
-  bool PrepareForTX();
+  bool PrepareForTx();
   std::vector<unsigned char> PrepareLogPayload(
       std::shared_ptr<const Nmea2000Msg>& msg,
       std::shared_ptr<const NavAddr2000> addr);
@@ -205,17 +205,17 @@ private:
 
   bool m_bok;
   int m_ib;
-  bool m_bInMsg, m_bGotESC, m_bGotSOT;
+  bool m_is_in_msg, m_got_esc, m_got_sot;
 
   CircularBuffer<unsigned char> m_circle;
   unsigned char* rx_buffer;
   std::string m_sentence;
 
   FastMessageMap* fast_messages;
-  N2K_Format m_n2k_format;
+  N2kFormat m_n2k_format;
   uint8_t m_order;
-  char m_TX_flag;
-  bool m_TX_available;
+  char m_tx_flag;
+  bool m_tx_available;
   wxTimer m_prodinfo_timer;
 
   ObsListener resume_listener;

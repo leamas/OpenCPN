@@ -21,24 +21,24 @@
  * Nmea2000 driver
  */
 
-#ifndef _COMMDRIVERN2K_H__
-#define _COMMDRIVERN2K_H__
+#ifndef COMMDRIVERN2K_H__
+#define COMMDRIVERN2K_H__
 
 #include <memory>
 
 #include "model/comm_driver.h"
 
-class CommDriverN2K : public AbstractCommDriver {
+class CommDriverN2k : public AbstractCommDriver {
 public:
-  CommDriverN2K(const std::string& s = "n2k0");
+  CommDriverN2k(const std::string& s = "n2k0");
 
-  virtual ~CommDriverN2K();
+  virtual ~CommDriverN2k();
 
   virtual bool SendMessage(std::shared_ptr<const NavMsg> msg,
                            std::shared_ptr<const NavAddr> addr) override = 0;
   virtual void SetListener(DriverListener& l) override;
   virtual std::shared_ptr<NavAddr2000> GetAddress(const N2kName& name);
-  virtual int SetTXPGN(int pgn) { return 0; }
+  virtual int SetTxPgn(int pgn) { return 0; }
 };
 
 #endif  // guard

@@ -262,7 +262,7 @@ CommDriverResult RegisterTXPGNs(DriverHandle handle,
   if (!found) {
     return RESULT_COMM_INVALID_HANDLE;
   }
-  auto dn2k = dynamic_cast<CommDriverN2K*>(found);
+  auto dn2k = dynamic_cast<CommDriverN2k*>(found);
 
   int nloop = 0;
   for (size_t i = 0; i < pgn_list.size(); i++) {
@@ -270,7 +270,7 @@ CommDriverResult RegisterTXPGNs(DriverHandle handle,
     int iresult = -1;
     nloop = 0;
     while (nTry && iresult < 0) {
-      iresult = dn2k->SetTXPGN(pgn_list[i]);
+      iresult = dn2k->SetTxPgn(pgn_list[i]);
       nTry--;
       nloop++;
     }

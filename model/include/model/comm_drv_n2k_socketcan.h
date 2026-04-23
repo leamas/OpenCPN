@@ -33,7 +33,7 @@
 #include "model/comm_drv_stats.h"
 #include "model/conn_params.h"
 
-class CommDriverN2KSocketCAN : public CommDriverN2K,
+class CommDriverN2KSocketCAN : public CommDriverN2k,
                                public DriverStatsProvider {
 public:
   static std::unique_ptr<CommDriverN2KSocketCAN> Create(

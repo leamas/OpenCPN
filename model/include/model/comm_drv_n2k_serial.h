@@ -53,14 +53,14 @@ using namespace std::literals::chrono_literals;
 class CommDriverN2KSerialThread;  // forward
 class CommDriverN2KSerialEvent;   // forward in .cpp file
 
-class CommDriverN2KSerial : public CommDriverN2K,
+class CommDriverN2kSerial : public CommDriverN2k,
                             public wxEvtHandler,
                             public DriverStatsProvider {
 public:
-  CommDriverN2KSerial();
-  CommDriverN2KSerial(const ConnectionParams* params, DriverListener& listener);
+  CommDriverN2kSerial();
+  CommDriverN2kSerial(const ConnectionParams* params, DriverListener& listener);
 
-  virtual ~CommDriverN2KSerial();
+  virtual ~CommDriverN2kSerial();
 
   void SetListener(DriverListener& l) override {};
 
@@ -70,31 +70,29 @@ public:
   bool SendMessage(std::shared_ptr<const NavMsg> msg,
                    std::shared_ptr<const NavAddr> addr) override;
 
-  void AddTxPGN(int pgn);
+  void AddTxPgn(int pgn);
 
-  int SetTXPGN(int pgn) override;
+  int SetTxPgn(int pgn_arg) override;
 
   //    Secondary thread life toggle
   //    Used to inform launching object (this) to determine if the thread can
   //    be safely called or polled, e.g. wxThread->Destroy();
-  void SetSecThreadActive(void) { m_bsec_thread_active = true; }
-  void SetSecThreadInActive(void) { m_bsec_thread_active = false; }
+  void SetSecThreadActive() { m_bsec_thread_active = true; }
+  void SetSecThreadInActive() { m_bsec_thread_active = false; }
   bool IsSecThreadActive() const { return m_bsec_thread_active; }
 
   void SetSecondaryThread(CommDriverN2KSerialThread* secondary_Thread) {
-    m_pSecondary_Thread = secondary_Thread;
+    m_secondary_thread = secondary_Thread;
   }
-  CommDriverN2KSerialThread* GetSecondaryThread() {
-    return m_pSecondary_Thread;
-  }
-  void SetThreadRunFlag(int run) { m_Thread_run_flag = run; }
+  CommDriverN2KSerialThread* GetSecondaryThread() { return m_secondary_thread; }
+  void SetThreadRunFlag(int run) { m_thread_run_flag = run; }
 
-  void handle_N2K_SERIAL_RAW(CommDriverN2KSerialEvent& event);
+  void HandleN2kSerialRaw(CommDriverN2KSerialEvent& event);
   int GetMfgCode();
 
   DriverStats GetDriverStats() const override;
 
-  std::atomic_int m_Thread_run_flag;
+  std::atomic_int m_thread_run_flag;
   ConnectionParams m_params;
 
 private:
@@ -110,22 +108,22 @@ private:
 
   bool m_bok;
   std::string m_portstring;
-  std::string m_BaudRate;
+  std::string m_baudrate;
   int m_handshake;
 
-  CommDriverN2KSerialThread* m_pSecondary_Thread;
+  CommDriverN2KSerialThread* m_secondary_thread;
   bool m_bsec_thread_active;
 
   DriverListener& m_listener;
 
-  bool m_bmg47_resp;
-  bool m_bmg01_resp;
-  bool m_bmg4B_resp;
-  bool m_bmg41_resp;
-  bool m_bmg42_resp;
+  bool m_is_mg47_resp;
+  bool m_is_mg01_resp;
+  bool m_is_mg4B_resp;
+  bool m_is_mg41_resp;
+  bool m_is_mg42_resp;
 
   std::string m_device_common_name;
-  uint64_t NAME;
+  uint64_t name;
   int m_manufacturers_code;
   bool m_got_mfg_code;
   StatsTimer m_stats_timer;
