@@ -94,91 +94,14 @@ public:
 
   void SetListener(DriverListener& l) override {};
 
-  void Open();
-  void Close();
   ConnectionParams GetParams() const { return m_params; }
-
-  bool SetOutputSocketOptions(wxSocketBase* tsock);
-  void OnServerSocketEvent(wxSocketEvent& event);  // The listener
-  void OnTimerSocket(wxTimerEvent& event) { OnTimerSocket(); }
-  void OnTimerSocket();
-  void OnSocketEvent(wxSocketEvent& event);
-  void OpenNetworkGpsd();
-  void OpenNetworkTcp(unsigned int addr);
-  void OpenNetworkUdp(unsigned int addr);
-  void OnSocketReadWatchdogTimer(wxTimerEvent& event);
-  void HandleResume();
 
   bool SendMessage(std::shared_ptr<const NavMsg> msg,
                    std::shared_ptr<const NavAddr> addr) override;
-  wxSocketBase* GetSock() const { return m_sock; }
 
 private:
   ConnectionParams m_params;
   DriverListener& m_listener;
-
-  void HandleN2kMsg(CommDriverN2KNetEvent& event);
-  wxString GetNetPort() const { return m_net_port; }
-  wxIPV4address GetAddr() const { return m_addr; }
-  wxTimer* GetSocketThreadWatchdogTimer() {
-    return &m_socketread_watchdog_timer;
-  }
-  wxTimer* GetSocketTimer() { return &m_socket_timer; }
-  void SetSock(wxSocketBase* sock) { m_sock = sock; }
-  void SetTSock(wxSocketBase* sock) { m_tsock = sock; }
-  wxSocketBase* GetTSock() const { return m_tsock; }
-  void SetSockServer(wxSocketServer* sock) { m_socket_server = sock; }
-  wxSocketServer* GetSockServer() const { return m_socket_server; }
-  void SetMulticast(bool multicast) { m_is_multicast = multicast; }
-  bool GetMulticast() const { return m_is_multicast; }
-
-  NetworkProtocol GetProtocol() { return m_net_protocol; }
-  void SetBrxConnectEvent(bool event) { m_brx_connect_event = event; }
-  bool GetBrxConnectEvent() { return m_brx_connect_event; }
-
-  void SetConnectTime(wxDateTime time) { m_connect_time = time; }
-  wxDateTime GetConnectTime() { return m_connect_time; }
-
-  dsPortType GetPortType() const { return m_io_select; }
-  wxString GetPort() const { return m_portstring; }
-
-  std::vector<unsigned char> PushFastMsgFragment(const CanHeader& header,
-                                                 int position);
-  std::vector<unsigned char> PushCompleteMsg(const CanHeader header,
-                                             int position,
-                                             const can_frame frame);
-
-  void HandleCanFrameInput(can_frame frame);
-
-  ConnectionType GetConnectionType() const { return m_connection_type; }
-
-  bool IsChecksumOk(const std::string& sentence);
-  void SetOk(bool ok) { m_bok = ok; };
-
-  N2kFormat DetectFormat(const std::vector<unsigned char>& packet);
-  bool ProcessActisenseAsciiRaw(const std::vector<unsigned char>& packet);
-  bool ProcessActisenseAsciiN2k(const std::vector<unsigned char>& packet);
-  bool ProcessActisenseN2k(const std::vector<unsigned char>& packet);
-  bool ProcessActisenseRaw(const std::vector<unsigned char>& packet);
-  bool ProcessActisenseNgt(const std::vector<unsigned char>& packet);
-  bool ProcessSeaSmart(const std::vector<unsigned char>& packet);
-  bool ProcessMiniPlex(const std::vector<unsigned char>& packet);
-
-  bool SendN2KNetwork(std::shared_ptr<const Nmea2000Msg>& msg,
-                      std::shared_ptr<const NavAddr2000> dest_addr);
-
-  std::vector<std::vector<unsigned char>> GetTxVector(
-      const std::shared_ptr<const Nmea2000Msg>& msg,
-      std::shared_ptr<const NavAddr2000> dest_addr);
-  bool SendSentenceNetwork(
-      const std::vector<std::vector<unsigned char>>& payload);
-  bool HandleMgntMsg(uint64_t pgn, std::vector<unsigned char>& payload);
-  bool PrepareForTx();
-  std::vector<unsigned char> PrepareLogPayload(
-      std::shared_ptr<const Nmea2000Msg>& msg,
-      std::shared_ptr<const NavAddr2000> addr);
-  void OnProdInfoTimer(wxTimerEvent& ev);
-
   StatsTimer m_stats_timer;
   DriverStats m_driver_stats;
 
@@ -204,7 +127,7 @@ private:
   wxTimer m_socket_timer;
   wxTimer m_socketread_watchdog_timer;
 
-  bool m_bok;
+  bool m_is_ok;
   int m_ib;
   bool m_is_in_msg, m_got_esc, m_got_sot;
 
@@ -220,6 +143,78 @@ private:
   wxTimer m_prodinfo_timer;
 
   ObsListener resume_listener;
+
+  bool PrepareForTx();
+  std::vector<unsigned char> PrepareLogPayload(
+      std::shared_ptr<const Nmea2000Msg>& msg,
+      std::shared_ptr<const NavAddr2000> addr);
+  void OnProdInfoTimer(wxTimerEvent& ev);
+  std::vector<std::vector<unsigned char>> GetTxVector(
+      const std::shared_ptr<const Nmea2000Msg>& msg,
+      std::shared_ptr<const NavAddr2000> dest_addr);
+  bool SendSentenceNetwork(
+      const std::vector<std::vector<unsigned char>>& payload);
+  bool HandleMgntMsg(uint64_t pgn, std::vector<unsigned char>& payload);
+  N2kFormat DetectFormat(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseAsciiRaw(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseAsciiN2k(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseN2k(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseRaw(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseNgt(const std::vector<unsigned char>& packet);
+  bool ProcessSeaSmart(const std::vector<unsigned char>& packet);
+  bool ProcessMiniPlex(const std::vector<unsigned char>& packet);
+
+  bool SendN2KNetwork(std::shared_ptr<const Nmea2000Msg>& msg,
+                      std::shared_ptr<const NavAddr2000> dest_addr);
+
+  wxSocketBase* GetSock() const { return m_sock; }
+  NetworkProtocol GetProtocol() { return m_net_protocol; }
+  void SetBrxConnectEvent(bool event) { m_brx_connect_event = event; }
+  bool GetBrxConnectEvent() { return m_brx_connect_event; }
+
+  void SetConnectTime(wxDateTime time) { m_connect_time = time; }
+  wxDateTime GetConnectTime() { return m_connect_time; }
+
+  dsPortType GetPortType() const { return m_io_select; }
+  wxString GetPort() const { return m_portstring; }
+
+  std::vector<unsigned char> PushFastMsgFragment(const CanHeader& header,
+                                                 int position);
+  std::vector<unsigned char> PushCompleteMsg(const CanHeader header,
+                                             int position,
+                                             const can_frame frame);
+
+  void HandleCanFrameInput(can_frame frame);
+  bool SetOutputSocketOptions(wxSocketBase* tsock);
+  void OnServerSocketEvent(wxSocketEvent& event);  // The listener
+  void OnTimerSocket(wxTimerEvent& event) { OnTimerSocket(); }
+  void OnTimerSocket();
+  void OnSocketEvent(wxSocketEvent& event);
+  void OpenNetworkGpsd();
+  void OpenNetworkTcp(unsigned int addr);
+  void OpenNetworkUdp(unsigned int addr);
+  void OnSocketReadWatchdogTimer(wxTimerEvent& event);
+  void HandleResume();
+  wxTimer* GetSocketTimer() { return &m_socket_timer; }
+  void SetSock(wxSocketBase* sock) { m_sock = sock; }
+  void SetTSock(wxSocketBase* sock) { m_tsock = sock; }
+  wxSocketBase* GetTSock() const { return m_tsock; }
+  void SetSockServer(wxSocketServer* sock) { m_socket_server = sock; }
+  wxSocketServer* GetSockServer() const { return m_socket_server; }
+  void SetMulticast(bool multicast) { m_is_multicast = multicast; }
+  bool GetMulticast() const { return m_is_multicast; }
+  ConnectionType GetConnectionType() const { return m_connection_type; }
+
+  void Open();
+  void Close();
+  bool IsChecksumOk(const std::string& sentence);
+  void SetOk(bool ok) { m_is_ok = ok; };
+  void HandleN2kMsg(CommDriverN2KNetEvent& event);
+  wxString GetNetPort() const { return m_net_port; }
+  wxIPV4address GetAddr() const { return m_addr; }
+  wxTimer* GetSocketThreadWatchdogTimer() {
+    return &m_socketread_watchdog_timer;
+  }
 
   DECLARE_EVENT_TABLE()
 };

@@ -152,7 +152,7 @@ CommDriverN2KNet::CommDriverN2KNet(const ConnectionParams* params,
       m_portstring(params->GetDSPort()),
       m_io_select(params->IOSelect),
       m_connection_type(params->Type),
-      m_bok(false),
+      m_is_ok(false),
       m_circle(RX_BUFFER_SIZE_NET),
       m_tx_available(false) {
   m_addr.Hostname(params->NetworkAddress);

@@ -62,24 +62,15 @@ public:
 
   virtual ~CommDriverN2kSerial();
 
-  void SetListener(DriverListener& l) override {};
-
-  bool Open();
-  void Close();
-
-  bool SendMessage(std::shared_ptr<const NavMsg> msg,
-                   std::shared_ptr<const NavAddr> addr) override;
-
-  void AddTxPgn(int pgn);
-
-  int SetTxPgn(int pgn_arg) override;
+  std::atomic_int m_thread_run_flag;
+  ConnectionParams m_params;
 
   //    Secondary thread life toggle
   //    Used to inform launching object (this) to determine if the thread can
   //    be safely called or polled, e.g. wxThread->Destroy();
-  void SetSecThreadActive() { m_bsec_thread_active = true; }
-  void SetSecThreadInActive() { m_bsec_thread_active = false; }
-  bool IsSecThreadActive() const { return m_bsec_thread_active; }
+  void SetSecThreadActive() { m_is_sec_thread_active = true; }
+  void SetSecThreadInActive() { m_is_sec_thread_active = false; }
+  bool IsSecThreadActive() const { return m_is_sec_thread_active; }
 
   void SetSecondaryThread(CommDriverN2KSerialThread* secondary_Thread) {
     m_secondary_thread = secondary_Thread;
@@ -87,32 +78,23 @@ public:
   CommDriverN2KSerialThread* GetSecondaryThread() { return m_secondary_thread; }
   void SetThreadRunFlag(int run) { m_thread_run_flag = run; }
 
-  void HandleN2kSerialRaw(CommDriverN2KSerialEvent& event);
-  int GetMfgCode();
+  void SetListener(DriverListener& l) override {};
+
+  bool SendMessage(std::shared_ptr<const NavMsg> msg,
+                   std::shared_ptr<const NavAddr> addr) override;
+  void AddTxPgn(int pgn);
+  int SetTxPgn(int pgn_arg) override;
 
   DriverStats GetDriverStats() const override;
 
-  std::atomic_int m_thread_run_flag;
-  ConnectionParams m_params;
-
 private:
-  void ProcessManagementPacket(std::vector<unsigned char>* payload);
-  /**
-   * Sends a management message over NMEA 2000 serial interface.
-   *
-   * @note This implementation is excluded on Android platforms
-   */
-  int SendMgmtMsg(unsigned char* string, size_t string_size,
-                  unsigned char cmd_code, int timeout_msec,
-                  bool* response_flag);
-
-  bool m_bok;
+  bool m_is_ok;
   std::string m_portstring;
   std::string m_baudrate;
   int m_handshake;
 
   CommDriverN2KSerialThread* m_secondary_thread;
-  bool m_bsec_thread_active;
+  bool m_is_sec_thread_active;
 
   DriverListener& m_listener;
 
@@ -130,6 +112,21 @@ private:
   DriverStats m_driver_stats;
   std::vector<int> pgn_tx_list;
   bool m_closing;
+
+  void ProcessManagementPacket(std::vector<unsigned char>* payload);
+  /**
+   * Sends a management message over NMEA 2000 serial interface.
+   *
+   * @note This implementation is excluded on Android platforms
+   */
+  int SendMgmtMsg(unsigned char* string, size_t string_size,
+                  unsigned char cmd_code, int timeout_msec,
+                  bool* response_flag);
+
+  void HandleN2kSerialRaw(CommDriverN2KSerialEvent& event);
+  int GetMfgCode();
+  bool Open();
+  void Close();
 };
 
 #endif  // guard

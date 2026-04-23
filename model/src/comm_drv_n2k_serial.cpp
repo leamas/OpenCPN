@@ -141,7 +141,7 @@ CommDriverN2kSerial::CommDriverN2kSerial(const ConnectionParams* params,
     : CommDriverN2k(params->GetStrippedDSPort()),
       m_thread_run_flag(-1),
       m_params(*params),
-      m_bok(false),
+      m_is_ok(false),
       m_portstring(params->GetDSPort()),
       m_secondary_thread(NULL),
       m_listener(listener),
@@ -210,7 +210,7 @@ void CommDriverN2kSerial::Close() {
 
   //    Kill off the Secondary RX Thread if alive
   if (m_secondary_thread) {
-    if (m_bsec_thread_active)  // Try to be sure thread object is still alive
+    if (m_is_sec_thread_active)  // Try to be sure thread object is still alive
     {
       wxLogMessage("Stopping Secondary Thread");
 
@@ -227,7 +227,7 @@ void CommDriverN2kSerial::Close() {
     }
 
     m_secondary_thread = NULL;
-    m_bsec_thread_active = false;
+    m_is_sec_thread_active = false;
   }
 }
 static uint64_t PayloadToName(const std::vector<unsigned char> payload) {
