@@ -156,13 +156,13 @@ private:
   void SetOk(bool ok) { m_bok = ok; };
 
   N2kFormat DetectFormat(const std::vector<unsigned char>& packet);
-  bool ProcessActisenseAsciiRaw(std::vector<unsigned char> packet);
-  bool ProcessActisenseAsciiN2k(std::vector<unsigned char> packet);
-  bool ProcessActisenseN2k(std::vector<unsigned char> packet);
-  bool ProcessActisenseRaw(std::vector<unsigned char> packet);
-  bool ProcessActisenseNgt(std::vector<unsigned char> packet);
-  bool ProcessSeaSmart(std::vector<unsigned char> packet);
-  bool ProcessMiniPlex(std::vector<unsigned char> packet);
+  bool ProcessActisenseAsciiRaw(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseAsciiN2k(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseN2k(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseRaw(const std::vector<unsigned char>& packet);
+  bool ProcessActisenseNgt(const std::vector<unsigned char>& packet);
+  bool ProcessSeaSmart(const std::vector<unsigned char>& packet);
+  bool ProcessMiniPlex(const std::vector<unsigned char>& packet);
 
   bool SendN2KNetwork(std::shared_ptr<const Nmea2000Msg>& msg,
                       std::shared_ptr<const NavAddr2000> dest_addr);
@@ -170,7 +170,8 @@ private:
   std::vector<std::vector<unsigned char>> GetTxVector(
       const std::shared_ptr<const Nmea2000Msg>& msg,
       std::shared_ptr<const NavAddr2000> dest_addr);
-  bool SendSentenceNetwork(std::vector<std::vector<unsigned char>> payload);
+  bool SendSentenceNetwork(
+      const std::vector<std::vector<unsigned char>>& payload);
   bool HandleMgntMsg(uint64_t pgn, std::vector<unsigned char>& payload);
   bool PrepareForTx();
   std::vector<unsigned char> PrepareLogPayload(

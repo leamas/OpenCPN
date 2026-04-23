@@ -606,7 +606,8 @@ N2kFormat CommDriverN2KNet::DetectFormat(
   return N2kFormatUndefined;
 }
 
-bool CommDriverN2KNet::ProcessActisenseN2k(std::vector<unsigned char> packet) {
+bool CommDriverN2KNet::ProcessActisenseN2k(
+    const std::vector<unsigned char>& packet) {
   // 1002 d0 1500ff0401f80900684c1b00a074eb14f89052d288 1003
 
   std::vector<unsigned char> data;
@@ -718,7 +719,8 @@ bool CommDriverN2KNet::ProcessActisenseN2k(std::vector<unsigned char> packet) {
   return true;
 }
 
-bool CommDriverN2KNet::ProcessActisenseRaw(std::vector<unsigned char> packet) {
+bool CommDriverN2KNet::ProcessActisenseRaw(
+    const std::vector<unsigned char>& packet) {
   // 1002 95 0e15870402f8094b  fc e6 20 00 00 ff ff 6f 1003
 
   can_frame frame;
@@ -797,7 +799,8 @@ bool CommDriverN2KNet::ProcessActisenseRaw(std::vector<unsigned char> packet) {
   return true;
 }
 
-bool CommDriverN2KNet::ProcessActisenseNgt(std::vector<unsigned char> packet) {
+bool CommDriverN2KNet::ProcessActisenseNgt(
+    const std::vector<unsigned char>& packet) {
   std::vector<unsigned char> data;
   bool is_in_msg = false;
   bool got_esc = false;
@@ -861,7 +864,7 @@ bool CommDriverN2KNet::ProcessActisenseNgt(std::vector<unsigned char> packet) {
 }
 
 bool CommDriverN2KNet::ProcessActisenseAsciiRaw(
-    std::vector<unsigned char> packet) {
+    const std::vector<unsigned char>& packet) {
   can_frame frame;
 
   while (!m_circle.IsEmpty()) {
@@ -910,7 +913,7 @@ bool CommDriverN2KNet::ProcessActisenseAsciiRaw(
 }
 
 bool CommDriverN2KNet::ProcessActisenseAsciiN2k(
-    std::vector<unsigned char> packet) {
+    const std::vector<unsigned char>& packet) {
   // A001001.732 04FF6 1FA03 C8FBA80329026400
   std::string sentence;
 
@@ -984,7 +987,8 @@ bool CommDriverN2KNet::ProcessActisenseAsciiN2k(
   return true;
 }
 
-bool CommDriverN2KNet::ProcessSeaSmart(std::vector<unsigned char> packet) {
+bool CommDriverN2KNet::ProcessSeaSmart(
+    const std::vector<unsigned char>& packet) {
   while (!m_circle.IsEmpty()) {
     char b = m_circle.Get();
     if ((b != 0x0a) && (b != 0x0d)) {
@@ -1055,7 +1059,8 @@ bool CommDriverN2KNet::ProcessSeaSmart(std::vector<unsigned char> packet) {
   return true;
 }
 
-bool CommDriverN2KNet::ProcessMiniPlex(std::vector<unsigned char> packet) {
+bool CommDriverN2KNet::ProcessMiniPlex(
+    const std::vector<unsigned char>& packet) {
   /*
   $MXPGN – NMEA 2000 PGN Data
   This sentence transports NMEA 2000/CAN frames in NMEA 0183 format. The
@@ -1891,7 +1896,7 @@ bool CommDriverN2KNet::SendN2KNetwork(std::shared_ptr<const Nmea2000Msg>& msg,
 };
 
 bool CommDriverN2KNet::SendSentenceNetwork(
-    std::vector<std::vector<unsigned char>> payload) {
+    const std::vector<std::vector<unsigned char>>& payload) {
   // do not allow recursion, could happen with non-blocking sockets
   if (m_txenter) return false;
   m_txenter++;
@@ -1900,7 +1905,7 @@ bool CommDriverN2KNet::SendSentenceNetwork(
   wxDatagramSocket* udp_socket;
   switch (GetProtocol()) {
     case TCP:
-      for (std::vector<unsigned char>& v : payload) {
+      for (const std::vector<unsigned char>& v : payload) {
         if (GetSock() && GetSock()->IsOk()) {
           m_driver_stats.available = true;
           // printf("---%s", v.data());
