@@ -2304,6 +2304,12 @@ public:
   virtual void OnTideCurrentClick(TCClickInfo info);
 };
 
+class DECL_EXP opencpn_plugin_122 : public opencpn_plugin_121 {
+public:
+  opencpn_plugin_122(void *pmgr) : opencpn_plugin_121(pmgr) {}
+  virtual ~opencpn_plugin_122();
+};
+
 //------------------------------------------------------------------
 //      Route and Waypoint PlugIn support
 //
@@ -7383,6 +7389,6 @@ public:
 };
 
 /** Unstable development API */
-class HostApi122 : public HostApi121 {};
+class HostApi122 : public HostApi121 {}
 
 #endif  //_PLUGIN_H_
