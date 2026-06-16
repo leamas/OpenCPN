@@ -110,6 +110,7 @@ private:
   ObsListener rest_activate_listener;
   ObsListener rest_reverse_listener;
   ObsListener new_msg_type_listener;
+  ObsListener plugin_deactivate_listener;
 
   CallbacksByPlugin m_api_events_callbacks;
 };

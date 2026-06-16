@@ -1209,6 +1209,12 @@ bool MyApp::OnInit() {
   InitRestListeners();
   new_msg_type_listener.Init(NavMsgBus::GetInstance().new_msg_event,
                              [&](ObservedEvt &) { OnNewMsgTypes(); });
+  plugin_deactivate_listener.Init(
+      PluginLoader::GetInstance()->evt_deactivate_plugin,
+      [&](ObservedEvt &evt) {
+        auto name = evt.GetString().ToStdString();
+        m_api_events_callbacks.erase(name);
+      });
 
   //      Establish the GSHHS Dataset location
   gDefaultWorldMapLocation = "gshhs";
