@@ -96,8 +96,8 @@ static const std::vector<std::string> kBasicNetViews = {
     kTcpDevice, kGpsdDevice, kUdpDevice, kSignalkDevice};
 
 static const std::vector<std::string> kAdvancedNetViews = {
-    kTcpClient, kUdpOutput, kGpsdClient,      kSignalkClient,
-    kTcpServer, kUdpInput,  kMulticastClient, kMulticastServer};
+    kTcpClient,  kTcpServer,     kUdpOutput,       kUdpInput,
+    kGpsdClient, kSignalkClient, kMulticastClient, kMulticastServer};
 
 static wxString StringArrayToString(const wxArrayString& arr) {
   wxString ret = wxEmptyString;
