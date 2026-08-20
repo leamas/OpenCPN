@@ -323,14 +323,14 @@ void ConnectionEditDialog::AddOKCancelButtons() {
     m_std_dialog_btn_sizer->Show(true);
   }
 #else
-  if (!m_btn_sizer) {
-    m_btn_sizer = new wxStdDialogButtonSizer();
-    m_btn_ok = new wxButton(this, wxID_OK);
-    m_btn_cancel = new wxButton(this, wxID_CANCEL, _("Cancel"));
-    m_btn_sizer->AddSpacer(wxWindow::GetCharWidth());
-    m_btn_sizer->Add(m_btn_ok, 0, wxALL, 5);
-    m_btn_sizer->Add(m_btn_cancel, 0, wxALL, 5);
-    GetSizer()->Add(m_btn_sizer, 0, wxALL | wxEXPAND, 5);
+  if (!m_std_dialog_btn_sizer) {
+    m_std_dialog_btn_sizer = new wxStdDialogButtonSizer();
+    m_dlg_ok_btn = new wxButton(this, wxID_OK);
+    m_dlg_cancel_btn = new wxButton(this, wxID_CANCEL, _("Cancel"));
+    m_std_dialog_btn_sizer->AddSpacer(wxWindow::GetCharWidth());
+    m_std_dialog_btn_sizer->Add(m_dlg_ok_btn, 0, wxALL, 5);
+    m_std_dialog_btn_sizer->Add(m_dlg_cancel_btn, 0, wxALL, 5);
+    GetSizer()->Add(m_std_dialog_btn_sizer, 0, wxALL | wxEXPAND, 5);
   }
 #endif
 
