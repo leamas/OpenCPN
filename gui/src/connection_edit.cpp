@@ -280,6 +280,24 @@ bool CheckAddress(wxWindow* parent, TextCtrlWithHelp& ctrl) {
   return true;
 }
 
+static int GetBasicViewByAdvanced(const wxChoice* choice, int adv_view) {
+  using StringPair = std::pair<std::string, std::string>;
+  static const std::vector<StringPair> kSimpleByAdvanced = {
+      {kUdpOutput, kTcpDevice},       {kUdpInput, kUdpDevice},
+      {kTcpServer, kTcpDevice},       {kTcpClient, kTcpDevice},
+      {kGpsdClient, kGpsdClient},     {kSignalkClient, kSignalkClient},
+      {kMulticastClient, kTcpDevice}, {kMulticastServer, kTcpDevice}};
+  auto view_str = choice->GetString(adv_view).ToStdString();
+  // TODO: Fix not found
+  for (const auto& pair : kSimpleByAdvanced) {
+    if (pair.first != view_str) continue;
+    auto basic_view = pair.second;
+    auto selection = choice->FindString(basic_view);
+    return selection;
+    break;
+  }
+  return 0;  // default: TCP Device
+}
 //------------------------------------------------------------------------------
 //          ConnectionEditDialog Implementation
 //------------------------------------------------------------------------------
@@ -366,6 +384,7 @@ void ConnectionEditDialog::OnCancelClick() {
 
 void ConnectionEditDialog::OnAdvancedModeChange() {
   bool advanced = m_net_expert_cb->GetValue();
+  int view = m_net_type_choice->GetSelection();
   m_net_type_choice->Clear();
   if (advanced) {
     for (const auto& choice : kAdvancedNetViews)
@@ -375,17 +394,21 @@ void ConnectionEditDialog::OnAdvancedModeChange() {
     m_net_port_tc->ChangeValue("");
     if (m_net_comment_text) m_net_comment_text->Show();
     if (m_net_comment_tc) m_net_comment_tc->Show();
+    if (view == wxNOT_FOUND)
+      view = 0;
+    else
+      view = GetBasicViewByAdvanced(m_net_type_choice, view);
   } else {
     for (const auto& choice : kBasicNetViews) m_net_type_choice->Append(choice);
     m_net_type_choice_text->SetLabel(_("Data Source"));
     if (m_net_comment_text) m_net_comment_text->Hide();
     if (m_net_comment_tc) m_net_comment_tc->Hide();
     auto net_address = dynamic_cast<TextCtrlWithHelp*>(m_net_address_tc);
-    if (net_address) net_address->RestoreHelp();
+    // if (net_address) net_address->RestoreHelp();
     auto net_port = dynamic_cast<TextCtrlWithHelp*>(m_net_port_tc);
-    if (net_port) net_port->RestoreHelp();
+    // if (net_port) net_port->RestoreHelp();
   }
-  m_net_type_choice->SetSelection(0);
+  m_net_type_choice->SetSelection(view);
   Layout();
 }
 
@@ -411,9 +434,9 @@ void ConnectionEditDialog::OnConnectionTypeChange() {
   m_net_expert_cb->SetValue(found == kBasicNetViews.end());
   m_net_address_tc->Enable();
   auto net_address = dynamic_cast<TextCtrlWithHelp*>(m_net_address_tc);
-  if (net_address) net_address->RestoreHelp();
+  // if (net_address) net_address->RestoreHelp();
   auto net_port = dynamic_cast<TextCtrlWithHelp*>(m_net_port_tc);
-  if (net_port) net_port->RestoreHelp();
+  // if (net_port) net_port->RestoreHelp();
   m_net_addr_text->SetLabel(_("Server address"));
   m_output_cb->Enable();
   m_input_cb->Enable();
