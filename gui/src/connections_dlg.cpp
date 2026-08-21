@@ -1223,7 +1223,6 @@ public:
     DimeControl(m_edit_panel);
     m_edit_panel->Show();
     g_options->ShowOKButtons(false);
-
     Layout();
   }
 
