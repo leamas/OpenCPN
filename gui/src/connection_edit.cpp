@@ -348,11 +348,15 @@ void ConnectionEditDialog::OnOKClick() {
           m_net_type_choice->GetString(selection).ToStdString();
     }
   }
-  auto net_address = dynamic_cast<TextCtrlWithHelp*>(m_net_address_tc);
-  bool ok = false;
-  if (net_address) ok = CheckAddress(this, *net_address);
-  auto net_port = dynamic_cast<TextCtrlWithHelp*>(m_net_port_tc);
-  if (net_port) ok = ok && CheckPort(this, *net_port);
+  bool ok = true;
+  if (m_net_address_tc->IsEnabled() && m_net_address_tc->IsShownOnScreen()) {
+    auto net_address = dynamic_cast<TextCtrlWithHelp*>(m_net_address_tc);
+    if (net_address) ok = CheckAddress(this, *net_address);
+  }
+  if (m_net_port_tc->IsEnabled() && m_net_port_tc->IsShownOnScreen()) {
+    auto net_port = dynamic_cast<TextCtrlWithHelp*>(m_net_port_tc);
+    if (net_port) ok = ok && CheckPort(this, *net_port);
+  }
   if (ok) m_on_edit_click(m_cp_original, m_new_mode, true);
 }
 
@@ -420,10 +424,11 @@ void ConnectionEditDialog::OnConnectionTypeChange() {
   m_net_data_protocol_choice->Enable();
   m_net_addr_text->Show();
   m_net_address_tc->Show();
-  if (view == kUdpDevice) {
+  if (view == kUdpDevice || view == kUdpInput) {
     m_output_cb->Disable();
     m_net_addr_text->Hide();
     m_net_address_tc->Hide();
+    m_net_address_tc->ChangeValue("0.0.0.0");
     m_input_cb->SetValue(true);
     m_input_cb->Disable();
     m_output_cb->SetValue(false);
@@ -1870,9 +1875,9 @@ ConnectionParams* ConnectionEditDialog::UpdateConnectionParamsFromControls(
     } else {
       pConnectionParams->NetProtocol = PROTO_UNDEFINED;
     };
-    pConnectionParams->is_server = net_type == kTcpServer ||
-                                   net_type == kUdpInput ||
-                                   net_type == kMulticastServer;
+    pConnectionParams->is_server =
+        net_type == kTcpServer || net_type == kUdpInput ||
+        net_type == kUdpDevice || net_type == kMulticastServer;
   }
   if (m_type_serial_radiobtn->GetValue())
     pConnectionParams->Protocol =
