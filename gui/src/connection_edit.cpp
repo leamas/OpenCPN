@@ -81,7 +81,7 @@ class TextCtrlWithHelp;  // forward
 
 static const std::string kTcpDevice = _("TCP device");
 static const std::string kUdpDevice = _("UDP device");
-static const std::string kGpsdDevice = _("Gpsd");
+static const std::string kGpsdDevice = _("Gpsd server");
 static const std::string kSignalkDevice = _("SignalK server");
 static const std::string kTcpClient = _("TCP client");
 static const std::string kUdpOutput = _("UDP output");
@@ -1071,7 +1071,7 @@ void ConnectionEditDialog::OnExpertModeChange() {
     if (m_net_comment_tctrl) m_net_comment_tctrl->Show();
   } else {
     for (const auto& choice : kBasicNetViews) m_net_view_choice->Append(choice);
-    m_net_type_choice_text->SetLabel(_("Data Source"));
+    m_net_type_choice_text->SetLabel(_("Connect to"));
     if (m_net_comment_text) m_net_comment_text->Hide();
     if (m_net_comment_tctrl) m_net_comment_tctrl->Hide();
   }
