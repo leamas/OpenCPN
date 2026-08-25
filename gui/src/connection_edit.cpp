@@ -436,6 +436,7 @@ void ConnectionEditDialog::OnConnectionTypeChange() {
   if (selection == wxNOT_FOUND) return;
   std::string view = GetChoiceSelection(m_net_view_choice);
   ConfigureControlsForView(view);
+  OnExpertModeChange();
 }
 
 void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
@@ -444,8 +445,6 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
   int selection = m_net_view_choice->GetSelection();
   assert(selection != wxNOT_FOUND);
   m_net_expert_chkbx->SetValue(found == kBasicNetViews.end());
-  m_net_expert_chkbx->Enable(static_cast<size_t>(selection) <=
-                             kBasicNetViews.size());
   m_net_address_tctrl->Enable();
   auto net_addr_w_help = dynamic_cast<TextCtrlWithHelp*>(m_net_address_tctrl);
   assert(net_addr_w_help);
@@ -537,7 +536,6 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_net_data_protocol_choice->SetSelection(0);
     m_net_data_protocol_choice->Enable();
   }
-  OnExpertModeChange();
   RefreshAdvancedDetails();
 }
 
@@ -1052,16 +1050,6 @@ void ConnectionEditDialog::OnAddressChange(wxFocusEvent& ev) {
 void ConnectionEditDialog::OnExpertModeChange() {
   bool advanced = m_net_expert_chkbx->GetValue();
   int view = m_net_view_choice->GetSelection();
-  if (view != wxNOT_FOUND) {
-    auto needle = m_net_view_choice->GetString(view).ToStdString();
-    const auto& haystack = kBasicNetViews;
-    auto found = std::find(haystack.begin(), haystack.end(), needle);
-    bool could_be_basic = static_cast<size_t>(view) < kBasicNetViews.size() ||
-                          found != haystack.end();
-    m_net_expert_chkbx->Enable(could_be_basic);
-    if (static_cast<size_t>(view) >= kBasicNetViews.size())
-      m_net_expert_chkbx->SetValue(true);
-  }
   m_net_view_choice->Clear();
   if (advanced) {
     for (const auto& choice : kAdvancedNetViews)
@@ -1070,12 +1058,17 @@ void ConnectionEditDialog::OnExpertModeChange() {
     if (m_net_comment_text) m_net_comment_text->Show();
     if (m_net_comment_tctrl) m_net_comment_tctrl->Show();
   } else {
+    if (view != wxNOT_FOUND) {
+      if (static_cast<size_t>(view) >= kBasicNetViews.size()) view = 0;
+    }
     for (const auto& choice : kBasicNetViews) m_net_view_choice->Append(choice);
     m_net_type_choice_text->SetLabel(_("Connect to"));
     if (m_net_comment_text) m_net_comment_text->Hide();
     if (m_net_comment_tctrl) m_net_comment_tctrl->Hide();
   }
   m_net_view_choice->SetSelection(view);
+  auto view_str = m_net_view_choice->GetStringSelection().ToStdString();
+  if (!view_str.empty()) ConfigureControlsForView(view_str);
   Layout();
 }
 
