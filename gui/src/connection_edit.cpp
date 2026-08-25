@@ -77,8 +77,12 @@
 #define _(s) wxGetTranslation((s)).ToStdString()
 #endif
 
-class TextCtrlWithHelp;  // forward
-
+static const std::string kAddressDefaultHelp =
+    _("Enter peer IP address or hostname");
+static const std::string kAddressUdpHelp =
+    _("Peer hostname or address, often 255.255.255.255");
+static const std::string kAddressMcastHelp =
+    _("Group address, usually 224.0.2.0 - 224.0.255.255");
 static const std::string kTcpDevice = _("TCP device");
 static const std::string kUdpDevice = _("UDP device");
 static const std::string kGpsdDevice = _("Gpsd server");
@@ -421,6 +425,8 @@ void ConnectionEditDialog::AddOKCancelButtons() {
                          [&](wxCommandEvent& ev) { OnCancelClick(); });
 }
 void ConnectionEditDialog::InitiateNewConnection() {
+  m_net_view_choice->Clear();
+  for (const auto& view : kBasicNetViews) m_net_view_choice->Append(view);
   m_net_view_choice->SetSelection(0);
   m_net_expert_chkbx->SetValue(false);
   m_net_comment_tctrl->Hide();
@@ -428,7 +434,7 @@ void ConnectionEditDialog::InitiateNewConnection() {
   auto port_ctrl = dynamic_cast<TextCtrlWithHelp*>(m_net_port_tctrl);
   if (port_ctrl) port_ctrl->RestoreHelp();
   auto addr_ctrl = dynamic_cast<TextCtrlWithHelp*>(m_net_address_tctrl);
-  if (addr_ctrl) addr_ctrl->RestoreHelp();
+  if (addr_ctrl) addr_ctrl->SetHelp(kAddressDefaultHelp);
 }
 
 void ConnectionEditDialog::OnConnectionTypeChange() {
@@ -499,7 +505,7 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_net_address_tctrl->ChangeValue("0.0.0.0");
     m_net_address_tctrl->Disable();
     m_input_chkbx->SetValue(true);
-    m_input_chkbx->Disable();
+    if (view == kUdpInput) m_input_chkbx->Disable();
   } else if (view == kMulticastClient || view == kMulticastServer) {
     if (net_addr_w_help->IsPristine())
       net_addr_w_help->ChangeValue(kDefaultMulticastAddr);
@@ -536,6 +542,12 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_net_data_protocol_choice->SetSelection(0);
     m_net_data_protocol_choice->Enable();
   }
+  if (view == kUdpOutput)
+    net_addr_w_help->SetHelp(kAddressUdpHelp);
+  else if (view == kMulticastClient || view == kMulticastServer)
+    net_addr_w_help->SetHelp(kAddressMcastHelp);
+  else
+    net_addr_w_help->SetHelp(kAddressDefaultHelp);
   RefreshAdvancedDetails();
 }
 
@@ -699,8 +711,7 @@ void ConnectionEditDialog::Init() {
   int column1width = 15 * GetCharWidth();
   m_net_addr_text->SetMinSize(wxSize(column1width, -1));
   m_net_props_sizer->Add(m_net_addr_text, 0, wxALL, 5);
-  m_net_address_tctrl =
-      new TextCtrlWithHelp(this, _("Enter data source IP address or hostname"));
+  m_net_address_tctrl = new TextCtrlWithHelp(this, kAddressDefaultHelp);
   int column2width = 60 * GetCharWidth();
   m_net_address_tctrl->SetMaxSize(wxSize(column2width, -1));
   m_net_address_tctrl->SetMinSize(wxSize(column2width, -1));
