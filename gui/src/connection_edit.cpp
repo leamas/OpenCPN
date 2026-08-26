@@ -1045,14 +1045,16 @@ void ConnectionEditDialog::Init() {
 
 void ConnectionEditDialog::OnAddressChange(wxFocusEvent& ev) {
   int selection = m_net_view_choice->GetSelection();
-  if (selection == wxNOT_FOUND) return;
-  std::string type = m_net_view_choice->GetString(selection).ToStdString();
-  if (type != kMulticastClient && type != kMulticastServer) return;
-  std::string address = m_net_address_tctrl->GetValue().ToStdString();
-  if (!IsAddressMultiCast(address)) {
-    auto dlg = wxMessageDialog(this, _("Illegal multicast address"),
-                               _("OpenCPN warning"), wxOK | wxICON_WARNING);
-    dlg.ShowModal();
+  if (selection != wxNOT_FOUND) {
+    std::string type = m_net_view_choice->GetString(selection).ToStdString();
+    if (type == kMulticastClient || type == kMulticastServer) {
+      auto address = m_net_address_tctrl->GetValue().ToStdString();
+      if (!IsAddressMultiCast(address)) {
+        auto dlg = wxMessageDialog(this, _("Illegal multicast address"),
+                                   _("OpenCPN warning"), wxOK | wxICON_WARNING);
+        dlg.ShowModal();
+      }
+    }
   }
   ev.Skip();
 }
