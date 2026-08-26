@@ -88,13 +88,13 @@ static const std::string kUdpDevice = _("UDP device");
 static const std::string kGpsdDevice = _("Gpsd server");
 static const std::string kSignalkDevice = _("SignalK server");
 static const std::string kTcpClient = _("TCP client");
-static const std::string kUdpOutput = _("UDP output");
+static const std::string kUdpOutput = _("UDP Send");
 static const std::string kGpsdClient = _("Gpsd client");
 static const std::string kSignalkClient = _("SignalK client");
 static const std::string kTcpServer = _("TCP Server");
-static const std::string kUdpInput = _("UDP Input");
-static const std::string kMulticastServer = _("Multicast Server (in/out)");
-static const std::string kMulticastClient = _("Multicast output (client)");
+static const std::string kUdpInput = _("UDP Receive");
+static const std::string kMulticastServer = _("UDP Multicast Receive and Send");
+static const std::string kMulticastClient = _("UDP Multicast Send");
 
 static const std::vector<std::string> kBasicNetViews = {
     kTcpDevice, kUdpDevice, kGpsdDevice, kSignalkDevice};
@@ -511,13 +511,12 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
       net_addr_w_help->ChangeValue(kDefaultMulticastAddr);
     m_net_addr_text->SetLabel(_("Multicast group"));
     if (net_port_w_help->IsPristine())
-      net_port_w_help->SetHelp("Enter port number");
+      net_port_w_help->SetHelp("Port number, usually 49152..65535");
   }
   if (view == kTcpClient || view == kTcpDevice || view == kUdpInput ||
       view == kUdpDevice) {
     if (net_port_w_help->IsPristine())
-      net_port_w_help->SetHelp(
-          _("Enter port number (1025..65536, often 10110)"));
+      net_port_w_help->SetHelp(_("Port number (1025..65535, often 10110)"));
   } else if (view == kMulticastClient || view == kUdpOutput) {
     m_input_chkbx->SetValue(false);
     m_input_chkbx->Disable();
@@ -702,7 +701,7 @@ void ConnectionEditDialog::Init() {
   m_net_data_protocol_choice->Append(_("NMEA 2000"));
   m_net_data_protocol_choice->SetSelection(0);
   m_net_data_protocol_choice->Enable(true);
-  m_net_props_sizer->Add(m_net_data_protocol_choice, 1, wxEXPAND | wxTOP, 5);
+  m_net_props_sizer->Add(m_net_data_protocol_choice, 1, wxTOP, 5);
   m_net_props_sizer->AddSpacer(1);
   m_net_props_sizer->AddSpacer(1);
 
