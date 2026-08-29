@@ -83,12 +83,12 @@ static const std::string kAddressUdpHelp =
     _("Peer hostname or address, often 255.255.255.255");
 static const std::string kAddressMcastHelp =
     _("Group address, usually 224.0.2.0 - 224.0.255.255");
-static const std::string kTcpDevice = _("TCP device");
-static const std::string kUdpDevice = _("UDP device");
+static const std::string kTcpDevice = _("Device using TCP");
+static const std::string kUdpReceive = _("Device sending UDP");
 static const std::string kGpsdDevice = _("Gpsd server");
 static const std::string kSignalkDevice = _("SignalK server");
 static const std::string kTcpClient = _("TCP client");
-static const std::string kUdpOutput = _("UDP Send");
+static const std::string kUdpSend = _("Devices receiving UDP");
 static const std::string kGpsdClient = _("Gpsd client");
 static const std::string kSignalkClient = _("SignalK client");
 static const std::string kTcpServer = _("TCP Server");
@@ -97,12 +97,12 @@ static const std::string kMulticastServer = _("UDP Multicast Receive and Send");
 static const std::string kMulticastClient = _("UDP Multicast Send");
 
 static const std::vector<std::string> kBasicNetViews = {
-    kTcpDevice, kUdpDevice, kGpsdDevice, kSignalkDevice};
+    kTcpDevice, kUdpReceive, kUdpSend, kGpsdDevice, kSignalkDevice};
 
 static const std::vector<std::string> kAdvancedNetViews = {
     // First items matches kBasicNetViews
-    kTcpClient, kUdpInput,  kGpsdClient,      kSignalkClient,
-    kTcpServer, kUdpOutput, kMulticastClient, kMulticastServer};
+    kTcpClient,     kUdpInput,  kUdpSend,         kGpsdClient,
+    kSignalkClient, kTcpServer, kMulticastClient, kMulticastServer};
 
 static wxString StringArrayToString(const wxArrayString& arr) {
   wxString ret = wxEmptyString;
@@ -163,7 +163,7 @@ static std::string NetViewByConnection(const ConnectionParams* cp) {
     case NetworkProtocol::SIGNALK:
       return kSignalkDevice;
     case NetworkProtocol::UDP:
-      return is_server ? kUdpDevice : kUdpOutput;
+      return is_server ? kUdpReceive : kUdpSend;
     case NetworkProtocol::TCP:
       return is_server ? kTcpServer : kTcpDevice;
     default:
@@ -469,7 +469,7 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_output_chkbx->SetValue(false);
     m_net_addr_text->Show();
     m_net_address_tctrl->Show();
-  } else if (view == kUdpDevice || view == kUdpInput) {
+  } else if (view == kUdpReceive || view == kUdpInput) {
     m_net_addr_text->Hide();
     m_net_address_tctrl->ChangeValue("0.0.0.0");
     m_net_address_tctrl->Disable();
@@ -514,10 +514,10 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
       net_port_w_help->SetHelp("Port number, usually 49152..65535");
   }
   if (view == kTcpClient || view == kTcpDevice || view == kUdpInput ||
-      view == kUdpDevice) {
+      view == kUdpReceive) {
     if (net_port_w_help->IsPristine())
       net_port_w_help->SetHelp(_("Port number (1025..65535, often 10110)"));
-  } else if (view == kMulticastClient || view == kUdpOutput) {
+  } else if (view == kMulticastClient || view == kUdpSend) {
     m_input_chkbx->SetValue(false);
     m_input_chkbx->Disable();
     m_output_chkbx->SetValue(true);
@@ -527,7 +527,7 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_output_chkbx->SetValue(false);
     m_output_chkbx->Enable();
   }
-  if (view == kTcpClient || view == kUdpOutput || view == kMulticastClient ||
+  if (view == kTcpClient || view == kUdpSend || view == kMulticastClient ||
       view == kTcpDevice) {
     if (m_net_address_tctrl->GetValue() == "0.0.0.0")
       net_addr_w_help->RestoreHelp();
@@ -542,7 +542,7 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_net_data_protocol_choice->Enable();
   }
   if (net_addr_w_help->IsPristine()) {
-    if (view == kUdpOutput)
+    if (view == kUdpSend)
       net_addr_w_help->SetHelp(kAddressUdpHelp);
     else if (view == kMulticastClient || view == kMulticastServer)
       net_addr_w_help->SetHelp(kAddressMcastHelp);
@@ -1644,7 +1644,7 @@ void ConnectionEditDialog::SetConnectionParams(ConnectionParams* cp) {
 
   m_garmin_host_chkbx->SetValue(cp->Garmin);
   m_sk_check_discover_chkbx->SetValue(cp->AutoSKDiscover);
-  if (view == kUdpDevice || view == kUdpInput) {
+  if (view == kUdpReceive || view == kUdpInput) {
     m_input_chkbx->SetValue(true);
     m_input_chkbx->Disable();
     m_output_chkbx->SetValue(false);
@@ -1917,7 +1917,7 @@ void ConnectionEditDialog::OnCbOutput(wxCommandEvent& event) {
       }
     }
   }
-  if (view == kUdpDevice || view == kUdpInput) {
+  if (view == kUdpReceive || view == kUdpInput) {
     m_net_address_tctrl->Hide();
     m_net_address_tctrl->Disable();
     m_net_addr_text->Hide();
@@ -2024,8 +2024,8 @@ ConnectionParams* ConnectionEditDialog::UpdateConnectionParamsFromControls(
       pConnectionParams->NetProtocol = TCP;
       pConnectionParams->Protocol =
           static_cast<DataProtocol>(m_net_data_protocol_choice->GetSelection());
-    } else if (net_type == kUdpOutput || net_type == kUdpInput ||
-               net_type == kUdpDevice || net_type == kMulticastClient ||
+    } else if (net_type == kUdpSend || net_type == kUdpInput ||
+               net_type == kUdpReceive || net_type == kMulticastClient ||
                net_type == kMulticastServer) {
       pConnectionParams->NetProtocol = UDP;
       pConnectionParams->Protocol =
@@ -2039,7 +2039,7 @@ ConnectionParams* ConnectionEditDialog::UpdateConnectionParamsFromControls(
     };
     pConnectionParams->is_server =
         net_type == kTcpServer || net_type == kUdpInput ||
-        net_type == kUdpDevice || net_type == kMulticastServer;
+        net_type == kUdpReceive || net_type == kMulticastServer;
   }
   if (m_type_serial_radiobtn->GetValue())
     pConnectionParams->Protocol =
