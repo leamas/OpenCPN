@@ -541,12 +541,14 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_net_data_protocol_choice->SetSelection(0);
     m_net_data_protocol_choice->Enable();
   }
-  if (view == kUdpOutput)
-    net_addr_w_help->SetHelp(kAddressUdpHelp);
-  else if (view == kMulticastClient || view == kMulticastServer)
-    net_addr_w_help->SetHelp(kAddressMcastHelp);
-  else
-    net_addr_w_help->SetHelp(kAddressDefaultHelp);
+  if (net_addr_w_help->IsPristine()) {
+    if (view == kUdpOutput)
+      net_addr_w_help->SetHelp(kAddressUdpHelp);
+    else if (view == kMulticastClient || view == kMulticastServer)
+      net_addr_w_help->SetHelp(kAddressMcastHelp);
+    else
+      net_addr_w_help->SetHelp(kAddressDefaultHelp);
+  }
   RefreshAdvancedDetails();
 }
 
