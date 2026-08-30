@@ -102,7 +102,7 @@ static const std::vector<std::string> kBasicNetViews = {
 
 static const std::vector<std::string> kAdvancedNetViews = {
     // First items matches kBasicNetViews
-    kTcpClient,     kUdpInput,  kUdpOutput,         kGpsdClient,
+    kTcpClient,     kUdpInput,  kUdpOutput,       kGpsdClient,
     kSignalkClient, kTcpServer, kMulticastClient, kMulticastServer};
 
 static wxString StringArrayToString(const wxArrayString& arr) {
@@ -286,6 +286,14 @@ bool CheckAddress(wxWindow* parent, TextCtrlWithHelp& ctrl) {
   return true;
 }
 
+/** Initiate the nmea protocol 0183/2000 choide */
+static void SetupProtocolChoice(wxChoice* choice) {
+  choice->Clear();
+  choice->Append("NMEA 0183");
+  choice->Append("NMEA 2000");
+  choice->SetSelection(0);
+  choice->Enable();
+}
 //------------------------------------------------------------------------------
 //          ConnectionEditDialog Implementation
 //------------------------------------------------------------------------------
@@ -436,6 +444,7 @@ void ConnectionEditDialog::InitiateNewConnection() {
   if (port_ctrl) port_ctrl->RestoreHelp();
   auto addr_ctrl = dynamic_cast<TextCtrlWithHelp*>(m_net_address_tctrl);
   if (addr_ctrl) addr_ctrl->SetHelp(kAddressDefaultHelp);
+  SetupProtocolChoice(m_net_data_protocol_choice);
 }
 
 void ConnectionEditDialog::OnConnectionTypeChange() {
@@ -492,12 +501,12 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_net_data_protocol_choice->Clear();
     m_net_data_protocol_choice->Append("SignalK");
     m_net_data_protocol_choice->SetSelection(0);
-    m_net_data_protocol_choice->Enable();
+    m_net_data_protocol_choice->Disable();
     m_input_chkbox->SetValue(true);
     m_output_chkbox->SetValue(false);
     if (net_port_w_help->IsPristine())
       net_port_w_help->ChangeValue(kDefaultSignalkPort);
-  } else if (view == kTcpServer ) {
+  } else if (view == kTcpServer) {
     m_net_addr_text->SetLabel(_("Interface"));
     m_net_address_tctrl->ChangeValue("0.0.0.0");
     m_net_address_tctrl->Disable();
@@ -505,18 +514,13 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_output_chkbox->Enable();
     m_input_chkbox->Enable();
   } else if (view == kMulticastClient || view == kMulticastServer) {
-    if (net_addr_w_help->IsPristine())
-      net_addr_w_help->ChangeValue(kDefaultMulticastAddr);
+    if (net_addr_w_help->GetValue().empty()) net_addr_w_help->RestoreHelp();
     m_net_addr_text->SetLabel(_("Multicast group"));
     if (net_port_w_help->IsPristine())
       net_port_w_help->SetHelp("Port number, usually 49152..65535");
   }
 
-  if (view == kTcpClient || view == kTcpDevice || view == kUdpInput ||
-      view == kUdpReceive) {
-    if (net_port_w_help->IsPristine())
-      net_port_w_help->SetHelp(_("Port number (1025..65535, often 10110)"));
-  } else if (view == kMulticastClient || view == kUdpSend) {
+  if (view == kMulticastClient || view == kUdpSend || view == kUdpOutput) {
     m_input_chkbox->SetValue(false);
     m_output_chkbox->SetValue(true);
   } else if (view == kMulticastServer) {
@@ -525,20 +529,17 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_output_chkbox->Enable();
     m_input_chkbox->Disable();
   }
-
-  if (view == kTcpClient || view == kUdpSend || view == kMulticastClient ||
-      view == kTcpDevice) {
+  if (view == kTcpClient || view == kTcpDevice || view == kUdpInput ||
+      view == kUdpReceive) {
+    if (net_port_w_help->IsPristine())
+      net_port_w_help->SetHelp(_("Port number (1025..65535, often 10110)"));
+    if (m_net_view_choice->GetCount() != 2)
+      SetupProtocolChoice(m_net_data_protocol_choice);
+  }
+  if (view != kTcpServer && view != kUdpReceive && view != kUdpInput &&
+      view != kMulticastServer) {
     if (m_net_address_tctrl->GetValue() == "0.0.0.0")
       net_addr_w_help->RestoreHelp();
-  }
-  if (view != kGpsdClient && view != kGpsdDevice && view != kSignalkDevice &&
-      view != kSignalkClient) {
-    if (m_net_view_choice->GetCount() == 2) return;
-    m_net_data_protocol_choice->Clear();
-    m_net_data_protocol_choice->Append("NMEA 0183");
-    m_net_data_protocol_choice->Append("NMEA 2000");
-    m_net_data_protocol_choice->SetSelection(0);
-    m_net_data_protocol_choice->Enable();
   }
   if (net_addr_w_help->IsPristine()) {
     if (view == kUdpSend)
@@ -699,10 +700,7 @@ void ConnectionEditDialog::Init() {
   m_net_props_sizer->Add(m_net_data_protocol_text, 0, wxALL, 5);
 
   m_net_data_protocol_choice = new wxChoice(this, wxID_ANY);
-  m_net_data_protocol_choice->Append(_("NMEA 0183"));
-  m_net_data_protocol_choice->Append(_("NMEA 2000"));
-  m_net_data_protocol_choice->SetSelection(0);
-  m_net_data_protocol_choice->Enable(true);
+  SetupProtocolChoice(m_net_data_protocol_choice);
   m_net_props_sizer->Add(m_net_data_protocol_choice, 1, wxTOP, 5);
   m_net_props_sizer->AddSpacer(1);
   m_net_props_sizer->AddSpacer(1);
@@ -1269,7 +1267,8 @@ void ConnectionEditDialog::OnTypeBTSelected(wxCommandEvent& event) {
 }
 
 void ConnectionEditDialog::OnUploadFormatChange(wxCommandEvent& event) {
-  if (event.GetEventObject() == m_garmin_upload_host_chkbox && event.IsChecked())
+  if (event.GetEventObject() == m_garmin_upload_host_chkbox &&
+      event.IsChecked())
     m_furuno_gp3x_chkbox->SetValue(false);
   else if (event.GetEventObject() == m_furuno_gp3x_chkbox && event.IsChecked())
     m_garmin_upload_host_chkbox->SetValue(false);
@@ -2166,9 +2165,9 @@ void ConnectionEditDialog::ConnectControls() {
       this);
 
   // input/output control
-  m_input_chkbox->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED,
-                         wxCommandEventHandler(ConnectionEditDialog::OnCbInput),
-                         nullptr, this);
+  m_input_chkbox->Connect(
+      wxEVT_COMMAND_CHECKBOX_CLICKED,
+      wxCommandEventHandler(ConnectionEditDialog::OnCbInput), nullptr, this);
   m_output_chkbox->Connect(
       wxEVT_COMMAND_CHECKBOX_CLICKED,
       wxCommandEventHandler(ConnectionEditDialog::OnCbOutput), nullptr, this);
