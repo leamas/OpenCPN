@@ -78,13 +78,14 @@
 #endif
 
 static const std::string kAddressDefaultHelp =
-    _("Enter peer IP address or hostname");
+    _("Enter IP address or hostname");
 static const std::string kAddressUdpHelp =
-    _("Peer hostname or address, often 255.255.255.255");
+    _("IP address or hostname, often 255.255.255.255");
 static const std::string kAddressMcastHelp =
     _("Group address, usually 224.0.2.0 - 224.0.255.255");
 static const std::string kTcpDevice = _("Device using TCP");
 static const std::string kUdpReceive = _("Device sending UDP");
+static const std::string kUdpOutput = _("UDP send");
 static const std::string kGpsdDevice = _("Gpsd server");
 static const std::string kSignalkDevice = _("SignalK server");
 static const std::string kTcpClient = _("TCP client");
@@ -101,7 +102,7 @@ static const std::vector<std::string> kBasicNetViews = {
 
 static const std::vector<std::string> kAdvancedNetViews = {
     // First items matches kBasicNetViews
-    kTcpClient,     kUdpInput,  kUdpSend,         kGpsdClient,
+    kTcpClient,     kUdpInput,  kUdpOutput,         kGpsdClient,
     kSignalkClient, kTcpServer, kMulticastClient, kMulticastServer};
 
 static wxString StringArrayToString(const wxArrayString& arr) {
@@ -311,8 +312,8 @@ ConnectionEditDialog::ConnectionEditDialog(
       m_conn_enabled(false),
       m_accept_radiobtn(nullptr),
       m_add_btn(nullptr),
-      m_advanced_chkbx(nullptr),
-      m_aps_magnetic_chkbx(nullptr),
+      m_advanced_chkbox(nullptr),
+      m_aps_magnetic_chkbox(nullptr),
       m_auth_token_tctrl(nullptr),
       m_auth_token_text(nullptr),
       m_baud_rate_choice(nullptr),
@@ -334,15 +335,15 @@ ConnectionEditDialog::ConnectionEditDialog(
       m_dlg_buttons_ok_btn(nullptr),
       m_dlg_cancel_btn(nullptr),
       m_dlg_ok_btn(nullptr),
-      m_filter_cog_sog_chkbx(nullptr),
+      m_filter_cog_sog_chkbox(nullptr),
       m_filter_sec_tctrl(nullptr),
       m_filter_sec_text(nullptr),
-      m_furuno_gp3x_chkbx(nullptr),
-      m_garmin_host_chkbx(nullptr),
-      m_garmin_upload_host_chkbx(nullptr),
+      m_furuno_gp3x_chkbox(nullptr),
+      m_garmin_host_chkbox(nullptr),
+      m_garmin_upload_host_chkbox(nullptr),
       m_ignore_radiobtn(nullptr),
       m_in_filter_sizer(nullptr),
-      m_input_chkbx(nullptr),
+      m_input_chkbox(nullptr),
       m_input_stc_list_btn(nullptr),
       m_input_stc_tctrl(nullptr),
       m_net_address_tctrl(nullptr),
@@ -352,7 +353,7 @@ ConnectionEditDialog::ConnectionEditDialog(
       m_net_data_protocol_choice(nullptr),
       m_net_data_protocol_text(nullptr),
       m_net_expert_box_text(nullptr),
-      m_net_expert_chkbx(nullptr),
+      m_net_expert_chkbox(nullptr),
       m_net_port_tctrl(nullptr),
       m_net_port_text(nullptr),
       m_net_props_sizer(nullptr),
@@ -361,7 +362,7 @@ ConnectionEditDialog::ConnectionEditDialog(
       m_o_accept_radiobtn(nullptr),
       m_o_ignore_radiobtn(nullptr),
       m_out_filter_sizer(nullptr),
-      m_output_chkbx(nullptr),
+      m_output_chkbox(nullptr),
       m_output_stc_list_btn(nullptr),
       m_output_stc_tctrl(nullptr),
       m_parent(parent),
@@ -380,7 +381,7 @@ ConnectionEditDialog::ConnectionEditDialog(
       m_ser_props_sizer(nullptr),
       m_ser_protocol_text(nullptr),
       m_sizer_box_btn(nullptr),
-      m_sk_check_discover_chkbx(nullptr),
+      m_sk_check_discover_chkbox(nullptr),
       m_sk_discover_btn(nullptr),
       m_sk_server_status_text(nullptr),
       m_std_dialog_btn_sizer(nullptr),
@@ -428,7 +429,7 @@ void ConnectionEditDialog::InitiateNewConnection() {
   m_net_view_choice->Clear();
   for (const auto& view : kBasicNetViews) m_net_view_choice->Append(view);
   m_net_view_choice->SetSelection(0);
-  m_net_expert_chkbx->SetValue(false);
+  m_net_expert_chkbox->SetValue(false);
   m_net_comment_tctrl->Hide();
   m_net_comment_text->Hide();
   auto port_ctrl = dynamic_cast<TextCtrlWithHelp*>(m_net_port_tctrl);
@@ -450,43 +451,41 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
   auto found = std::find(kBasicNetViews.begin(), kBasicNetViews.end(), view);
   int selection = m_net_view_choice->GetSelection();
   assert(selection != wxNOT_FOUND);
-  m_net_expert_chkbx->SetValue(found == kBasicNetViews.end());
+  m_net_expert_chkbox->SetValue(found == kBasicNetViews.end());
   m_net_address_tctrl->Enable();
   auto net_addr_w_help = dynamic_cast<TextCtrlWithHelp*>(m_net_address_tctrl);
   assert(net_addr_w_help);
   auto net_port_w_help = dynamic_cast<TextCtrlWithHelp*>(m_net_port_tctrl);
   assert(net_port_w_help);
   m_net_addr_text->SetLabel(_("Server address"));
-  m_output_chkbx->Enable();
-  m_input_chkbx->Enable();
+  m_output_chkbox->Disable();
+  m_input_chkbox->Disable();
   m_net_addr_text->Show();
   m_net_address_tctrl->Show();
   auto port = m_net_port_tctrl->GetValue();
   if (port == kDefaultGpsdPort || port == kDefaultSignalkPort || port.empty())
     net_port_w_help->RestoreHelp();
   if (view == kTcpDevice || view == kTcpClient) {
-    m_input_chkbx->SetValue(true);
-    m_output_chkbx->SetValue(false);
+    m_input_chkbox->SetValue(true);
+    m_output_chkbox->SetValue(false);
     m_net_addr_text->Show();
     m_net_address_tctrl->Show();
+    m_input_chkbox->Enable();
+    m_output_chkbox->Enable();
   } else if (view == kUdpReceive || view == kUdpInput) {
     m_net_addr_text->Hide();
     m_net_address_tctrl->ChangeValue("0.0.0.0");
     m_net_address_tctrl->Disable();
     m_net_address_tctrl->Hide();
-    m_input_chkbx->SetValue(true);
-    m_input_chkbx->Disable();
-    m_output_chkbx->SetValue(false);
-    m_output_chkbx->Disable();
+    m_input_chkbox->SetValue(true);
+    m_output_chkbox->SetValue(false);
   } else if (view == kGpsdClient || view == kGpsdDevice) {
     m_net_data_protocol_choice->Clear();
     m_net_data_protocol_choice->Append("gpsd");
     m_net_data_protocol_choice->SetSelection(0);
     m_net_data_protocol_choice->Disable();
-    m_output_chkbx->SetValue(false);
-    m_output_chkbx->Disable();
-    m_input_chkbx->SetValue(true);
-    m_input_chkbx->Disable();
+    m_output_chkbox->SetValue(false);
+    m_input_chkbox->SetValue(true);
     if (net_port_w_help->IsPristine())
       net_port_w_help->ChangeValue(kDefaultGpsdPort);
   } else if (view == kSignalkClient || view == kSignalkDevice) {
@@ -494,18 +493,17 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     m_net_data_protocol_choice->Append("SignalK");
     m_net_data_protocol_choice->SetSelection(0);
     m_net_data_protocol_choice->Enable();
-    m_input_chkbx->SetValue(true);
-    m_input_chkbx->Disable();
-    m_output_chkbx->SetValue(false);
-    m_output_chkbx->Disable();
+    m_input_chkbox->SetValue(true);
+    m_output_chkbox->SetValue(false);
     if (net_port_w_help->IsPristine())
       net_port_w_help->ChangeValue(kDefaultSignalkPort);
-  } else if (view == kTcpServer || view == kUdpInput) {
+  } else if (view == kTcpServer ) {
     m_net_addr_text->SetLabel(_("Interface"));
     m_net_address_tctrl->ChangeValue("0.0.0.0");
     m_net_address_tctrl->Disable();
-    m_input_chkbx->SetValue(true);
-    if (view == kUdpInput) m_input_chkbx->Disable();
+    m_input_chkbox->SetValue(true);
+    m_output_chkbox->Enable();
+    m_input_chkbox->Enable();
   } else if (view == kMulticastClient || view == kMulticastServer) {
     if (net_addr_w_help->IsPristine())
       net_addr_w_help->ChangeValue(kDefaultMulticastAddr);
@@ -513,20 +511,21 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
     if (net_port_w_help->IsPristine())
       net_port_w_help->SetHelp("Port number, usually 49152..65535");
   }
+
   if (view == kTcpClient || view == kTcpDevice || view == kUdpInput ||
       view == kUdpReceive) {
     if (net_port_w_help->IsPristine())
       net_port_w_help->SetHelp(_("Port number (1025..65535, often 10110)"));
   } else if (view == kMulticastClient || view == kUdpSend) {
-    m_input_chkbx->SetValue(false);
-    m_input_chkbx->Disable();
-    m_output_chkbx->SetValue(true);
+    m_input_chkbox->SetValue(false);
+    m_output_chkbox->SetValue(true);
   } else if (view == kMulticastServer) {
-    m_input_chkbx->SetValue(true);
-    m_input_chkbx->Disable();
-    m_output_chkbx->SetValue(false);
-    m_output_chkbx->Enable();
+    m_input_chkbox->SetValue(true);
+    m_output_chkbox->SetValue(false);
+    m_output_chkbox->Enable();
+    m_input_chkbox->Disable();
   }
+
   if (view == kTcpClient || view == kUdpSend || view == kMulticastClient ||
       view == kTcpDevice) {
     if (m_net_address_tctrl->GetValue() == "0.0.0.0")
@@ -554,13 +553,13 @@ void ConnectionEditDialog::ConfigureControlsForView(const std::string& view) {
 
 void ConnectionEditDialog::RefreshAdvancedDetails() {
   if (!m_type_net_radiobtn->GetValue()) return;
-  if (m_garmin_host_chkbx) m_garmin_host_chkbx->Hide();
-  if (m_garmin_upload_host_chkbx) m_garmin_upload_host_chkbx->Hide();
+  if (m_garmin_host_chkbox) m_garmin_host_chkbox->Hide();
+  if (m_garmin_upload_host_chkbox) m_garmin_upload_host_chkbox->Hide();
   const std::string view = GetChoiceSelection(m_net_view_choice);
   bool show_auth = view == kSignalkDevice || view == kSignalkClient;
   m_auth_token_tctrl->Show(show_auth && m_advanced);
   m_auth_token_text->Show(show_auth && m_advanced);
-  bool show_apb_precision = m_output_chkbx->IsChecked();
+  bool show_apb_precision = m_output_chkbox->IsChecked();
   m_precision_text->Show(show_apb_precision && m_advanced);
   m_precision_choice->Show(show_apb_precision && m_advanced);
   Layout();
@@ -661,8 +660,9 @@ void ConnectionEditDialog::Init() {
     m_connection_props_sizer->Add(m_bt_data_sources_choice, 1, wxEXPAND | wxTOP,
                                   25);
 
-  } else
+  } else {
     m_type_internal_bt_radiobtn = nullptr;
+  }
 
   m_net_props_sizer = new wxFlexGridSizer(0, 2, 0, 0);
 
@@ -679,9 +679,9 @@ void ConnectionEditDialog::Init() {
   }
   m_net_expert_box_text = new wxStaticText(this, wxID_ANY, _("Expert mode"));
   m_net_props_sizer->Add(m_net_expert_box_text, 0, wxALL, 5);
-  m_net_expert_chkbx = new wxCheckBox(this, wxID_ANY, "");
-  m_net_props_sizer->Add(m_net_expert_chkbx, 0, wxALL, 5);
-  m_net_expert_chkbx->Bind(
+  m_net_expert_chkbox = new wxCheckBox(this, wxID_ANY, "");
+  m_net_props_sizer->Add(m_net_expert_chkbox, 0, wxALL, 5);
+  m_net_expert_chkbox->Bind(
       wxEVT_CHECKBOX, [&](const wxCommandEvent&) { OnExpertModeChange(); });
 
   m_net_type_choice_text =
@@ -692,7 +692,7 @@ void ConnectionEditDialog::Init() {
   m_net_view_choice->SetSelection(0);  // until OnConnectionTypeChanged()
   m_net_view_choice->Bind(wxEVT_CHOICE,
                           [&](wxCommandEvent&) { OnConnectionTypeChange(); });
-  m_net_props_sizer->Add(m_net_view_choice, 0, wxALL, 5);
+  m_net_props_sizer->Add(m_net_view_choice, 0, wxTOP, 5);
   m_net_data_protocol_text =
       new wxStaticText(this, wxID_ANY, _("Data Protocol"));
   m_net_data_protocol_text->Wrap(-1);
@@ -867,16 +867,16 @@ void ConnectionEditDialog::Init() {
   fgSizer5->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
   m_connection_props_sizer->Add(fgSizer5, 0, wxEXPAND, 5);
 
-  m_input_chkbx =
+  m_input_chkbox =
       new wxCheckBox(this, wxID_ANY, _("Receive Input on this Port"));
-  fgSizer5->Add(m_input_chkbx, 0, wxALL, 2);
+  fgSizer5->Add(m_input_chkbox, 0, wxALL, 2);
   fgSizer5->AddSpacer(1);
 
-  m_output_chkbx =
+  m_output_chkbox =
       new wxCheckBox(this, wxID_ANY,
                      wxString::Format("%s (%s)", _("Output on this port"),
                                       _("as autopilot or NMEA repeater")));
-  fgSizer5->Add(m_output_chkbx, 0, wxALL, 2);
+  fgSizer5->Add(m_output_chkbox, 0, wxALL, 2);
   fgSizer5->AddSpacer(1);
 
   // Authentication token
@@ -934,20 +934,20 @@ void ConnectionEditDialog::Init() {
   m_precision_choice->Hide();
   OnExpertModeChange();
 
-  m_garmin_host_chkbx =
+  m_garmin_host_chkbox =
       new wxCheckBox(this, wxID_ANY, _("Use Garmin (GRMN) mode for input"));
-  m_garmin_host_chkbx->SetValue(false);
-  fgSizer5->Add(m_garmin_host_chkbx, 0, wxALL, 2);
+  m_garmin_host_chkbox->SetValue(false);
+  fgSizer5->Add(m_garmin_host_chkbox, 0, wxALL, 2);
   fgSizer5->AddSpacer(1);
 
   // signalK discovery enable
-  m_sk_check_discover_chkbx =
+  m_sk_check_discover_chkbox =
       new wxCheckBox(this, wxID_ANY, _("Automatic server discovery"));
-  m_sk_check_discover_chkbx->SetValue(true);
-  m_sk_check_discover_chkbx->SetToolTip(
+  m_sk_check_discover_chkbox->SetValue(true);
+  m_sk_check_discover_chkbox->SetToolTip(
       _("If checked, signal K server will be discovered automatically"));
 
-  fgSizer5->Add(m_sk_check_discover_chkbx, 0, wxALL, 2);
+  fgSizer5->Add(m_sk_check_discover_chkbox, 0, wxALL, 2);
 
   // signal K "Discover now" button
   m_sk_discover_btn = new wxButton(this, wxID_ANY, _("Discover now..."));
@@ -1062,7 +1062,7 @@ void ConnectionEditDialog::OnAddressChange(wxFocusEvent& ev) {
 }
 
 void ConnectionEditDialog::OnExpertModeChange() {
-  bool advanced = m_net_expert_chkbx->GetValue();
+  bool advanced = m_net_expert_chkbox->GetValue();
   int view = m_net_view_choice->GetSelection();
   m_net_view_choice->Clear();
   if (advanced) {
@@ -1269,10 +1269,10 @@ void ConnectionEditDialog::OnTypeBTSelected(wxCommandEvent& event) {
 }
 
 void ConnectionEditDialog::OnUploadFormatChange(wxCommandEvent& event) {
-  if (event.GetEventObject() == m_garmin_upload_host_chkbx && event.IsChecked())
-    m_furuno_gp3x_chkbx->SetValue(false);
-  else if (event.GetEventObject() == m_furuno_gp3x_chkbx && event.IsChecked())
-    m_garmin_upload_host_chkbx->SetValue(false);
+  if (event.GetEventObject() == m_garmin_upload_host_chkbox && event.IsChecked())
+    m_furuno_gp3x_chkbox->SetValue(false);
+  else if (event.GetEventObject() == m_furuno_gp3x_chkbox && event.IsChecked())
+    m_garmin_upload_host_chkbox->SetValue(false);
 
   OnConnValChange(event);
   event.Skip();
@@ -1290,8 +1290,8 @@ void ConnectionEditDialog::ShowTypeCommon(bool visible) {
 
 void ConnectionEditDialog::ShowNMEACommon(bool visible) {
   bool advanced = m_advanced;
-  m_input_chkbx->Show(visible);
-  m_output_chkbx->Show(visible);
+  m_input_chkbox->Show(visible);
+  m_output_chkbox->Show(visible);
   if (!visible) {
     m_out_filter_sizer->SetDimension(0, 0, 0, 0);
     m_in_filter_sizer->SetDimension(0, 0, 0, 0);
@@ -1299,12 +1299,12 @@ void ConnectionEditDialog::ShowNMEACommon(bool visible) {
     m_conn_edit_statbox->SetLabel("");
   }
 
-  m_sk_check_discover_chkbx->Hide();  // Provisional
+  m_sk_check_discover_chkbox->Hide();  // Provisional
   m_sk_discover_btn->Hide();
 
-  const bool bin_enable = (m_input_chkbx->IsChecked() && advanced);
+  const bool bin_enable = (m_input_chkbox->IsChecked() && advanced);
   ShowInFilter(visible && bin_enable);
-  const bool bout_enable = (m_output_chkbx->IsChecked() && advanced);
+  const bool bout_enable = (m_output_chkbox->IsChecked() && advanced);
   ShowOutFilter(visible && bout_enable);
 
   m_is_nmea_params_shown = visible;
@@ -1319,15 +1319,15 @@ void ConnectionEditDialog::ShowNMEANet(bool visible) {
   m_net_port_text->Show(visible);
   m_net_data_protocol_choice->Show(visible);
   m_net_port_tctrl->Show(visible);
-  m_net_expert_chkbx->Show(visible);
-  if (m_net_expert_chkbx->GetValue()) {
+  m_net_expert_chkbox->Show(visible);
+  if (m_net_expert_chkbox->GetValue()) {
     m_net_comment_text->Show(visible);
     m_net_comment_tctrl->Show(visible);
   }
   m_net_expert_box_text->Show(visible);
   m_net_type_choice_text->Show(visible);
   m_net_view_choice->Show(visible);
-  m_garmin_host_chkbx->Hide();
+  m_garmin_host_chkbox->Hide();
   OnConnectionTypeChange();
 }
 
@@ -1341,7 +1341,7 @@ void ConnectionEditDialog::ShowNMEASerial(bool visible) {
   m_port_combo->Show(visible);
   m_ser_protocol_text->Show(visible);
   m_serial_protocol_choice->Show(visible);
-  m_garmin_host_chkbx->Show(visible && advanced);
+  m_garmin_host_chkbox->Show(visible && advanced);
   m_ser_comment_text->Show(visible);
   m_serial_comment_tctrl->Show(visible);
 }
@@ -1349,9 +1349,9 @@ void ConnectionEditDialog::ShowNMEASerial(bool visible) {
 void ConnectionEditDialog::ShowNMEAGPS(bool visible) {
   if (m_dlg_ok_btn) m_dlg_ok_btn->Enable();
 
-  m_sk_check_discover_chkbx->Hide();
+  m_sk_check_discover_chkbox->Hide();
   m_sk_discover_btn->Hide();
-  m_output_chkbx->Hide();
+  m_output_chkbox->Hide();
 }
 
 void ConnectionEditDialog::ShowNMEACAN(bool visible) {
@@ -1378,12 +1378,12 @@ void ConnectionEditDialog::ShowNMEABT(bool visible) {
     if (m_bt_pairs_text) m_bt_pairs_text->Hide();
     if (m_bt_data_sources_choice) m_bt_data_sources_choice->Hide();
   }
-  m_sk_check_discover_chkbx->Hide();
-  m_sk_check_discover_chkbx->Hide();  // Provisional
+  m_sk_check_discover_chkbox->Hide();
+  m_sk_check_discover_chkbox->Hide();  // Provisional
   m_sk_discover_btn->Hide();
   m_output_stc_tctrl->Show(visible);
   m_output_stc_list_btn->Show(visible);
-  m_output_chkbx->Show(visible);
+  m_output_chkbox->Show(visible);
 }
 
 void ConnectionEditDialog::SetNMEAFormToSerial() {
@@ -1476,8 +1476,8 @@ void ConnectionEditDialog::ClearNMEAForm() {
 void ConnectionEditDialog::SetDSFormOptionVizStates() {
   bool advanced = m_advanced;
   m_collapse_box->ShowItems(true);
-  m_input_chkbx->Show();
-  m_output_chkbx->Show();
+  m_input_chkbox->Show();
+  m_output_chkbox->Show();
 
   ShowInFilter(advanced);
   ShowOutFilter(advanced);
@@ -1487,7 +1487,7 @@ void ConnectionEditDialog::SetDSFormOptionVizStates() {
   m_sk_server_status_text->Show(advanced);
 
   if (m_type_serial_radiobtn->GetValue()) {
-    m_sk_check_discover_chkbx->Hide();
+    m_sk_check_discover_chkbox->Hide();
     m_sk_discover_btn->Hide();
     m_sk_server_status_text->Hide();
     bool n0183ctlenabled =
@@ -1498,70 +1498,70 @@ void ConnectionEditDialog::SetDSFormOptionVizStates() {
         DataProtocol::PROTO_NMEA2000;
     if (!n0183ctlenabled) {
       if (n2kctlenabled) {
-        m_input_chkbx->Show();
-        m_output_chkbx->Show();
+        m_input_chkbox->Show();
+        m_output_chkbox->Show();
       } else {
-        m_input_chkbx->Hide();
-        m_output_chkbx->Hide();
+        m_input_chkbox->Hide();
+        m_output_chkbox->Hide();
       }
       ShowOutFilter(false);
       ShowInFilter(false);
       m_net_data_protocol_text->Hide();
       m_net_data_protocol_choice->Hide();
-      m_net_expert_chkbx->Hide();
+      m_net_expert_chkbox->Hide();
       m_net_type_choice_text->Hide();
       m_net_view_choice->Hide();
-      m_net_expert_chkbx->Hide();
+      m_net_expert_chkbox->Hide();
       m_net_type_choice_text->Hide();
       m_net_expert_box_text->Hide();
       m_net_view_choice->Hide();
     } else {
-      m_input_chkbx->Show();
-      m_input_chkbx->Enable();
+      m_input_chkbox->Show();
+      m_input_chkbox->Enable();
 
-      ShowInFilter(m_input_chkbx->IsChecked() && advanced);
-      ShowOutFilter(m_output_chkbx->IsChecked() && advanced);
+      ShowInFilter(m_input_chkbox->IsChecked() && advanced);
+      ShowOutFilter(m_output_chkbox->IsChecked() && advanced);
 
-      m_garmin_host_chkbx->Show(m_input_chkbx->IsChecked() && advanced);
+      m_garmin_host_chkbox->Show(m_input_chkbox->IsChecked() && advanced);
     }
   }
 
   if (m_type_internal_gps_radiobtn &&
       m_type_internal_gps_radiobtn->GetValue()) {
-    m_sk_check_discover_chkbx->Hide();
+    m_sk_check_discover_chkbox->Hide();
     m_sk_discover_btn->Hide();
     m_sk_server_status_text->Hide();
-    m_output_chkbx->Hide();
-    m_input_chkbx->Hide();
+    m_output_chkbox->Hide();
+    m_input_chkbox->Hide();
     ShowOutFilter(false);
     ShowInFilter(false);
-    m_garmin_host_chkbx->Hide();
+    m_garmin_host_chkbox->Hide();
     m_collapse_box->ShowItems(false);
   }
 
   if (m_type_internal_bt_radiobtn && m_type_internal_bt_radiobtn->GetValue()) {
-    m_sk_check_discover_chkbx->Hide();
+    m_sk_check_discover_chkbox->Hide();
     m_sk_discover_btn->Hide();
     m_sk_server_status_text->Hide();
 
-    ShowInFilter(m_input_chkbx->IsChecked() && advanced);
-    ShowOutFilter(m_output_chkbx->IsChecked() && advanced);
+    ShowInFilter(m_input_chkbox->IsChecked() && advanced);
+    ShowOutFilter(m_output_chkbox->IsChecked() && advanced);
   }
 
   if (m_type_can_radiobtn->GetValue()) {
-    m_sk_check_discover_chkbx->Hide();
+    m_sk_check_discover_chkbox->Hide();
     m_sk_discover_btn->Hide();
     m_sk_server_status_text->Hide();
-    m_garmin_host_chkbx->Hide();
-    m_input_chkbx->Hide();
-    m_output_chkbx->Hide();
+    m_garmin_host_chkbox->Hide();
+    m_input_chkbox->Hide();
+    m_output_chkbox->Hide();
 
     ShowInFilter(false);
     ShowOutFilter(false);
 
     m_net_data_protocol_text->Hide();
     m_net_data_protocol_choice->Hide();
-    m_net_expert_chkbx->Hide();
+    m_net_expert_chkbox->Hide();
     m_net_type_choice_text->Hide();
     m_net_expert_box_text->Hide();
     m_net_view_choice->Hide();
@@ -1576,8 +1576,8 @@ void ConnectionEditDialog::SetDSFormOptionVizStates() {
     }
     if ((DataProtocol)m_net_data_protocol_choice->GetSelection() ==
         DataProtocol::PROTO_NMEA0183) {
-      ShowInFilter(m_input_chkbx->IsChecked() && advanced);
-      ShowOutFilter(m_output_chkbx->IsChecked() && advanced);
+      ShowInFilter(m_input_chkbox->IsChecked() && advanced);
+      ShowOutFilter(m_output_chkbox->IsChecked() && advanced);
     }
   }
 }
@@ -1588,10 +1588,10 @@ void ConnectionEditDialog::SetDSFormOptionVizStates() {
  */
 void ConnectionEditDialog::SetDSFormRWStates() {
   if (m_type_serial_radiobtn->GetValue()) {
-    m_input_chkbx->Enable(true);
-    m_output_chkbx->Enable(true);
+    m_input_chkbox->Enable(true);
+    m_output_chkbox->Enable(true);
     ShowInFilter();
-    ShowOutFilter(m_output_chkbx->IsChecked());
+    ShowOutFilter(m_output_chkbox->IsChecked());
   } else {
     m_o_accept_radiobtn->Enable(true);
     m_o_ignore_radiobtn->Enable(true);
@@ -1624,7 +1624,7 @@ void ConnectionEditDialog::PreloadControls(ConnectionParams* cp) {
 void ConnectionEditDialog::SetConnectionParams(ConnectionParams* cp) {
   const std::string view = NetViewByConnection(cp);
   auto found = std::find(kBasicNetViews.begin(), kBasicNetViews.end(), view);
-  m_net_expert_chkbx->SetValue(found == kBasicNetViews.end());
+  m_net_expert_chkbox->SetValue(found == kBasicNetViews.end());
   m_net_view_choice->Clear();
   if (found == kBasicNetViews.end())
     for (const auto& v : kAdvancedNetViews) m_net_view_choice->Append(v);
@@ -1642,16 +1642,16 @@ void ConnectionEditDialog::SetConnectionParams(ConnectionParams* cp) {
 
   m_port_combo->Select(m_port_combo->FindString(cp->Port));
 
-  m_garmin_host_chkbx->SetValue(cp->Garmin);
-  m_sk_check_discover_chkbx->SetValue(cp->AutoSKDiscover);
+  m_garmin_host_chkbox->SetValue(cp->Garmin);
+  m_sk_check_discover_chkbox->SetValue(cp->AutoSKDiscover);
   if (view == kUdpReceive || view == kUdpInput) {
-    m_input_chkbx->SetValue(true);
-    m_input_chkbx->Disable();
-    m_output_chkbx->SetValue(false);
-    m_output_chkbx->Disable();
+    m_input_chkbox->SetValue(true);
+    m_input_chkbox->Disable();
+    m_output_chkbox->SetValue(false);
+    m_output_chkbox->Disable();
   } else {
-    m_input_chkbx->SetValue(cp->IOSelect != DS_TYPE_OUTPUT);
-    m_output_chkbx->SetValue(cp->IOSelect != DS_TYPE_INPUT);
+    m_input_chkbox->SetValue(cp->IOSelect != DS_TYPE_OUTPUT);
+    m_output_chkbox->SetValue(cp->IOSelect != DS_TYPE_INPUT);
   }
 
   if (cp->InputSentenceListType == WHITELIST)
@@ -1726,9 +1726,9 @@ void ConnectionEditDialog::SetDefaultConnectionParams() {
     m_port_combo->Select(0);
     m_port_combo->SetValue(wxEmptyString);  // These two broke it
   }
-  m_garmin_host_chkbx->SetValue(false);
-  m_input_chkbx->SetValue(true);
-  m_output_chkbx->SetValue(false);
+  m_garmin_host_chkbox->SetValue(false);
+  m_input_chkbox->SetValue(true);
+  m_output_chkbox->SetValue(false);
   m_accept_radiobtn->SetValue(true);
   m_o_accept_radiobtn->SetValue(true);
   m_input_stc_tctrl->SetValue(wxEmptyString);
@@ -1862,7 +1862,7 @@ void ConnectionEditDialog::OnRbOutput(wxCommandEvent& event) {
 }
 
 void ConnectionEditDialog::OnCbInput(wxCommandEvent& event) {
-  const bool checked = m_input_chkbx->IsChecked();
+  const bool checked = m_input_chkbox->IsChecked();
   ShowInFilter(checked);
   SetDSFormRWStates();
   LayoutDialog();
@@ -1871,7 +1871,7 @@ void ConnectionEditDialog::OnCbInput(wxCommandEvent& event) {
 
 void ConnectionEditDialog::OnCbOutput(wxCommandEvent& event) {
   OnConnValChange(event);
-  const bool is_output_enabled = m_output_chkbx->IsChecked();
+  const bool is_output_enabled = m_output_chkbox->IsChecked();
   ShowOutFilter(is_output_enabled);
 
   int selection = m_net_view_choice->GetSelection();
@@ -1952,7 +1952,7 @@ void ConnectionEditDialog::SetNMEAFormForSerialProtocol() {
       DataProtocol::PROTO_NMEA0183;
   bool advanced = m_advanced;
   ShowNMEACommon(n0183ctlenabled && advanced);
-  m_garmin_host_chkbx->Show(n0183ctlenabled && advanced);
+  m_garmin_host_chkbox->Show(n0183ctlenabled && advanced);
 
   SetDSFormRWStates();
   LayoutDialog();
@@ -1964,7 +1964,7 @@ void ConnectionEditDialog::SetNMEAFormForNetProtocol() {
       DataProtocol::PROTO_NMEA0183;
   bool advanced = m_advanced;
   ShowNMEACommon(n0183ctlenabled && advanced);
-  m_garmin_host_chkbx->Show(n0183ctlenabled && advanced);
+  m_garmin_host_chkbox->Show(n0183ctlenabled && advanced);
 
   SetDSFormRWStates();
   LayoutDialog();
@@ -2051,16 +2051,16 @@ ConnectionParams* ConnectionEditDialog::UpdateConnectionParamsFromControls(
   pConnectionParams->Baudrate =
       wxAtoi(m_baud_rate_choice->GetStringSelection());
   pConnectionParams->ChecksumCheck = true;
-  pConnectionParams->AutoSKDiscover = m_sk_check_discover_chkbx->GetValue();
-  pConnectionParams->Garmin = m_garmin_host_chkbx->GetValue();
+  pConnectionParams->AutoSKDiscover = m_sk_check_discover_chkbox->GetValue();
+  pConnectionParams->Garmin = m_garmin_host_chkbox->GetValue();
   pConnectionParams->InputSentenceList =
       wxStringTokenize(m_input_stc_tctrl->GetValue(), ",");
   if (m_accept_radiobtn->GetValue())
     pConnectionParams->InputSentenceListType = WHITELIST;
   else
     pConnectionParams->InputSentenceListType = BLACKLIST;
-  if (m_input_chkbx->GetValue()) {
-    if (m_output_chkbx->GetValue()) {
+  if (m_input_chkbox->GetValue()) {
+    if (m_output_chkbox->GetValue()) {
       pConnectionParams->IOSelect = DS_TYPE_INPUT_OUTPUT;
     } else {
       pConnectionParams->IOSelect = DS_TYPE_INPUT;
@@ -2166,10 +2166,10 @@ void ConnectionEditDialog::ConnectControls() {
       this);
 
   // input/output control
-  m_input_chkbx->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED,
+  m_input_chkbox->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED,
                          wxCommandEventHandler(ConnectionEditDialog::OnCbInput),
                          nullptr, this);
-  m_output_chkbx->Connect(
+  m_output_chkbox->Connect(
       wxEVT_COMMAND_CHECKBOX_CLICKED,
       wxCommandEventHandler(ConnectionEditDialog::OnCbOutput), nullptr, this);
 

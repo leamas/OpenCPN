@@ -99,8 +99,8 @@ private:
 
   wxRadioButton* m_accept_radiobtn;
   wxButton* m_add_btn;
-  wxCheckBox* m_advanced_chkbx;
-  wxCheckBox* m_aps_magnetic_chkbx;
+  wxCheckBox* m_advanced_chkbox;
+  wxCheckBox* m_aps_magnetic_chkbox;
   wxTextCtrl* m_auth_token_tctrl;
   wxStaticText* m_auth_token_text;
   wxChoice* m_baud_rate_choice;
@@ -124,15 +124,15 @@ private:
   wxButton* m_dlg_buttons_ok_btn;
   wxButton* m_dlg_cancel_btn;
   wxButton* m_dlg_ok_btn;
-  wxCheckBox* m_filter_cog_sog_chkbx;
+  wxCheckBox* m_filter_cog_sog_chkbox;
   wxTextCtrl* m_filter_sec_tctrl;
   wxStaticText* m_filter_sec_text;
-  wxCheckBox* m_furuno_gp3x_chkbx;
-  wxCheckBox* m_garmin_host_chkbx;
-  wxCheckBox* m_garmin_upload_host_chkbx;
+  wxCheckBox* m_furuno_gp3x_chkbox;
+  wxCheckBox* m_garmin_host_chkbox;
+  wxCheckBox* m_garmin_upload_host_chkbox;
   wxRadioButton* m_ignore_radiobtn;
   wxStaticBoxSizer* m_in_filter_sizer;
-  wxCheckBox* m_input_chkbx;
+  wxCheckBox* m_input_chkbox;
   wxButton* m_input_stc_list_btn;
   wxTextCtrl* m_input_stc_tctrl;
   wxTextCtrl* m_net_address_tctrl;
@@ -142,7 +142,7 @@ private:
   wxChoice* m_net_data_protocol_choice;
   wxStaticText* m_net_data_protocol_text;
   wxStaticText* m_net_expert_box_text;
-  wxCheckBox* m_net_expert_chkbx;
+  wxCheckBox* m_net_expert_chkbox;
   wxTextCtrl* m_net_port_tctrl;
   wxStaticText* m_net_port_text;
   wxGridSizer* m_net_props_sizer;
@@ -151,7 +151,7 @@ private:
   wxRadioButton* m_o_accept_radiobtn;
   wxRadioButton* m_o_ignore_radiobtn;
   wxStaticBoxSizer* m_out_filter_sizer;
-  wxCheckBox* m_output_chkbx;
+  wxCheckBox* m_output_chkbox;
   wxButton* m_output_stc_list_btn;
   wxTextCtrl* m_output_stc_tctrl;
   wxWindow* m_parent;
@@ -170,7 +170,7 @@ private:
   wxGridSizer* m_ser_props_sizer;
   wxStaticText* m_ser_protocol_text;
   wxBoxSizer* m_sizer_box_btn;
-  wxCheckBox* m_sk_check_discover_chkbx;
+  wxCheckBox* m_sk_check_discover_chkbox;
   wxButton* m_sk_discover_btn;
   wxStaticText* m_sk_server_status_text;
   wxStdDialogButtonSizer* m_std_dialog_btn_sizer;
