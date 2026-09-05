@@ -25,17 +25,21 @@
 
 #include "model/ds_porttype.h"
 
-std::string DsPortTypeToString(dsPortType type) {
-  switch (type) {
-    case DS_TYPE_INPUT_OUTPUT:
+#include "model/conn_params.h"
+
+static std::string PortDirectionToString(PortDirection pd) {
+  switch (static_cast<int>(pd)) {
+    case static_cast<int>(PortDirection::kInOut):
       return "IN/OUT";
       break;
-    case DS_TYPE_OUTPUT:
+    case static_cast<int>(PortDirection::kOutput):
       return "OUT";
       break;
-    case DS_TYPE_INPUT:
+    case static_cast<int>(PortDirection::kInput):
       return "IN";
       break;
+    default:
+      assert(false);
   };
   assert(false && "Compiler error (undefined dsPortType)");
   return "";  // for the compiler

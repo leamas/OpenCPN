@@ -133,7 +133,8 @@ CommDriverN0183Net::CommDriverN0183Net(const ConnectionParams* params,
   this->attributes["netAddress"] = params->NetworkAddress.ToStdString();
   this->attributes["netPort"] = std::to_string(params->NetworkPort);
   this->attributes["userComment"] = params->UserComment.ToStdString();
-  this->attributes["ioDirection"] = DsPortTypeToString(params->IOSelect);
+  this->attributes["ioDirection"] =
+      ConnectionDirectionToString()(params->direction);
   m_driver_stats.driver_bus = NavAddr::Bus::N0183;
   m_driver_stats.driver_iface = params->GetStrippedDSPort();
 

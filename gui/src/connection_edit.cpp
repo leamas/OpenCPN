@@ -1655,8 +1655,10 @@ void ConnectionEditDialog::SetConnectionParams(ConnectionParams* cp) {
     m_output_chkbox->SetValue(false);
     m_output_chkbox->Disable();
   } else {
-    m_input_chkbox->SetValue(cp->IOSelect != DS_TYPE_OUTPUT);
-    m_output_chkbox->SetValue(cp->IOSelect != DS_TYPE_INPUT);
+    constexpr auto kInput = ConnectionParams::Direction::kInput;
+    constexpr auto kOutput = ConnectionParams::Direction::kOutput;
+    m_input_chkbox->SetValue(cp->direction != kInput);
+    m_output_chkbox->SetValue(cp->direction != kOutput);
   }
 
   if (cp->InputSentenceListType == WHITELIST)
@@ -1887,10 +1889,11 @@ void ConnectionEditDialog::OnCbOutput(wxCommandEvent& event) {
     if (is_output_enabled) {
       // Check for a UDP input connection on the same port
       NetworkProtocol proto = UDP;
+      constexpr auto kInput = ConnectionParams::Direction::kInput;
       for (auto* cp : TheConnectionParams()) {
         if (cp->NetProtocol == proto &&
             cp->NetworkPort == wxAtoi(m_net_port_tctrl->GetValue()) &&
-            cp->IOSelect == DS_TYPE_INPUT) {
+            cp->direction == kInput) {
           wxString mes;
           bool warn = false;
           if (cp->bEnabled) {
@@ -2064,14 +2067,18 @@ ConnectionParams* ConnectionEditDialog::UpdateConnectionParamsFromControls(
     pConnectionParams->InputSentenceListType = WHITELIST;
   else
     pConnectionParams->InputSentenceListType = BLACKLIST;
+  constexpr auto kInOut = ConnectionParams::Direction::kInOut;
+  constexpr auto kInput = ConnectionParams::Direction::kInput;
+  constexpr auto kOutput = ConnectionParams::Direction::kOutput;
   if (m_input_chkbox->GetValue()) {
     if (m_output_chkbox->GetValue()) {
-      pConnectionParams->IOSelect = DS_TYPE_INPUT_OUTPUT;
+      pConnectionParams->direction = kInOut;
     } else {
-      pConnectionParams->IOSelect = DS_TYPE_INPUT;
+      pConnectionParams->direction = kInput;
     }
-  } else
-    pConnectionParams->IOSelect = DS_TYPE_OUTPUT;
+  } else {
+    pConnectionParams->direction = kOutput;
+  }
 
   pConnectionParams->OutputSentenceList =
       wxStringTokenize(m_output_stc_tctrl->GetValue(), ",");
