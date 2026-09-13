@@ -56,6 +56,7 @@
 #include <wx/printdlg.h>
 #include <wx/print.h>
 #include <wx/progdlg.h>
+#include <wx/statline.h>
 #include <wx/stdpaths.h>
 
 #include "model/navutil_base.h"
@@ -67,11 +68,72 @@
 #include "route_printout.h"
 #include "tcmgr.h"
 
+// Make _() return std::string instead of wxString;
+#undef _
+#if wxCHECK_VERSION(3, 2, 0)
+#define _(s) wxGetTranslation(wxASCII_STR(s)).ToStdString()
+#else
+#define _(s) wxGetTranslation((s)).ToStdString()
+#endif
+
 using namespace std;
+
+static const std::unordered_map<RoutePrintOptions, std::string> kLabelByOption =
+    {{RoutePrintOptions::kWaypointName, _("Waypoint")},
+     {RoutePrintOptions::kWaypointPosition, _("Position")},
+     {RoutePrintOptions::kWaypointCourse, _("Course")},
+     {RoutePrintOptions::kWaypointDistance, _("Distance")},
+     {RoutePrintOptions::kWaypointDescription, _("Description")},
+     {RoutePrintOptions::kWaypointSpeed, _("Speed")},
+     {RoutePrintOptions::kWaypointETA, _("ETA")},
+     {RoutePrintOptions::kWaypointETD, _("ETD")},
+     {RoutePrintOptions::kWaypointTideEvent, _("Next tide event")}};
+
+namespace {
+
+class ButtonSizer : public wxStdDialogButtonSizer {
+public:
+  ButtonSizer(wxWindow* parent) : wxStdDialogButtonSizer() {
+    auto ok_btn = new wxButton(parent, wxID_OK);
+    AddButton(ok_btn);
+    AddButton(new wxButton(parent, wxID_CANCEL));
+    SetAffirmativeButton(ok_btn);
+    Realize();
+  }
+};
+
+}  // namespace
+
+RoutePrintDlg::RoutePrintDlg(wxWindow* parent)
+    : wxDialog(this, wxID_ANY, _("Print route")) {
+  auto grid = new wxFlexGridSizer(2);
+  for (auto& [option, label] : kLabelByOption) {
+    grid->Add(new wxStaticText(this, wxID_ANY, label));
+    int id = wxWindow::NewControlId();
+    grid->Add(new SwitchButton(this, static_cast<int>(option), true, id));
+    IdByOption[option] = id;
+  }
+  auto vbox = new wxBoxSizer(wxVERTICAL);
+  vbox->Add(grid, wxSizerFlags(1));
+  vbox->Add(new wxStaticLine(this, wxID_ANY), wxSizerFlags().Expand());
+  vbox->Add(new ButtonSizer(this), wxSizerFlags());
+  Layout();
+
+  Bind(wxEVT_CLOSE_WINDOW, [&](wxCloseEvent&) { Destroy(); });
+}
+
+bool RoutePrintDlg::IsEnabled(RoutePrintOptions option) {
+  auto found = IdByOption.find(option);
+  assert(found != IdByOption.end() && "Illegal option");
+  int id = IdByOption[option];
+  SwitchButton* btn = dynamic_cast<SwitchButton*>(wxWindow::FindWindow(id));
+  assert(btn && "Could not look up button");
+  return btn->IsActive();
+}
 
 RoutePrintout::RoutePrintout(Route* route, const std::set<int>& options,
                              const int tz_selection)
-    : BasePrintout(_("Route Print").ToStdString()), m_route(route) {
+    : BasePrintout(_("Route Print")), m_route(route) {
   // Offset text from the edge of the cell (Needed on Linux)
   m_text_offset_x = 5;
   m_text_offset_y = 8;
@@ -242,8 +304,8 @@ void RoutePrintout::OnPreparePrinting() {
   int w, h;
   dc->GetSize(&w, &h);
 
-  // We don't know before hand what size the Print DC will be, in pixels. Varies
-  // by host. So, if the dc size is greater than 1000 pixels, we scale
+  // We don't know before hand what size the Print DC will be, in pixels.
+  // Varies by host. So, if the dc size is greater than 1000 pixels, we scale
   // accordinly.
   int max_x = wxMin(w, 1000);
   int max_y = wxMin(h, 1000);
@@ -291,19 +353,16 @@ void RoutePrintout::DrawPage(wxDC* dc, int page) {
     title << m_route->m_RouteNameString.ToStdString();
     title << " (" << distance.str() << ")";
   } else {
-    title << _("Total distance ").ToStdString() << distance.str();
+    title << _("Total distance ") << distance.str();
   }
 
   if (m_route->m_RouteStartString.Trim().Len() > 0) {
-    subtitle << _("From").ToStdString() << " "
-             << m_route->m_RouteStartString.ToStdString();
+    subtitle << _("From") << " " << m_route->m_RouteStartString;
     if (m_route->m_RouteEndString.Trim().Len() > 0) {
-      subtitle << " " << _("To").ToStdString() << " "
-               << m_route->m_RouteEndString.ToStdString();
+      subtitle << " " << _("To") << " " << m_route->m_RouteEndString;
     }
   } else if (m_route->m_RouteEndString.Trim().Len() > 0) {
-    subtitle << _("Destination").ToStdString() << " "
-             << m_route->m_RouteEndString.ToStdString();
+    subtitle << _("Destination") << " " << m_route->m_RouteEndString;
   }
 
   int title_width, title_height;
@@ -347,7 +406,7 @@ void RoutePrintout::DrawPage(wxDC* dc, int page) {
                                wxFONTWEIGHT_NORMAL);
   dc->SetFont(routePrintFont_normal);
 
-  vector<vector<PrintCell> >& cells = m_table.GetContent();
+  vector<vector<PrintCell>>& cells = m_table.GetContent();
   current_y += m_table.GetHeaderHeight() + m_text_offset_y;
   int current_height = 0;
   for (size_t i = 0; i < cells.size(); i++) {

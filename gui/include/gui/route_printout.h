@@ -28,6 +28,8 @@
 #include <set>
 
 #include <wx/print.h>
+#include <wx/window.h>
+
 #include <wx/dc.h>
 
 #ifdef __WXMSW__
@@ -80,6 +82,15 @@ public:
     AddSelection(options, RoutePrintOptions::kWaypointDescription,
                  _("Print Waypoint Description").ToStdString());
   };
+};
+
+class RoutePrintDlg : public wxDialog {
+public:
+  RoutePrintDlg(wxWindow* parent);
+  bool IsEnabled(RoutePrintOptions option);
+
+private:
+  std::unordered_map<RoutePrintOptions, int> IdByOption;
 };
 
 /**
