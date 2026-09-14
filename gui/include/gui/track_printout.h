@@ -70,6 +70,16 @@ public:
   };
 };
 
+class TrackPrintDlg : public wxDialog {
+public:
+  TrackPrintDlg(wxWindow* parent);
+
+  bool IsEnabled(TrackPrintOptions option) const;
+
+private:
+  std::unordered_map<TrackPrintOptions, int> IdByOption;
+};
+
 /**
  * Printout a table with track selected information.
  */
@@ -82,6 +92,8 @@ public:
    */
   TrackPrintout(Track* track, OCPNTrackListCtrl* lcPoints,
                 std::set<int> options);
+  TrackPrintout(Track* track, OCPNTrackListCtrl* lcPoints,
+                const TrackPrintDlg* dlg);
 
   void OnPreparePrinting() override;
 

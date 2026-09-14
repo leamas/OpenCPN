@@ -48,6 +48,7 @@
 #include <wx/printdlg.h>
 #include <wx/print.h>
 #include <wx/progdlg.h>
+#include <wx/statline.h>
 #include <wx/stdpaths.h>
 
 #include "track_printout.h"
@@ -59,11 +60,102 @@
 #include "print_dialog.h"
 #include "printtable.h"
 
+// Make _() return std::string instead of wxString;
+#undef _
+#if wxCHECK_VERSION(3, 2, 0)
+#define _(s) wxGetTranslation(wxASCII_STR(s)).ToStdString()
+#else
+#define _(s) wxGetTranslation((s)).ToStdString()
+#endif
+
 using namespace std;
+
+static const std::unordered_map<TrackPrintOptions, std::string> kLabelByOption =
+    {{TrackPrintOptions::kTrackPosition, _("Print Track Position")},
+     {TrackPrintOptions::kTrackCourse, _("Print Track Course")},
+     {TrackPrintOptions::kTrackDistance, _("Print Track Distance")},
+     {TrackPrintOptions::kTrackTime, _("Print Track Time")},
+     {TrackPrintOptions::kTrackSpeed, _("Print Track Speed")}};
+
+namespace {
+
+class ButtonSizer : public wxStdDialogButtonSizer {
+public:
+  ButtonSizer(wxWindow* parent) : wxStdDialogButtonSizer() {
+    auto ok_btn = new wxButton(parent, wxID_OK);
+    AddButton(ok_btn);
+    AddButton(new wxButton(parent, wxID_CANCEL));
+    SetAffirmativeButton(ok_btn);
+    Realize();
+  }
+};
+
+}  // namespace
+
+TrackPrintDlg::TrackPrintDlg(wxWindow* parent)
+    : wxDialog(parent, wxID_ANY, _("Print track")) {
+  auto grid = new wxFlexGridSizer(2);
+  for (auto& [option, label] : kLabelByOption) {
+    grid->Add(new wxStaticText(this, wxID_ANY, label));
+    int id = wxWindow::NewControlId();
+    grid->Add(new SwitchButton(this, static_cast<int>(option), true, id));
+    IdByOption[option] = id;
+  }
+  auto vbox = new wxBoxSizer(wxVERTICAL);
+  vbox->Add(grid, wxSizerFlags(1));
+  vbox->Add(new wxStaticLine(this, wxID_ANY), wxSizerFlags().Expand());
+  vbox->Add(new ButtonSizer(this), wxSizerFlags());
+  Layout();
+
+  Bind(wxEVT_CLOSE_WINDOW, [&](wxCloseEvent&) { Destroy(); });
+}
+
+bool TrackPrintDlg::IsEnabled(TrackPrintOptions option) const {
+  auto found = IdByOption.find(option);
+  assert(found != IdByOption.end() && "Illegal option");
+  int id;
+  try {
+    id = IdByOption.at(option);
+  } catch (std::out_of_range&) {
+    assert(false && "No id for button");
+  }
+  SwitchButton* btn = dynamic_cast<SwitchButton*>(wxWindow::FindWindow(id));
+  assert(btn && "Could not look up button");
+  return btn->IsActive();
+}
+
+TrackPrintout::TrackPrintout(Track* track, OCPNTrackListCtrl* lcPoints,
+                             const TrackPrintDlg* dlg)
+    : BasePrintout(_("Track Print")), m_track(track) {
+  // Offset text from the edge of the cell (Needed on Linux)
+  m_text_offset_x = 5;
+  m_text_offset_y = 8;
+
+  m_table.StartFillHeader();
+  // setup widths for columns
+
+  m_table << _("Leg");
+
+  if (dlg->IsEnabled(TrackPrintOptions::kTrackPosition)) {
+    m_table << _("Position");
+  }
+  if (dlg->IsEnabled(TrackPrintOptions::kTrackCourse)) {
+    m_table << _("Course");
+  }
+  if (dlg->IsEnabled(TrackPrintOptions::kTrackDistance)) {
+    m_table << _("Distance");
+  }
+  if (dlg->IsEnabled(TrackPrintOptions::kTrackTime)) {
+    m_table << _("Time");
+  }
+  if (dlg->IsEnabled(TrackPrintOptions::kTrackSpeed)) {
+    m_table << _("Speed");
+  }
+}
 
 TrackPrintout::TrackPrintout(Track* track, OCPNTrackListCtrl* lcPoints,
                              std::set<int> options)
-    : BasePrintout(_("Track Print").ToStdString()), m_track(track) {
+    : BasePrintout(_("Track Print")), m_track(track) {
   // Offset text from the edge of the cell (Needed on Linux)
   m_text_offset_x = 5;
   m_text_offset_y = 8;

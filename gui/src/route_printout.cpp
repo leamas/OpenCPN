@@ -122,10 +122,14 @@ RoutePrintDlg::RoutePrintDlg(wxWindow* parent)
   Bind(wxEVT_CLOSE_WINDOW, [&](wxCloseEvent&) { Destroy(); });
 }
 
-bool RoutePrintDlg::IsEnabled(RoutePrintOptions option) {
+bool RoutePrintDlg::IsEnabled(RoutePrintOptions option) const {
   auto found = IdByOption.find(option);
   assert(found != IdByOption.end() && "Illegal option");
-  int id = IdByOption[option];
+  int id = 0;
+  try {
+    int id = IdByOption.at(option);
+  } catch (std::out_of_range&) {
+  }
   SwitchButton* btn = dynamic_cast<SwitchButton*>(wxWindow::FindWindow(id));
   assert(btn && "Could not look up button");
   return btn->IsActive();

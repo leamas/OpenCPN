@@ -87,7 +87,7 @@ public:
 class RoutePrintDlg : public wxDialog {
 public:
   RoutePrintDlg(wxWindow* parent);
-  bool IsEnabled(RoutePrintOptions option);
+  bool IsEnabled(RoutePrintOptions option) const;
 
 private:
   std::unordered_map<RoutePrintOptions, int> IdByOption;
