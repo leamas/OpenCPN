@@ -23,6 +23,8 @@
 
 #include "model/periodic_timer.h"
 
+#include <wx/log.h>
+
 PeriodicTimer::PeriodicTimer(std::chrono::milliseconds interval)
     : m_interval(interval),
       m_run_sts(1),
@@ -43,7 +45,12 @@ void PeriodicTimer::Stop() {
   m_run_sts = 0;
   m_cond_var.notify_all();
   std::unique_lock lock(m_mutex);
-  m_cond_var.wait_for(lock, m_interval, [&] { return m_run_sts < 0; });
+  bool rv =
+      m_cond_var.wait_for(lock, 2 * m_interval, [&] { return m_run_sts < 0; });
+
+  std::string s(rv ? "success" : "timeout");
+  wxLogMessage("PeriodicTimer::Stop() %s", s.c_str());
+  wxLog::FlushActive();
   lock.unlock();
 }
 
