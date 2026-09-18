@@ -24,7 +24,11 @@
 #ifndef ChartDLdrpI_H_
 #define ChartDLdrpI_H_
 
+#include <deque>
 #include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include <wx/wxprec.h>
 
@@ -35,6 +39,9 @@
 #include <wx/event.h>
 #include <wx/fileconf.h>
 #include <wx/tokenzr.h>
+#include <wx/uri.h>
+
+#include "std_filesystem.h"
 
 #include "chartcatalog.h"
 #include "chartdldrgui.h"
@@ -163,6 +170,18 @@ class ChartDldrPanelImpl : public ChartDldrPanel {
   friend class chartdldr_pi;
 
 private:
+  struct QueueItem {
+    int index;
+    fs::path path;
+    std::string uri;
+    QueueItem() : index(-1) {}
+    QueueItem(int i, const wxString& p, const wxURI& u) 
+       : index(i), path(p.ToStdString()), uri(u.BuildURI().ToStdString()) {}
+    
+  };
+
+  std::deque<QueueItem> m_download_queue;
+
   int m_to_download;
   int m_updating_all;
   bool m_cancelled;

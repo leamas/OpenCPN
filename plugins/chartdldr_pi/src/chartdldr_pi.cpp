@@ -1440,89 +1440,91 @@ After downloading the charts, please extract them to %s"),
 #else
     wxString file_path = fn.GetFullPath();
 #endif
+    m_download_queue.push_back(QueueItem(index, file_path,  url));
 
-    long handle;
-    OCPN_downloadFileBackground(url.BuildURI(), file_path, this, &handle);
-
-    if (idx >= 0) {
-      if (m_plugin->ProcessFile(
-              downloaded_p.GetFullPath(), downloaded_p.GetPath(), true,
-              m_plugin->m_chart_catalog.charts.at(idx)->GetUpdateDatetime())) {
-        cs->ChartUpdated(m_plugin->m_chart_catalog.charts.at(idx)->number,
-                         m_plugin->m_chart_catalog.charts.at(idx)
-                             ->GetUpdateDatetime()
-                             .GetTicks());
-      } else {
-        m_failed_downloads++;
-      }
-      idx = -1;
-    }
-
-    while (!m_is_transfer_complete && m_is_transfer_ok && !m_cancelled) {
-      if (m_failed_downloads)
-        SetChartInfo(wxString::Format(
-            _("Downloading chart %u of %u, %u downloads failed (%s / %s)"),
-            m_downloading, m_to_download, m_failed_downloads,
-            FormatBytes(m_transferred_size), FormatBytes(m_total_size)));
-      else
-        SetChartInfo(wxString::Format(_("Downloading chart %u of %u (%s / %s)"),
-                                      m_downloading, m_to_download,
-                                      FormatBytes(m_transferred_size),
-                                      FormatBytes(m_total_size)));
-
-      Update();
-      Refresh();
-
-      wxTheApp->ProcessPendingEvents();
-      wxYield();
-      wxMilliSleep(20);
-    }
-
-    if (m_cancelled) {
-      idx = -1;
-      OCPN_cancelDownloadFileBackground(handle);
-    }
-
-    if (m_is_transfer_ok && !m_cancelled) {
-      idx = index;
-      downloaded_p = path;
-    } else {
-      idx = -1;
-      if (wxFileExists(path)) wxRemoveFile(path);
-      m_failed_downloads++;
-    }
+//    long handle;
+//    OCPN_downloadFileBackground(url.BuildURI(), file_path, this, &handle);
+//
+//    if (idx >= 0) {
+//      if (m_plugin->ProcessFile(
+//              downloaded_p.GetFullPath(), downloaded_p.GetPath(), true,
+//              m_plugin->m_chart_catalog.charts.at(idx)->GetUpdateDatetime())) {
+//        cs->ChartUpdated(m_plugin->m_chart_catalog.charts.at(idx)->number,
+//                         m_plugin->m_chart_catalog.charts.at(idx)
+//                             ->GetUpdateDatetime()
+//                             .GetTicks());
+//      } else {
+//        m_failed_downloads++;
+//      }
+//      idx = -1;
+//    }
+//
+//    while (!m_is_transfer_complete && m_is_transfer_ok && !m_cancelled) {
+//      if (m_failed_downloads)
+//        SetChartInfo(wxString::Format(
+//            _("Downloading chart %u of %u, %u downloads failed (%s / %s)"),
+//            m_downloading, m_to_download, m_failed_downloads,
+//            FormatBytes(m_transferred_size), FormatBytes(m_total_size)));
+//      else
+//        SetChartInfo(wxString::Format(_("Downloading chart %u of %u (%s / %s)"),
+//                                      m_downloading, m_to_download,
+//                                      FormatBytes(m_transferred_size),
+//                                      FormatBytes(m_total_size)));
+//
+//      Update();
+//      Refresh();
+//
+//      wxTheApp->ProcessPendingEvents();
+//      wxYield();
+//      wxMilliSleep(20);
+//    }
+//
+//    if (m_cancelled) {
+//      idx = -1;
+//      OCPN_cancelDownloadFileBackground(handle);
+//    }
+//
+//    if (m_is_transfer_ok && !m_cancelled) {
+//      idx = index;
+//      downloaded_p = path;
+//    } else {
+//      idx = -1;
+//      if (wxFileExists(path)) wxRemoveFile(path);
+//      m_failed_downloads++;
+//    }
+//  }
+//  if (idx >= 0) {
+//    if (m_plugin->ProcessFile(
+//            downloaded_p.GetFullPath(), downloaded_p.GetPath(), true,
+//            m_plugin->m_chart_catalog.charts.at(idx)->GetUpdateDatetime())) {
+//      cs->ChartUpdated(m_plugin->m_chart_catalog.charts.at(idx)->number,
+//                       m_plugin->m_chart_catalog.charts.at(idx)
+//                           ->GetUpdateDatetime()
+//                           .GetTicks());
+//    } else {
+//      m_failed_downloads++;
+//    }
+//  }
+//  DisableForDownload(true);
+//  m_bDnldCharts->SetLabel(_("Download selected charts"));
+//  m_download_is_cancel = false;
+//  SetSource(GetSelectedCatalog());
+//  if (m_failed_downloads > 0 && !m_updating_all && !m_cancelled)
+//    OCPNMessageBox_PlugIn(
+//        this,
+//        wxString::Format(_("%d out of %d charts failed to download.\nCheck the "
+//                           "list, verify there is a working Internet "
+//                           "connection and repeat the operation if needed."),
+//                         m_failed_downloads, m_downloading),
+//        _("Chart Downloader"), wxOK | wxICON_ERROR);
+//
+//  if (m_cancelled)
+//    OCPNMessageBox_PlugIn(this, _("Chart download cancelled."),
+//                          _("Chart Downloader"), wxOK | wxICON_INFORMATION);
+//
+//  if ((m_downloading - m_failed_downloads > 0) && !m_updating_all)
+//    ForceChartDBUpdate();
   }
-  if (idx >= 0) {
-    if (m_plugin->ProcessFile(
-            downloaded_p.GetFullPath(), downloaded_p.GetPath(), true,
-            m_plugin->m_chart_catalog.charts.at(idx)->GetUpdateDatetime())) {
-      cs->ChartUpdated(m_plugin->m_chart_catalog.charts.at(idx)->number,
-                       m_plugin->m_chart_catalog.charts.at(idx)
-                           ->GetUpdateDatetime()
-                           .GetTicks());
-    } else {
-      m_failed_downloads++;
-    }
-  }
-  DisableForDownload(true);
-  m_bDnldCharts->SetLabel(_("Download selected charts"));
-  m_download_is_cancel = false;
-  SetSource(GetSelectedCatalog());
-  if (m_failed_downloads > 0 && !m_updating_all && !m_cancelled)
-    OCPNMessageBox_PlugIn(
-        this,
-        wxString::Format(_("%d out of %d charts failed to download.\nCheck the "
-                           "list, verify there is a working Internet "
-                           "connection and repeat the operation if needed."),
-                         m_failed_downloads, m_downloading),
-        _("Chart Downloader"), wxOK | wxICON_ERROR);
-
-  if (m_cancelled)
-    OCPNMessageBox_PlugIn(this, _("Chart download cancelled."),
-                          _("Chart Downloader"), wxOK | wxICON_INFORMATION);
-
-  if ((m_downloading - m_failed_downloads > 0) && !m_updating_all)
-    ForceChartDBUpdate();
 }
 
 ChartDldrPanelImpl::~ChartDldrPanelImpl() {
