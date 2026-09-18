@@ -5034,7 +5034,6 @@ wxEvent* OCPN_downloadEvent::Clone() const {
 
 // const wxEventType wxEVT_DOWNLOAD_EVENT = wxNewEventType();
 DECL_EXP wxEventType wxEVT_DOWNLOAD_EVENT = wxNewEventType();
-
 _OCPN_DLStatus g_download_status;
 _OCPN_DLCondition g_download_condition;
 

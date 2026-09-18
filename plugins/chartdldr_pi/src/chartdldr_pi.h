@@ -198,6 +198,7 @@ private:
   size_t m_new_charts;
   size_t m_updated_charts;
   int m_downloading;
+  long m_dl_handle;
 
   bool DownloadChart(const wxString& url, const wxString& file,
                      const wxString& title);
@@ -207,6 +208,8 @@ private:
   void DoEditSource();
 
   void DisableForDownload(bool enabled);
+  void OnDownloadProgress(OCPN_downloadEvent &ev);
+  void OnDownloadFinished(OCPN_downloadEvent &ev);
 
 protected:
   // Handlers for ChartDldrPanel events.

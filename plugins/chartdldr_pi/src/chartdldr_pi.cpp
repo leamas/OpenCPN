@@ -1505,25 +1505,29 @@ After downloading the charts, please extract them to %s"),
 //      m_failed_downloads++;
 //    }
 //  }
-//  DisableForDownload(true);
-//  m_bDnldCharts->SetLabel(_("Download selected charts"));
+//  disablefordownload(true);
+//  m_bdnldcharts->setlabel(_("download selected charts"));
 //  m_download_is_cancel = false;
-//  SetSource(GetSelectedCatalog());
+//  setsource(getselectedcatalog());
 //  if (m_failed_downloads > 0 && !m_updating_all && !m_cancelled)
-//    OCPNMessageBox_PlugIn(
+//    ocpnmessagebox_plugin(
 //        this,
-//        wxString::Format(_("%d out of %d charts failed to download.\nCheck the "
-//                           "list, verify there is a working Internet "
+//        wxstring::format(_("%d out of %d charts failed to download.\ncheck the "
+//                           "list, verify there is a working internet "
 //                           "connection and repeat the operation if needed."),
 //                         m_failed_downloads, m_downloading),
-//        _("Chart Downloader"), wxOK | wxICON_ERROR);
+//        _("chart downloader"), wxok | wxicon_error);
 //
 //  if (m_cancelled)
-//    OCPNMessageBox_PlugIn(this, _("Chart download cancelled."),
-//                          _("Chart Downloader"), wxOK | wxICON_INFORMATION);
+//    ocpnmessagebox_plugin(this, _("chart download cancelled."),
+//                          _("chart downloader"), wxok | wxicon_information);
 //
 //  if ((m_downloading - m_failed_downloads > 0) && !m_updating_all)
-//    ForceChartDBUpdate();
+//    forcechartdbupdate();
+  }
+  if (m_download_queue.empty()) {
+    DisableForDownload(true);
+    m_bDnldCharts->SetLabel(_("download selected charts"));
   }
 }
 
@@ -1560,6 +1564,7 @@ ChartDldrPanelImpl::ChartDldrPanelImpl(chartdldr_pi *plugin, wxWindow *parent,
   m_cancelled = true;
   m_to_download = -1;
   m_downloading = -1;
+  m_dl_handle = -1;
   m_updating_all = false;
   m_plugin = plugin;
   m_is_populated = false;
@@ -1568,6 +1573,10 @@ ChartDldrPanelImpl::ChartDldrPanelImpl(chartdldr_pi *plugin, wxWindow *parent,
   ChartDldrPanelImpl::SetChartInfo("");
   m_is_transfer_complete = true;
   m_is_transfer_ok = true;
+
+// There is no defined EventTag, just an EventType. Missing:
+//  const wxEventTypeTag<OCPN_downloadEvent> DOWNLOAD_EVENT(wxNewEventType());
+//  Bind(DOWNLOAD_EVENT, [&] (OCPN_downloadEvent &ev) { onDLEvent(ev); });
 
   Connect(
       wxEVT_DOWNLOAD_EVENT,
@@ -2584,11 +2593,16 @@ void ChartDldrPanelImpl::onDLEvent(OCPN_downloadEvent &ev) {
   //    msg.Printf("onDLEvent  %d %d",ev.getDLEventCondition(),
   //    ev.getDLEventStatus()); wxLogMessage(msg);
 
+  if (m_cancelled && m_dl_handle != -1) { 
+    OCPN_cancelDownloadFileBackground(m_dl_handle);
+    m_dl_handle = -1;
+  }
   switch (ev.getDLEventCondition()) {
     case OCPN_DL_EVENT_TYPE_END:
       m_is_transfer_complete = true;
       m_is_transfer_ok =
           (ev.getDLEventStatus() == OCPN_DL_NO_ERROR) ? true : false;
+      OnDownloadFinished(ev);
       break;
 
     case OCPN_DL_EVENT_TYPE_PROGRESS:
@@ -2596,10 +2610,74 @@ void ChartDldrPanelImpl::onDLEvent(OCPN_downloadEvent &ev) {
         m_total_size = ev.getTotal();
         m_transferred_size = ev.getTransferred();
       }
-
+      OnDownloadProgress(ev);
       break;
     default:
       break;
   }
   wxYieldIfNeeded();
+}
+
+
+void ChartDldrPanelImpl::OnDownloadProgress(OCPN_downloadEvent &ev) {
+  if (m_failed_downloads) {
+    SetChartInfo(wxString::Format(
+        _("Downloading chart %u of %u, %u downloads failed (%s / %s)"),
+        m_downloading, m_to_download, m_failed_downloads,
+        FormatBytes(m_transferred_size), FormatBytes(m_total_size)));
+  } else {
+    SetChartInfo(wxString::Format(_("Downloading chart %u of %u (%s / %s)"),
+                                  m_downloading, m_to_download,
+                                  FormatBytes(m_transferred_size),
+                                  FormatBytes(m_total_size)));
+  }
+  Update();
+  Refresh();
+}
+
+void ChartDldrPanelImpl::OnDownloadFinished(OCPN_downloadEvent &ev) {
+
+  const QueueItem& item = m_download_queue.front();
+  if (ev.getDLEventStatus() == OCPN_DL_NO_ERROR) {
+    std::unique_ptr<ChartSource> &cs =
+           m_plugin->m_ChartSources.at(GetSelectedCatalog());
+    if (m_plugin->ProcessFile(
+             item.path.c_str(), item.path.filename().c_str(), true,
+             m_plugin->m_chart_catalog.charts.at(item.index)->GetUpdateDatetime())) {
+       cs->ChartUpdated(m_plugin->m_chart_catalog.charts.at(item.index)->number,
+                        m_plugin->m_chart_catalog.charts.at(item.index)
+                            ->GetUpdateDatetime()
+                            .GetTicks());
+    } else {
+      m_failed_downloads++;
+    }
+  } else {
+     m_failed_downloads++;
+  }
+  m_download_queue.pop_front();
+  if (!m_download_queue.empty())  {
+    const QueueItem& qi = m_download_queue.front();
+    OCPN_downloadFileBackground(qi.uri, qi.path.string(), this, &m_dl_handle);
+  } else {
+    DisableForDownload(true);
+    m_bDnldCharts->SetLabel(_("download selected charts"));
+    m_download_is_cancel = false;
+    SetSource(GetSelectedCatalog());
+    if (m_failed_downloads > 0 && !m_updating_all && !m_cancelled)
+      OCPNMessageBox_PlugIn(
+          this,
+          wxString::Format(_("%d out of %d charts failed to download.\ncheck the "
+                             "list, verify there is a working internet "
+                             "connection and repeat the operation if needed."),
+                           m_failed_downloads, m_downloading),
+          _("chart downloader"), wxOK | wxICON_ERROR);
+  
+    if (m_cancelled)
+      OCPNMessageBox_PlugIn(this, _("chart download cancelled."),
+                            _("chart downloader"), wxOK | wxICON_INFORMATION);
+  
+    if ((m_downloading - m_failed_downloads > 0) && !m_updating_all)
+      ForceChartDBUpdate();
+  
+  }
 }
