@@ -45,11 +45,10 @@ void PeriodicTimer::Stop() {
   m_run_sts = 0;
   m_cond_var.notify_all();
   std::unique_lock lock(m_mutex);
-  bool rv =
-      m_cond_var.wait_for(lock, 2 * m_interval, [&] { return m_run_sts < 0; });
+  wxLogMessage("PeriodicTimer::Stop(); waiting");
+  m_cond_var.wait(lock, [&] { return m_run_sts < 0; });
 
-  std::string s(rv ? "success" : "timeout");
-  wxLogMessage("PeriodicTimer::Stop() %s", s.c_str());
+  wxLogMessage("PeriodicTimer::Stop(); wait complete");
   wxLog::FlushActive();
   lock.unlock();
 }
