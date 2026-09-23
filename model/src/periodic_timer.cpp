@@ -42,7 +42,7 @@ PeriodicTimer::~PeriodicTimer() {
 }
 
 void PeriodicTimer::Stop() {
-  m_run_sts = 0;
+  if (m_run_sts > 0) m_run_sts = 0;
   m_cond_var.notify_all();
   std::unique_lock lock(m_mutex);
   wxLogMessage("PeriodicTimer::Stop(); waiting");
