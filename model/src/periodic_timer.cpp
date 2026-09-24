@@ -42,11 +42,19 @@ PeriodicTimer::~PeriodicTimer() {
 }
 
 void PeriodicTimer::Stop() {
+  int sts = m_run_sts;
+  wxLogMessage("PeriodicTimer::Stop(): enter: status: %d", sts);
+  wxLogMessage("PeriodicTimer::Stop(): enter: joinable: %d",
+               m_thread.joinable());
   if (m_run_sts > 0) m_run_sts = 0;
   m_cond_var.notify_all();
   std::unique_lock lock(m_mutex);
+  sts = m_run_sts;
+  wxLogMessage("PeriodicTimer::Stop(): locked: status: %d", sts);
+  wxLogMessage("PeriodicTimer::Stop(): locked: joinable: %d",
+               m_thread.joinable());
   wxLogMessage("PeriodicTimer::Stop(); waiting");
-  m_cond_var.wait(lock, [&] { return m_run_sts < 0; });
+  if (m_run_sts >= 0) m_cond_var.wait(lock, [&] { return m_run_sts < 0; });
 
   wxLogMessage("PeriodicTimer::Stop(); wait complete");
   wxLog::FlushActive();
