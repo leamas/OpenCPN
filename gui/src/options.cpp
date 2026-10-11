@@ -1474,6 +1474,8 @@ options::options(wxWindow* parent, OptionsCallbacks callbacks, wxWindowID id,
   m_OnChartDb_finalize_listener.Init(
       GuiEvents::GetInstance().on_finalize_chartdbs,
       [&](ObservedEvt& ev) { OptionsFinalizeChartDBUpdate(); });
+  Bind(wxEVT_SYS_COLOUR_CHANGED,
+       [&](wxSysColourChangedEvent& ev) { OnColorChange(ev); });
 }
 
 options::~options() {
@@ -1497,6 +1499,17 @@ options::~options() {
 #ifndef __ANDROID__
   delete m_PluginCatalogMgrPanel;
 #endif
+}
+
+void options::OnColorChange(wxSysColourChangedEvent& ev) {
+  auto foreground = wxSystemSettings::GetColour(wxSYS_COLOUR_MENUTEXT);
+  auto background = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+  SetBackgroundColour(background);
+  SetForegroundColour(foreground);
+  m_pListbook->SetBackgroundColour(background);
+  m_pListbook->SetForegroundColour(foreground);
+  Refresh();
+  ev.Skip();
 }
 
 // with AIS it's called very often

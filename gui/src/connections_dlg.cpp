@@ -440,9 +440,9 @@ public:
     Bind(wxEVT_PAINT, [&](wxPaintEvent& ev) {
       SetColAttributes(dynamic_cast<const wxWindow*>(ev.GetEventObject()));
       ev.Skip();
-      Bind(wxEVT_SYS_COLOUR_CHANGED,
-           [&](wxSysColourChangedEvent&) { OnColorChange(); });
     });
+    Bind(wxEVT_SYS_COLOUR_CHANGED,
+         [&](wxSysColourChangedEvent& ev) { OnColorChange(ev); });
     conn_change_lstnr.Init(
         m_conn_states.evt_conn_status_change,
         [&](ObservedEvt&) { OnConnectionChange(m_connections); });
@@ -465,6 +465,11 @@ public:
         SetCellTextColour(row, col, foreground);
       }
     }
+  }
+
+  void OnColorChange(wxSysColourChangedEvent& ev) {
+    OnColorChange();
+    ev.Skip();
   }
 
   wxSize GetEstimatedSize() const {
