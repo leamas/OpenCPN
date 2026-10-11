@@ -420,6 +420,7 @@ public:
     HideRowLabels();
     SetColAttributes(parent);
 
+    OnColorChange();
     ReloadGrid(connections);
     DisableDragColSize();
     DisableDragRowSize();
@@ -439,15 +440,31 @@ public:
     Bind(wxEVT_PAINT, [&](wxPaintEvent& ev) {
       SetColAttributes(dynamic_cast<const wxWindow*>(ev.GetEventObject()));
       ev.Skip();
+      Bind(wxEVT_SYS_COLOUR_CHANGED,
+           [&](wxSysColourChangedEvent&) { OnColorChange(); });
     });
     conn_change_lstnr.Init(
         m_conn_states.evt_conn_status_change,
         [&](ObservedEvt&) { OnConnectionChange(m_connections); });
   }
+
   void SetColorScheme(const ColorScheme cs) {
     m_cs = cs;
     m_icons.SetColorScheme(cs);
     ReloadGrid(m_connections);
+  }
+
+  void OnColorChange() {
+    auto foreground = wxSystemSettings::GetColour(wxSYS_COLOUR_MENUTEXT);
+    auto background = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+    SetLabelBackgroundColour(background);
+    SetLabelTextColour(foreground);
+    for (int row = 0; row <= GetNumberRows(); row++) {
+      for (unsigned col = 0; col < 7; col++) {
+        SetCellBackgroundColour(row, col, background);
+        SetCellTextColour(row, col, foreground);
+      }
+    }
   }
 
   wxSize GetEstimatedSize() const {
