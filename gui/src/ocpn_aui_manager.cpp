@@ -436,7 +436,14 @@ void OCPN_AUIManager::OnLeftUp(wxMouseEvent& event) {
     m_frame->ReleaseMouse();
 
     if (m_actionPart) {
+#if wxCHECK_VERSION(3, 3, 2)
+      UpdateButtonOnScreen(m_actionPart,
+                           m_actionPart == HitTest(event.GetX(), event.GetY())
+                               ? wxAUI_BUTTON_STATE_HOVER
+                               : wxAUI_BUTTON_STATE_NORMAL);
+#else
       UpdateButtonOnScreen(m_actionPart, event);
+#endif
 
       // make sure we're still over the item that was originally clicked
       if (m_actionPart == HitTest(event.GetX(), event.GetY())) {
