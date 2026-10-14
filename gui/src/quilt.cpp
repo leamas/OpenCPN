@@ -632,7 +632,7 @@ bool Quilt::DoesQuiltContainPlugins() {
 
   bool ret = false;
 
-  wxPatchListNode *cnode = m_PatchList.GetFirst();
+  PatchList::compatibility_iterator cnode = m_PatchList.GetFirst();
   while (cnode) {
     if (cnode->GetData()) {
       QuiltPatch *pqp = cnode->GetData();
@@ -664,7 +664,7 @@ int Quilt::GetChartdbIndexAtPix(ViewPort &VPoint, wxPoint p) {
 
   int ret = -1;
 
-  wxPatchListNode *cnode = m_PatchList.GetFirst();
+  PatchList::compatibility_iterator cnode = m_PatchList.GetFirst();
   while (cnode) {
     if (cnode->GetData()->ActiveRegion.Contains(lat, lon)) {
       ret = cnode->GetData()->dbIndex;
@@ -690,7 +690,7 @@ ChartBase *Quilt::GetChartAtPix(ViewPort &VPoint, wxPoint p) {
   //    walk the whole list.  The result will be the last one found, i.e. the
   //    largest scale chart.
   ChartBase *pret = NULL;
-  wxPatchListNode *cnode = m_PatchList.GetFirst();
+  PatchList::compatibility_iterator cnode = m_PatchList.GetFirst();
   while (cnode) {
     QuiltPatch *pqp = cnode->GetData();
     if (!pqp->b_overlay && (pqp->ActiveRegion.Contains(lat, lon)))
@@ -717,7 +717,7 @@ ChartBase *Quilt::GetOverlayChartAtPix(ViewPort &VPoint, wxPoint p) {
   //    walk the whole list.  The result will be the last one found, i.e. the
   //    largest scale chart.
   ChartBase *pret = NULL;
-  wxPatchListNode *cnode = m_PatchList.GetFirst();
+  PatchList::compatibility_iterator cnode = m_PatchList.GetFirst();
   while (cnode) {
     QuiltPatch *pqp = cnode->GetData();
     if (pqp->b_overlay && (pqp->ActiveRegion.Contains(lat, lon)))
@@ -749,7 +749,7 @@ std::vector<int> Quilt::GetQuiltIndexArray() {
 
   m_bbusy = true;
 
-  wxPatchListNode *cnode = m_PatchList.GetFirst();
+  PatchList::compatibility_iterator cnode = m_PatchList.GetFirst();
   while (cnode) {
     ret.push_back(cnode->GetData()->dbIndex);
     cnode = cnode->GetNext();
@@ -1129,7 +1129,7 @@ LLRegion Quilt::GetHiliteRegion() {
     xxx
     // Walk the PatchList, looking for the target hilite index
     for (unsigned int i = 0; i < m_PatchList.GetCount(); i++) {
-      wxPatchListNode *pcinode = m_PatchList.Item(i);
+      PatchList::compatibility_iterator pcinode = m_PatchList.Item(i);
       QuiltPatch *piqp = pcinode->GetData();
       if ((index == piqp->dbIndex) && (piqp->b_Valid))  // found it
       {
@@ -1147,7 +1147,7 @@ LLRegion Quilt::GetHiliteRegion() {
   if (m_nHiLiteIndex >= 0) {
     // Walk the PatchList, looking for the target hilite index
     for (unsigned int i = 0; i < m_PatchList.GetCount(); i++) {
-      wxPatchListNode *pcinode = m_PatchList.Item(i);
+      PatchList::compatibility_iterator pcinode = m_PatchList.Item(i);
       QuiltPatch *piqp = pcinode->GetData();
       if ((m_nHiLiteIndex == piqp->dbIndex) && (piqp->b_Valid))  // found it
       {
@@ -2353,7 +2353,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
   // this is the old algorithm does the same thing in n^2/2 operations instead
   // of 2*n-1
   for (unsigned int i = 0; i < m_PatchList.GetCount(); i++) {
-    wxPatchListNode *pcinode = m_PatchList.Item(i);
+    PatchList::compatibility_iterator pcinode = m_PatchList.Item(i);
     QuiltPatch *piqp = pcinode->GetData();
 
     if (!piqp->b_Valid)  // skip invalid entries
@@ -2371,7 +2371,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
 
     // fetch and subtract regions for all larger scale charts
     for (unsigned int k = i + 1; k < m_PatchList.GetCount(); k++) {
-      wxPatchListNode *pnode = m_PatchList.Item(k);
+      PatchList::compatibility_iterator pnode = m_PatchList.Item(k);
       QuiltPatch *pqp = pnode->GetData();
 
       if (!pqp->b_Valid)  // skip invalid entries
@@ -2408,7 +2408,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
     //    Whatever is left in the vpr region and has not been yet rendered must
     //    belong to the current target chart
 
-    wxPatchListNode *pinode = m_PatchList.Item(i);
+    PatchList::compatibility_iterator pinode = m_PatchList.Item(i);
     QuiltPatch *pqpi = pinode->GetData();
     pqpi->ActiveRegion = vpr_region;
 
@@ -2436,7 +2436,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
   //    Walk the list again, removing any entries marked as eclipsed....
   unsigned int il = 0;
   while (il < m_PatchList.GetCount()) {
-    wxPatchListNode *pcinode = m_PatchList.Item(il);
+    PatchList::compatibility_iterator pcinode = m_PatchList.Item(il);
     QuiltPatch *piqp = pcinode->GetData();
     if (piqp->b_eclipsed) {
       //    Make sure that this chart appears in the eclipsed list...
@@ -2534,7 +2534,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
   //    The index array is to be built in reverse, largest scale first
   unsigned int kl = m_PatchList.GetCount();
   for (unsigned int k = 0; k < kl; k++) {
-    wxPatchListNode *cnode = m_PatchList.Item((kl - k) - 1);
+    PatchList::compatibility_iterator cnode = m_PatchList.Item((kl - k) - 1);
     m_index_array.push_back(cnode->GetData()->dbIndex);
     cnode = cnode->GetNext();
   }
@@ -2564,7 +2564,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
   }
 
   for (unsigned int k = 0; k < m_PatchList.GetCount(); k++) {
-    wxPatchListNode *pnode = m_PatchList.Item(k);
+    PatchList::compatibility_iterator pnode = m_PatchList.Item(k);
     QuiltPatch *pqp = pnode->GetData();
 
     if (!pqp->b_Valid)  // skip invalid entries
@@ -2613,7 +2613,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
   //    If still missing, remove its patch from the quilt
   //    This will probably leave a "black hole" in the quilt...
   for (unsigned int k = 0; k < m_PatchList.GetCount(); k++) {
-    wxPatchListNode *pnode = m_PatchList.Item(k);
+    PatchList::compatibility_iterator pnode = m_PatchList.Item(k);
     QuiltPatch *pqp = pnode->GetData();
 
     if (pqp->b_Valid) {
@@ -2639,7 +2639,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
   m_bquilt_has_overlays = false;
   m_max_error_factor = 0.;
   for (unsigned int k = 0; k < m_PatchList.GetCount(); k++) {
-    wxPatchListNode *pnode = m_PatchList.Item(k);
+    PatchList::compatibility_iterator pnode = m_PatchList.Item(k);
     QuiltPatch *pqp = pnode->GetData();
 
     if (!pqp->b_Valid)  // skip invalid entries
