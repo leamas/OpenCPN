@@ -103,7 +103,8 @@ static void cloneHyperlinkListExV2(RoutePoint* dst,
   if (src->m_HyperlinkList == nullptr) return;
 
   if (src->m_HyperlinkList->GetCount() > 0) {
-    wxPlugin_HyperlinkListNode* linknode = src->m_HyperlinkList->GetFirst();
+    Plugin_HyperlinkList::compatibility_iterator linknode =
+        src->m_HyperlinkList->GetFirst();
     while (linknode) {
       Plugin_Hyperlink* link = linknode->GetData();
 
