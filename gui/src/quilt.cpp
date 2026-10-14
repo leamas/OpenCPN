@@ -232,8 +232,6 @@ Quilt::Quilt(ChartCanvas *parent) {
   m_chart_familyFix = CHART_FAMILY_UNKNOWN;
   m_lost_refchart_dbIndex = -1;
 
-  cnode = NULL;
-
   m_pBM = NULL;
   m_bcomposed = false;
   m_bbusy = false;
@@ -604,7 +602,7 @@ bool Quilt::IsQuiltVector() {
 
   bool ret = false;
 
-  wxPatchListNode *cnode = m_PatchList.GetFirst();
+  PatchList::compatibility_iterator cnode = m_PatchList.GetFirst();
   while (cnode) {
     if (cnode->GetData()) {
       QuiltPatch *pqp = cnode->GetData();
@@ -2266,9 +2264,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
   if (!m_bquiltanyproj) {
     //    Walk the PatchList, marking any entries whose projection does not
     //    match the determined quilt projection
-    for (unsigned int i = 0; i < m_PatchList.GetCount(); i++) {
-      wxPatchListNode *pcinode = m_PatchList.Item(i);
-      QuiltPatch *piqp = pcinode->GetData();
+    for (auto piqp : m_PatchList) {
       if ((piqp->ProjType != m_quilt_proj) &&
           (piqp->ProjType != PROJECTION_UNKNOWN))
         piqp->b_Valid = false;
@@ -2276,9 +2272,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
   }
 
   //    Walk the PatchList, marking any entries which appear in the noshow array
-  for (unsigned int i = 0; i < m_PatchList.GetCount(); i++) {
-    wxPatchListNode *pcinode = m_PatchList.Item(i);
-    QuiltPatch *piqp = pcinode->GetData();
+  for (auto *piqp : m_PatchList) {
     for (unsigned int ins = 0;
          ins < m_parent->GetQuiltNoshowIindexArray().size(); ins++) {
       if (m_parent->GetQuiltNoshowIindexArray()[ins] ==
@@ -2300,9 +2294,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
   bool b_skipCM93 = false;
   if (m_reference_type == CHART_TYPE_CM93COMP) {
     // find cm93 in the list
-    for (int i = m_PatchList.GetCount() - 1; i >= 0; i--) {
-      wxPatchListNode *pcinode = m_PatchList.Item(i);
-      QuiltPatch *piqp = pcinode->GetData();
+    for (auto *piqp : m_PatchList) {
       if (!piqp->b_Valid)  // skip invalid entries
         continue;
 
@@ -2325,9 +2317,7 @@ bool Quilt::Compose(const ViewPort &vp_in) {
 
   //  Proceeding from largest scale to smallest....
 
-  for (int i = m_PatchList.GetCount() - 1; i >= 0; i--) {
-    wxPatchListNode *pcinode = m_PatchList.Item(i);
-    QuiltPatch *piqp = pcinode->GetData();
+  for (auto *piqp : m_PatchList) {
     if (!piqp->b_Valid)  // skip invalid entries
       continue;
 
