@@ -115,8 +115,15 @@ void OCPN_AUIManager::OnMotionx(wxMouseEvent& event) {
     // by the Update within DoEndResizeAction.
     if (m_currentDragItem != -1)
       m_actionPart = &(m_uiParts.Item(m_currentDragItem));
-    else
-      m_currentDragItem = m_uiParts.Index(*m_actionPart);
+    else {
+      // Find by address: wx 3.3 array Index() needs operator==
+      for (size_t i = 0; i < m_uiParts.GetCount(); i++) {
+        if (&m_uiParts.Item(i) == m_actionPart) {
+          m_currentDragItem = i;
+          break;
+        }
+      }
+    }
 
     if (m_actionPart) {
       wxPoint pos = m_actionPart->rect.GetPosition();
