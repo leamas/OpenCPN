@@ -830,6 +830,7 @@ set(GUI_HDRS
     ${GUI_HDR_DIR}/config_mgr.h
     ${GUI_HDR_DIR}/connection_edit.h
     ${GUI_HDR_DIR}/connections_dlg.h
+    ${GUI_HDR_DIR}/conn_edit.h
     ${GUI_HDR_DIR}/conn_params_panel.h
     ${GUI_HDR_DIR}/data_monitor.h
     ${GUI_HDR_DIR}/detail_slider.h
