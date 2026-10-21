@@ -26,61 +26,60 @@
 
 #include <memory>
 
-#include <wx/dialog.h>
 #include <wx/panel.h>
+#include <wx/window.h>
 
-#include "observable/observable.h"
 #include "model/conn_params.h"
 
-/** Dialog editing or creating new connection parameters. */
-class ConnectionEditDlg : public wxPanel {
+/** Dialog editing existing or new connection parameters. */
+class AbstractConnectionEditDlg : public wxPanel {
 public:
-  ConnectionEditDlg(wxWindow* parent);
-
   /**
    * Set parameters to use and reset dialog.
    * @param params Either an existing ConnectionParams instance when
    *     editing or nullptr if creating a new connection.
    */
-  void SetParams(const std::unique_ptr<ConnectionParams>& params);
+  virtual void SetParams(std::unique_ptr<ConnectionParams> params) = 0;
 
   /** Return edited parameters */
-  std::unique_ptr<ConnectionParams> GetEditedParams();
+  virtual std::unique_ptr<ConnectionParams> GetEditedParams() = 0;
 
   /** Apply edited parameters and restart connection. */
-  void Apply();
+  virtual void Apply() = 0;
 
   /** Restore all edited values to pristine state as of SetParams(). */
-  void Cancel();
+  virtual void Cancel() = 0;
 
-private:
-  std::unique_ptr<ConnectionParams> start_params;
-  std::unique_ptr<ConnectionParams> edited_params;
-}
+  static AbstractConnectionEditDlg* Create(wxWindow* parent);
 
-/** Filter list editing dialog. */
-class SentenceListDlg : public wxDialog {
-public:
-  explicit SentenceListDlg(wxWindow* parent, FilterDirection dir, ListType type,
-                           const wxArrayString& list);
-  wxString GetSentences();
-
-private:
-  void OnAddClick(wxCommandEvent& event);
-  void OnDeleteClick(wxCommandEvent& event);
-  void OnCLBSelect(wxCommandEvent& event);
-  void OnCheckAllClick(wxCommandEvent& event);
-  void OnClearAllClick(wxCommandEvent& event);
-
-  void Populate(const wxArrayString& list);
-  [[nodiscard]] wxString GetBoxLabel() const;
-
-  wxCheckListBox* m_sentences_clb;
-  wxButton* m_del_btn;
-
-  ListType m_type;
-  FilterDirection m_dir;
-  wxArrayString m_sentences;
+protected:
+  AbstractConnectionEditDlg(wxWindow* parent) : wxPanel(parent) {}
 };
+
+// /** Filter list editing dialog. */
+// class SentenceListDlg : public wxDialog {
+// public:
+//   explicit SentenceListDlg(wxWindow* parent, FilterDirection dir, ListType
+//   type,
+//                            const wxArrayString& list);
+//   wxString GetSentences();
+//
+// private:
+//   void OnAddClick(wxCommandEvent& event);
+//   void OnDeleteClick(wxCommandEvent& event);
+//   void OnCLBSelect(wxCommandEvent& event);
+//   void OnCheckAllClick(wxCommandEvent& event);
+//   void OnClearAllClick(wxCommandEvent& event);
+//
+//   void Populate(const wxArrayString& list);
+//   [[nodiscard]] wxString GetBoxLabel() const;
+//
+//   wxCheckListBox* m_sentences_clb;
+//   wxButton* m_del_btn;
+//
+//   ListType m_type;
+//   FilterDirection m_dir;
+//   wxArrayString m_sentences;
+// };
 
 #endif  // COnn_EDIT_H

@@ -52,11 +52,13 @@
 #endif
 
 #include "connection_edit.h"
+#include "conn_edit.h"
 
 #include "libgui/text_ctrl_w_help.h"
 
 #include "model/comm_drv_factory.h"
 #include "model/config_vars.h"
+#include "model/conn_params.h"
 #include "model/ocpn_utils.h"
 #include "model/ser_ports.h"
 #include "model/sys_events.h"
@@ -105,6 +107,24 @@ static const std::vector<std::string> kAdvancedNetViews = {
     // First items matches kBasicNetViews
     kTcpClient,     kUdpInput,  kUdpOutput,       kGpsdClient,
     kSignalkClient, kTcpServer, kMulticastClient, kMulticastServer};
+
+#ifdef __ANDROID__
+static bool IsAndroid() { return true; }
+#else
+static bool IsAndroid() { return false; }
+#endif
+
+static bool IsWindows() {
+  return wxPlatformInfo::Get().GetOperatingSystemId() & wxOS_WINDOWS;
+}
+
+static bool IsApple() {
+  return wxPlatformInfo::Get().GetOperatingSystemId() & wxOS_MAC_OS;
+}
+
+static bool IsLinux() {
+  return wxPlatformInfo::Get().GetOperatingSystemId() & wxOS_UNIX_LINUX;
+}
 
 static wxString StringArrayToString(const wxArrayString& arr) {
   wxString ret = wxEmptyString;
@@ -2499,4 +2519,184 @@ void SentenceListDlg::OnClearAllClick(wxCommandEvent& event) {
 void SentenceListDlg::OnCheckAllClick(wxCommandEvent& event) {
   for (size_t i = 0; i < m_sentences_clb->GetCount(); i++)
     m_sentences_clb->Check(i, true);
+}
+
+/*--------------------------------------*/
+
+/**
+ * The three radio buttons selecting serial, network or socketcan
+ * connection type.
+ */
+class TypeButtons : public wxPanel {
+public:
+  explicit TypeButtons(wxWindow* parent,
+                       std::function<void(ConnectionType)> on_click)
+      : wxPanel(parent, wxID_ANY),
+        m_serial_btn(new wxRadioButton(this, wxID_ANY, _("Serial"))),
+        m_net_btn(new wxRadioButton(this, wxID_ANY, _("Network"))),
+        m_can_btn(nullptr),
+        m_on_click(std::move(on_click)) {
+    auto hbox = new wxBoxSizer(wxHORIZONTAL);
+    auto on_clicked = [&](wxCommandEvent& e) { OnClick(e); };
+    m_serial_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
+    hbox->Add(m_serial_btn, wxSizerFlags().Border());
+
+    m_net_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
+    hbox->Add(m_net_btn, wxSizerFlags().Border());
+
+    if (IsLinux()) {
+      m_can_btn = new wxRadioButton(this, wxID_ANY, _("socketCAN"));
+      m_can_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
+      hbox->Add(m_can_btn, wxSizerFlags().Border());
+    }
+    SetSelectedType(ConnectionType::SERIAL);
+
+    SetSizer(hbox);
+    hbox->Layout();
+    wxWindow::Show();
+  }
+
+  void SetSelectedType(ConnectionType type) {
+    switch (type) {
+      case ConnectionType::NETWORK:
+        m_net_btn->SetValue(true);
+        break;
+      case ConnectionType::SERIAL:
+        m_serial_btn->SetValue(true);
+        break;
+      case ConnectionType::SOCKETCAN:
+        m_can_btn->SetValue(true);
+        break;
+      default:
+        assert(false && "Illegal connection type");
+    }
+  }
+
+private:
+  wxRadioButton* m_serial_btn;
+  wxRadioButton* m_net_btn;
+  wxRadioButton* m_can_btn;
+  std::function<void(ConnectionType)> m_on_click;
+
+  void OnClick(wxCommandEvent& e) {
+    m_on_click(GetSelectedType());
+    e.Skip();
+  }
+
+  ConnectionType GetSelectedType() {
+    if (m_serial_btn->GetValue()) return ConnectionType::SERIAL;
+    if (m_net_btn->GetValue()) return ConnectionType::NETWORK;
+    if (m_can_btn && m_can_btn->GetValue()) return ConnectionType::SOCKETCAN;
+    assert(false && "No connection type radiobutton active(!)");
+    return ConnectionType::UNKNOWN;
+  }
+};
+
+class NetConfigPanel : public wxPanel {
+public:
+  NetConfigPanel(wxWindow* parent, const std::shared_ptr<ConnectionParams>& cp)
+      : wxPanel(parent), m_params(cp) {
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    vbox->Add(new wxStaticText(this, wxID_ANY, "Configure network"));
+    SetSizer(vbox);
+    wxWindow::Layout();
+    wxWindow::Show();
+  }
+
+private:
+  const std::shared_ptr<ConnectionParams>& m_params;
+};
+
+class SerialConfigPanel : public wxPanel {
+public:
+  SerialConfigPanel(wxWindow* parent,
+                    const std::shared_ptr<ConnectionParams>& cp)
+      : wxPanel(parent), m_params(cp) {
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    vbox->Add(new wxStaticText(this, wxID_ANY, "Configure serial"));
+    SetSizer(vbox);
+    wxWindow::Layout();
+    wxWindow::Show();
+  }
+
+private:
+  const std::shared_ptr<ConnectionParams>& m_params;
+};
+
+class CanConfigPanel : public wxPanel {
+public:
+  CanConfigPanel(wxWindow* parent, const std::shared_ptr<ConnectionParams>& cp)
+      : wxPanel(parent), m_params(cp) {
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    vbox->Add(new wxStaticText(this, wxID_ANY, "Configure socketcan"));
+    SetSizer(vbox);
+    wxWindow::Layout();
+    wxWindow::Show();
+  }
+
+private:
+  const std::shared_ptr<ConnectionParams>& m_params;
+};
+
+class ConnectionEditDlg : public AbstractConnectionEditDlg {
+public:
+  explicit ConnectionEditDlg(wxWindow* parent)
+      : AbstractConnectionEditDlg(parent) {
+    auto statbox = new wxStaticBoxSizer(wxVERTICAL, this, _("Edit connection"));
+    auto on_type_btn_click = [&](ConnectionType ct) { OnTypeBtnClick(ct); };
+    auto type_buttons = new TypeButtons(this, on_type_btn_click);
+    statbox->Add(type_buttons, wxSizerFlags().Border());
+    m_serial_config_panel = new SerialConfigPanel(this, m_edited_params);
+    statbox->Add(m_serial_config_panel);
+    m_net_config_panel = new NetConfigPanel(this, m_edited_params);
+    statbox->Add(m_net_config_panel);
+    m_can_config_panel = new CanConfigPanel(this, m_edited_params);
+    statbox->Add(m_can_config_panel);
+    ConnectionEditDlg::SetParams(nullptr);
+    type_buttons->SetSelectedType(ConnectionType::NETWORK);
+    OnTypeBtnClick(ConnectionType::NETWORK);
+
+    SetSizer(statbox);
+    wxWindow::Fit();
+    wxWindow::Show();
+  }
+
+  void SetParams(std::unique_ptr<ConnectionParams> p) override {
+    m_start_params = p ? std::move(p) : std::move(GetDefaultParams());
+    m_edited_params = std::make_unique<ConnectionParams>(*m_start_params);
+  }
+
+  std::unique_ptr<ConnectionParams> GetEditedParams() override {
+    assert(m_edited_params && "no edited params");
+    return std::make_unique<ConnectionParams>(*m_edited_params);
+  }
+
+  void Apply() override {}
+
+  void Cancel() override {}
+
+private:
+  std::shared_ptr<ConnectionParams> m_start_params;
+  std::shared_ptr<ConnectionParams> m_edited_params;
+
+  wxWindow* m_net_config_panel;
+  wxWindow* m_can_config_panel;
+  wxWindow* m_serial_config_panel;
+
+  void OnTypeBtnClick(ConnectionType ct) {
+    m_net_config_panel->Show(ct == ConnectionType::NETWORK);
+    m_can_config_panel->Show(ct == ConnectionType::SOCKETCAN);
+    m_serial_config_panel->Show(ct == ConnectionType::SERIAL);
+    Layout();
+  }
+
+  static std::unique_ptr<ConnectionParams> GetDefaultParams() {
+    ConnectionParams cp;
+    cp.type = ConnectionType::NETWORK;
+    return std::make_unique<ConnectionParams>(cp);
+  }
+};
+
+AbstractConnectionEditDlg* AbstractConnectionEditDlg::Create(wxWindow* parent) {
+  return new ConnectionEditDlg(parent);
 }

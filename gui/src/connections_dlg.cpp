@@ -53,7 +53,8 @@
 
 #include "color_handler.h"
 #include "color_types.h"
-#include "connection_edit.h"
+#include "conn_edit.h"
+// #include "connection_edit.h"
 #include "conn_params_panel.h"
 #include "gui_lib.h"
 #include "navutil.h"
@@ -164,6 +165,10 @@ static ConnectionParams* FindConnectionByIface(const ConnectionParams* new_cp) {
     }
   }
   return nullptr;
+}
+static ConnectionParams* FindConnectionByIface(
+    const std::unique_ptr<ConnectionParams>& cp) {
+  return FindConnectionByIface(cp.get());
 }
 
 /**
@@ -1053,8 +1058,8 @@ public:
       HandleEditFinish(p, new_mode, ok_cancel);
     };
 
-    m_edit_panel = new ConnectionEditDialog(this, on_edit_click);
-    m_edit_panel->SetPropsLabel(_("Edit Selected Connection"));
+    // m_edit_panel = new ConnectionEditDlg(this, on_edit_click);
+    m_edit_panel = AbstractConnectionEditDlg::Create(this);
     wxWindow* options = FindWindowByName("Options");
     assert(options && "Null Options window!");
     int fraction = 9;
@@ -1078,19 +1083,12 @@ public:
   }
 
   void HandleEdit(ConnectionParams* p) {
-    m_edit_panel->SetPropsLabel(_("Edit Selected Connection"));
-    m_edit_panel->SetNewMode(false);
-    m_edit_panel->PreloadControls(p);
-    m_edit_panel->AddOKCancelButtons();
+    m_edit_panel->SetParams(std::make_unique<ConnectionParams>(*p));
     SwitchToEditor();
   }
 
   void HandleNew(ConnectionParams*) {
-    m_edit_panel->SetPropsLabel(_("Configure new connection"));
-    m_edit_panel->SetDefaultConnectionParams();
-    m_edit_panel->SetNewMode(true);
-    m_edit_panel->AddOKCancelButtons();
-    m_edit_panel->InitiateNewConnection();
+    m_edit_panel->SetParams(nullptr);
     SwitchToEditor();
   }
 
@@ -1120,18 +1118,19 @@ public:
     }
     // OK from EDIT mode
     if (!new_mode) {
-      ConnectionParams* cp_edited = m_edit_panel->GetParamsFromControls();
+      std::unique_ptr<ConnectionParams> cp_edited =
+          m_edit_panel->GetEditedParams();
       delete cp_orig->options_panel;
       StopAndRemoveCommDriver(cp_orig->GetStrippedDSPort(),
                               cp_orig->GetCommProtocol());
       int index = top_panel->GetConnectionsGrid()->FindConnectionIndex(cp_orig);
       assert(index != -1 && "Cannot look up connection index");
-      TheConnectionParams()[index] = cp_edited;
+      *TheConnectionParams()[index] = *cp_edited;
       cp_edited->is_setup = false;  // Trigger new stream
     }
     //  OK from NEW mode
     else {
-      ConnectionParams* cp = m_edit_panel->GetParamsFromControls();
+      std::unique_ptr<ConnectionParams> cp = m_edit_panel->GetEditedParams();
       if (cp) {
         if (FindConnectionByIface(cp)) {
           wxMessageDialog dialog(this, kInterfaceExistsMessage,
@@ -1143,7 +1142,8 @@ public:
           // Trigger new stream
           cp->is_setup = false;
           // transfer ownership FIXME use smart pointers
-          TheConnectionParams().push_back(cp);
+          auto new_cp = new ConnectionParams(*cp);
+          TheConnectionParams().push_back(new_cp);
         } else {
           wxString msg =
               _("Unable to create a connection as configured. "
@@ -1151,7 +1151,6 @@ public:
           auto& noteman = NotificationManager::GetInstance();
           noteman.AddNotification(NotificationSeverity::kWarning,
                                   msg.ToStdString(), 60);
-          delete cp;
         }
       }
       UpdateDatastreams();
@@ -1164,7 +1163,7 @@ public:
 
 private:
   TopPanel* top_panel;
-  ConnectionEditDialog* m_edit_panel;
+  AbstractConnectionEditDlg* m_edit_panel;
 };
 
 /** Main window: Panel with a single TopScroll child. */
