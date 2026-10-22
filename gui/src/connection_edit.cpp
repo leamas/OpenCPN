@@ -2522,7 +2522,7 @@ void SentenceListDlg::OnCheckAllClick(wxCommandEvent& event) {
 }
 
 /*--------------------------------------*/
-
+namespace {
 /**
  * The three radio buttons selecting serial, network or socketcan
  * connection type.
@@ -2637,13 +2637,39 @@ public:
 private:
   const std::shared_ptr<ConnectionParams>& m_params;
 };
+class ButtonSizer : public wxStdDialogButtonSizer {
+public:
+  ButtonSizer(wxWindow* parent, std::function<void(wxCommandEvent&)> on_ok,
+              std::function<void(wxCommandEvent&)> on_cancel)
+      : wxStdDialogButtonSizer(),
+        m_on_ok(std::move(on_ok)),
+        m_on_cancel(std::move(on_cancel)) {
+    auto ok_btn = new wxButton(parent, wxID_OK);
+    ok_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& ev) { m_on_ok(ev); });
+    AddButton(ok_btn);
+    auto cancel_btn = new wxButton(parent, wxID_CANCEL);
+    cancel_btn->Bind(wxEVT_BUTTON,
+                     [&](wxCommandEvent& ev) { m_on_cancel(ev); });
+    AddButton(cancel_btn);
+    SetAffirmativeButton(ok_btn);
+    Realize();
+  }
+
+private:
+  std::function<void(wxCommandEvent&)> m_on_ok;
+  std::function<void(wxCommandEvent&)> m_on_cancel;
+};
+
+}  // Anonymous namespace
 
 class ConnectionEditDlg : public AbstractConnectionEditDlg {
 public:
   explicit ConnectionEditDlg(wxWindow* parent)
       : AbstractConnectionEditDlg(parent) {
+    auto vbox = new wxBoxSizer(wxVERTICAL);
     auto statbox = new wxStaticBoxSizer(wxVERTICAL, this, _("Edit connection"));
     auto on_type_btn_click = [&](ConnectionType ct) { OnTypeBtnClick(ct); };
+    auto flags = wxSizerFlags().Border();
     auto type_buttons = new TypeButtons(this, on_type_btn_click);
     statbox->Add(type_buttons, wxSizerFlags().Border());
     m_serial_config_panel = new SerialConfigPanel(this, m_edited_params);
@@ -2652,11 +2678,15 @@ public:
     statbox->Add(m_net_config_panel);
     m_can_config_panel = new CanConfigPanel(this, m_edited_params);
     statbox->Add(m_can_config_panel);
+    vbox->Add(statbox, flags.Expand());
+    auto button_sizer = new ButtonSizer(
+        this, [&](wxCommandEvent& ev) {}, [&](wxCommandEvent& ev) {});
+    vbox->Add(button_sizer, flags.Expand());
     ConnectionEditDlg::SetParams(nullptr);
     type_buttons->SetSelectedType(ConnectionType::NETWORK);
     OnTypeBtnClick(ConnectionType::NETWORK);
 
-    SetSizer(statbox);
+    SetSizer(vbox);
     wxWindow::Fit();
     wxWindow::Show();
   }
