@@ -2627,15 +2627,69 @@ class CanConfigPanel : public wxPanel {
 public:
   CanConfigPanel(wxWindow* parent, const std::shared_ptr<ConnectionParams>& cp)
       : wxPanel(parent), m_params(cp) {
-    auto vbox = new wxBoxSizer(wxVERTICAL);
-    vbox->Add(new wxStaticText(this, wxID_ANY, "Configure socketcan"));
-    SetSizer(vbox);
+    auto hbox = new wxBoxSizer(wxHORIZONTAL);
+    hbox->Add(new wxStaticText(this, wxID_ANY, "Socketcan source"),
+              wxSizerFlags().Border().CentreVertical());
+    m_choice = new wxChoice(this, wxID_ANY);
+    std::vector<wxString> choices;
+    for (const auto& iface : GetAvailableSocketCanInterfaces())
+      choices.push_back(iface);
+    m_choice->Append(choices);
+    hbox->Add(m_choice, wxSizerFlags().Border());
+    SetSizer(hbox);
     wxWindow::Layout();
     wxWindow::Show();
   }
 
 private:
   const std::shared_ptr<ConnectionParams>& m_params;
+  wxChoice* m_choice;
+
+  static std::vector<std::string> GetAvailableSocketCanInterfaces() {
+    std::vector<std::string> rv;
+
+#if defined(__linux__) && !defined(__ANDROID__)
+    struct intf_entry* entry;
+
+    can_if_candidates.clear();  // FIXME: global...
+
+    if ((intf = intf_open()) == NULL) {
+      wxLogWarning("Error opening interface list");
+      return rv;
+    }
+
+    if (intf_loop(intf, print_intf, NULL) < 0) {
+      wxLogWarning("Error looping over interface list");
+    }
+    intf_close(intf);
+
+    for (const auto& iface : can_if_candidates) {
+      int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+      if (sock < 0) {
+        continue;
+      }
+
+      // Get the interface index
+      struct ifreq if_request;
+      strcpy(if_request.ifr_name, iface.c_str());
+      if (ioctl(sock, SIOCGIFINDEX, &if_request) < 0) {
+        continue;
+      }
+
+      // Check if interface is UP
+      struct sockaddr_can can_address;
+      can_address.can_family = AF_CAN;
+      can_address.can_ifindex = if_request.ifr_ifindex;
+      if (ioctl(sock, SIOCGIFFLAGS, &if_request) < 0) {
+        continue;
+      }
+      if (if_request.ifr_flags & IFF_UP) {
+        rv.push_back(iface);
+      }
+    }
+#endif  // defined(__linux__) && !defined(__ANDROID__)
+    return rv;
+  }
 };
 class ButtonSizer : public wxStdDialogButtonSizer {
 public:
