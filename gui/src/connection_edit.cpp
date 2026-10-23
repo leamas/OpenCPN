@@ -2718,8 +2718,8 @@ private:
 
 class ConnectionEditDlg : public AbstractConnectionEditDlg {
 public:
-  explicit ConnectionEditDlg(wxWindow* parent)
-      : AbstractConnectionEditDlg(parent) {
+  explicit ConnectionEditDlg(wxWindow* parent, ConnEditCallback ceb)
+      : AbstractConnectionEditDlg(parent), m_on_ok_cancel(std::move(ceb)) {
     auto vbox = new wxBoxSizer(wxVERTICAL);
     auto statbox = new wxStaticBoxSizer(wxVERTICAL, this, _("Edit connection"));
     auto on_type_btn_click = [&](ConnectionType ct) { OnTypeBtnClick(ct); };
@@ -2733,8 +2733,9 @@ public:
     m_can_config_panel = new CanConfigPanel(this, m_edited_params);
     statbox->Add(m_can_config_panel);
     vbox->Add(statbox, flags.Expand());
-    auto button_sizer = new ButtonSizer(
-        this, [&](wxCommandEvent& ev) {}, [&](wxCommandEvent& ev) {});
+    auto on_ok = [&](wxCommandEvent& ev) { OnOkCancel(ev, true); };
+    auto on_cancel = [&](wxCommandEvent& ev) { OnOkCancel(ev, false); };
+    auto button_sizer = new ButtonSizer(this, on_ok, on_cancel);
     vbox->Add(button_sizer, flags.Expand());
     ConnectionEditDlg::SetParams(nullptr);
     type_buttons->SetSelectedType(ConnectionType::NETWORK);
@@ -2746,6 +2747,7 @@ public:
   }
 
   void SetParams(std::unique_ptr<ConnectionParams> p) override {
+    m_is_new = !bool(p);
     m_start_params = p ? std::move(p) : std::move(GetDefaultParams());
     m_edited_params = std::make_unique<ConnectionParams>(*m_start_params);
   }
@@ -2763,15 +2765,22 @@ private:
   std::shared_ptr<ConnectionParams> m_start_params;
   std::shared_ptr<ConnectionParams> m_edited_params;
 
+  ConnEditCallback m_on_ok_cancel;
   wxWindow* m_net_config_panel;
   wxWindow* m_can_config_panel;
   wxWindow* m_serial_config_panel;
+  bool m_is_new;
 
   void OnTypeBtnClick(ConnectionType ct) {
     m_net_config_panel->Show(ct == ConnectionType::NETWORK);
     m_can_config_panel->Show(ct == ConnectionType::SOCKETCAN);
     m_serial_config_panel->Show(ct == ConnectionType::SERIAL);
     Layout();
+  }
+
+  void OnOkCancel(wxCommandEvent& ev, bool ok) {
+    m_on_ok_cancel(std::make_unique<ConnectionParams>(*m_edited_params),
+                   m_is_new, ok);
   }
 
   static std::unique_ptr<ConnectionParams> GetDefaultParams() {
@@ -2781,6 +2790,7 @@ private:
   }
 };
 
-AbstractConnectionEditDlg* AbstractConnectionEditDlg::Create(wxWindow* parent) {
-  return new ConnectionEditDlg(parent);
+AbstractConnectionEditDlg* AbstractConnectionEditDlg::Create(
+    wxWindow* parent, ConnEditCallback cb) {
+  return new ConnectionEditDlg(parent, cb);
 }

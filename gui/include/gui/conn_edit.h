@@ -31,6 +31,10 @@
 
 #include "model/conn_params.h"
 
+/** Callback invoked when user clicks OK or Cancel button in dialog */
+using ConnEditCallback = std::function<void(std::unique_ptr<ConnectionParams> p,
+                                            bool editing, bool ok_cancel)>;
+
 /** Dialog editing existing or new connection parameters. */
 class AbstractConnectionEditDlg : public wxPanel {
 public:
@@ -50,7 +54,8 @@ public:
   /** Restore all edited values to pristine state as of SetParams(). */
   virtual void Cancel() = 0;
 
-  static AbstractConnectionEditDlg* Create(wxWindow* parent);
+  static AbstractConnectionEditDlg* Create(wxWindow* parent,
+                                           ConnEditCallback cb);
 
 protected:
   AbstractConnectionEditDlg(wxWindow* parent) : wxPanel(parent) {}

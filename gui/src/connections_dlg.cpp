@@ -1053,13 +1053,13 @@ public:
         new TopPanel(this, connections, evt_add_connection, on_edit_connection);
     vbox->Add(top_panel, wxSizerFlags(1).Expand());
 
-    auto on_edit_click = [&](const ConnectionParams* p, bool new_mode,
-                             bool ok_cancel) {
-      HandleEditFinish(p, new_mode, ok_cancel);
+    auto on_edit_click = [&](std::unique_ptr<ConnectionParams> params,
+                             bool new_mode, bool ok_cancel) {
+      HandleEditFinish(std::move(params), new_mode, ok_cancel);
     };
 
     // m_edit_panel = new ConnectionEditDlg(this, on_edit_click);
-    m_edit_panel = AbstractConnectionEditDlg::Create(this);
+    m_edit_panel = AbstractConnectionEditDlg::Create(this, on_edit_click);
     wxWindow* options = FindWindowByName("Options");
     assert(options && "Null Options window!");
     int fraction = 9;
@@ -1102,16 +1102,16 @@ public:
   }
 
   void SwitchToGrid() {
-    g_options->ShowOKButtons(true);
     m_edit_panel->Hide();
-    top_panel->Show();
     top_panel->GetConnectionsGrid()->ReloadGrid(TheConnectionParams());
+    g_options->ShowOKButtons(true);
     Layout();
     Scroll(0, 0);
+    top_panel->Show();
   }
 
-  void HandleEditFinish(const ConnectionParams* cp_orig, bool new_mode,
-                        bool ok_cancel) {
+  void HandleEditFinish(std::unique_ptr<ConnectionParams> cp_orig,
+                        bool new_mode, bool ok_cancel) {
     if (!ok_cancel) {
       SwitchToGrid();
       return;
@@ -1123,7 +1123,8 @@ public:
       delete cp_orig->options_panel;
       StopAndRemoveCommDriver(cp_orig->GetStrippedDSPort(),
                               cp_orig->GetCommProtocol());
-      int index = top_panel->GetConnectionsGrid()->FindConnectionIndex(cp_orig);
+      int index =
+          top_panel->GetConnectionsGrid()->FindConnectionIndex(cp_orig.get());
       assert(index != -1 && "Cannot look up connection index");
       *TheConnectionParams()[index] = *cp_edited;
       cp_edited->is_setup = false;  // Trigger new stream
