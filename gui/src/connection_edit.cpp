@@ -2633,7 +2633,7 @@ public:
     m_choice = new wxChoice(this, wxID_ANY);
     std::vector<wxString> choices;
     for (const auto& iface : GetAvailableSocketCanInterfaces())
-      choices.push_back(iface);
+      choices.emplace_back(iface);
     m_choice->Append(choices);
     hbox->Add(m_choice, wxSizerFlags().Border());
     SetSizer(hbox);
@@ -2653,12 +2653,12 @@ private:
 
     can_if_candidates.clear();  // FIXME: global...
 
-    if ((intf = intf_open()) == NULL) {
+    if ((intf = intf_open()) == nullptr) {
       wxLogWarning("Error opening interface list");
       return rv;
     }
 
-    if (intf_loop(intf, print_intf, NULL) < 0) {
+    if (intf_loop(intf, print_intf, nullptr) < 0) {
       wxLogWarning("Error looping over interface list");
     }
     intf_close(intf);
@@ -2670,14 +2670,14 @@ private:
       }
 
       // Get the interface index
-      struct ifreq if_request;
+      ifreq if_request;
       strcpy(if_request.ifr_name, iface.c_str());
       if (ioctl(sock, SIOCGIFINDEX, &if_request) < 0) {
         continue;
       }
 
       // Check if interface is UP
-      struct sockaddr_can can_address;
+      sockaddr_can can_address;
       can_address.can_family = AF_CAN;
       can_address.can_ifindex = if_request.ifr_ifindex;
       if (ioctl(sock, SIOCGIFFLAGS, &if_request) < 0) {
@@ -2719,7 +2719,9 @@ private:
 class ConnectionEditDlg : public AbstractConnectionEditDlg {
 public:
   explicit ConnectionEditDlg(wxWindow* parent, ConnEditCallback ceb)
-      : AbstractConnectionEditDlg(parent), m_on_ok_cancel(std::move(ceb)) {
+      : AbstractConnectionEditDlg(parent),
+        m_on_ok_cancel(std::move(ceb)),
+        m_is_new(true) {
     auto vbox = new wxBoxSizer(wxVERTICAL);
     auto statbox = new wxStaticBoxSizer(wxVERTICAL, this, _("Edit connection"));
     auto on_type_btn_click = [&](ConnectionType ct) { OnTypeBtnClick(ct); };
@@ -2792,5 +2794,5 @@ private:
 
 AbstractConnectionEditDlg* AbstractConnectionEditDlg::Create(
     wxWindow* parent, ConnEditCallback cb) {
-  return new ConnectionEditDlg(parent, cb);
+  return new ConnectionEditDlg(parent, std::move(cb));
 }
