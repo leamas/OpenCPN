@@ -2635,15 +2635,27 @@ public:
     for (const auto& iface : GetAvailableSocketCanInterfaces())
       choices.emplace_back(iface);
     m_choice->Append(choices);
+    m_choice->Append("foobar");
+    m_choice->Bind(wxEVT_CHOICE, [&](wxCommandEvent& ev) { OnChoice(ev); });
     hbox->Add(m_choice, wxSizerFlags().Border());
     SetSizer(hbox);
     wxWindow::Layout();
     wxWindow::Show();
+    OnChoice();
   }
 
 private:
   const std::shared_ptr<ConnectionParams>& m_params;
   wxChoice* m_choice;
+
+  void OnChoice() {
+    m_params->socket_can_port = m_choice->GetStringSelection();
+  }
+
+  void OnChoice(wxCommandEvent& ev) {
+    OnChoice();
+    ev.Skip();
+  }
 
   static std::vector<std::string> GetAvailableSocketCanInterfaces() {
     std::vector<std::string> rv;
@@ -2691,6 +2703,7 @@ private:
     return rv;
   }
 };
+
 class ButtonSizer : public wxStdDialogButtonSizer {
 public:
   ButtonSizer(wxWindow* parent, std::function<void(wxCommandEvent&)> on_ok,
@@ -2721,13 +2734,15 @@ public:
   explicit ConnectionEditDlg(wxWindow* parent, ConnEditCallback ceb)
       : AbstractConnectionEditDlg(parent),
         m_on_ok_cancel(std::move(ceb)),
+        m_start_params(std::move(GetDefaultParams())),
+        m_edited_params(std::make_unique<ConnectionParams>(*m_start_params)),
         m_is_new(true) {
     auto vbox = new wxBoxSizer(wxVERTICAL);
     auto statbox = new wxStaticBoxSizer(wxVERTICAL, this, _("Edit connection"));
     auto on_type_btn_click = [&](ConnectionType ct) { OnTypeBtnClick(ct); };
     auto flags = wxSizerFlags().Border();
-    auto type_buttons = new TypeButtons(this, on_type_btn_click);
-    statbox->Add(type_buttons, wxSizerFlags().Border());
+    m_type_buttons = new TypeButtons(this, on_type_btn_click);
+    statbox->Add(m_type_buttons, wxSizerFlags().Border());
     m_serial_config_panel = new SerialConfigPanel(this, m_edited_params);
     statbox->Add(m_serial_config_panel);
     m_net_config_panel = new NetConfigPanel(this, m_edited_params);
@@ -2739,8 +2754,7 @@ public:
     auto on_cancel = [&](wxCommandEvent& ev) { OnOkCancel(ev, false); };
     auto button_sizer = new ButtonSizer(this, on_ok, on_cancel);
     vbox->Add(button_sizer, flags.Expand());
-    ConnectionEditDlg::SetParams(nullptr);
-    type_buttons->SetSelectedType(ConnectionType::NETWORK);
+    m_type_buttons->SetSelectedType(ConnectionType::NETWORK);
     OnTypeBtnClick(ConnectionType::NETWORK);
 
     SetSizer(vbox);
@@ -2752,6 +2766,7 @@ public:
     m_is_new = !bool(p);
     m_start_params = p ? std::move(p) : std::move(GetDefaultParams());
     m_edited_params = std::make_unique<ConnectionParams>(*m_start_params);
+    m_type_buttons->SetSelectedType(m_edited_params->type);
   }
 
   std::unique_ptr<ConnectionParams> GetEditedParams() override {
@@ -2764,10 +2779,11 @@ public:
   void Cancel() override {}
 
 private:
+  ConnEditCallback m_on_ok_cancel;
   std::shared_ptr<ConnectionParams> m_start_params;
   std::shared_ptr<ConnectionParams> m_edited_params;
 
-  ConnEditCallback m_on_ok_cancel;
+  TypeButtons* m_type_buttons;
   wxWindow* m_net_config_panel;
   wxWindow* m_can_config_panel;
   wxWindow* m_serial_config_panel;
@@ -2777,10 +2793,11 @@ private:
     m_net_config_panel->Show(ct == ConnectionType::NETWORK);
     m_can_config_panel->Show(ct == ConnectionType::SOCKETCAN);
     m_serial_config_panel->Show(ct == ConnectionType::SERIAL);
+    m_edited_params->type = ct;
     Layout();
   }
 
-  void OnOkCancel(wxCommandEvent& ev, bool ok) {
+  void OnOkCancel(wxCommandEvent&, bool ok) {
     m_on_ok_cancel(std::make_unique<ConnectionParams>(*m_edited_params),
                    m_is_new, ok);
   }
