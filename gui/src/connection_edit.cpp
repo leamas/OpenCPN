@@ -2524,18 +2524,31 @@ void SentenceListDlg::OnCheckAllClick(wxCommandEvent& event) {
 /*--------------------------------------*/
 namespace {
 /**
+ * Interface implemented by widgets supporting  reload from parameters
+ */
+class Reloadable {
+public:
+  virtual ~Reloadable() = default;
+
+  /** Reload values from parameter(s) */
+  virtual void Reload() = 0;
+};
+
+/**
  * The three radio buttons selecting serial, network or socketcan
  * connection type.
  */
-class TypeButtons : public wxPanel {
+class TypeButtons : public wxPanel, public Reloadable {
 public:
   explicit TypeButtons(wxWindow* parent,
-                       std::function<void(ConnectionType)> on_click)
+                       std::function<void(ConnectionType)> on_click,
+                       const std::shared_ptr<ConnectionParams>& params)
       : wxPanel(parent, wxID_ANY),
         m_serial_btn(new wxRadioButton(this, wxID_ANY, _("Serial"))),
         m_net_btn(new wxRadioButton(this, wxID_ANY, _("Network"))),
         m_can_btn(nullptr),
-        m_on_click(std::move(on_click)) {
+        m_on_click(std::move(on_click)),
+        m_params(params) {
     auto hbox = new wxBoxSizer(wxHORIZONTAL);
     auto on_clicked = [&](wxCommandEvent& e) { OnClick(e); };
     m_serial_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
@@ -2555,6 +2568,8 @@ public:
     hbox->Layout();
     wxWindow::Show();
   }
+
+  void Reload() override { SetSelectedType(m_params->type); }
 
   void SetSelectedType(ConnectionType type) {
     switch (type) {
@@ -2577,6 +2592,7 @@ private:
   wxRadioButton* m_net_btn;
   wxRadioButton* m_can_btn;
   std::function<void(ConnectionType)> m_on_click;
+  const std::shared_ptr<ConnectionParams>& m_params;
 
   void OnClick(wxCommandEvent& e) {
     m_on_click(GetSelectedType());
@@ -2592,28 +2608,162 @@ private:
   }
 };
 
-class NetConfigPanel : public wxPanel {
-public:
-  NetConfigPanel(wxWindow* parent, const std::shared_ptr<ConnectionParams>& cp)
-      : wxPanel(parent), m_params(cp) {
-    auto vbox = new wxBoxSizer(wxVERTICAL);
-    vbox->Add(new wxStaticText(this, wxID_ANY, "Configure network"));
-    SetSizer(vbox);
-    wxWindow::Layout();
-    wxWindow::Show();
-  }
+class SerialConfigPanel : public wxPanel, public Reloadable {
+  class NetGrid : public wxFlexGridSizer {
+  public:
+    NetGrid(wxWindow* parent, const std::shared_ptr<ConnectionParams>& params)
+        : wxFlexGridSizer(2),
+          m_params(params),
+          m_port_combo(new wxComboBox(parent, wxID_ANY)),
+          m_baud_choice(new wxChoice(parent, wxID_ANY)),
+          m_protocol_choice(new wxChoice(parent, wxID_ANY)),
+          m_comment_text(new wxTextCtrl(parent, wxID_ANY)) {
+      LoadSerialPorts(m_port_combo);
+      m_port_combo->Bind(wxEVT_COMBOBOX,
+                         [&](wxCommandEvent& e) { OnPortChange(e); });
+      LoadBaudrates(m_baud_choice);
+      m_baud_choice->Bind(wxEVT_CHOICE,
+                          [&](wxCommandEvent& e) { OnSpeedChange(e); });
+      LoadProtocols(m_protocol_choice);
+      m_protocol_choice->Bind(wxEVT_CHOICE,
+                              [&](wxCommandEvent& e) { OnProtocolChange(e); });
+      m_comment_text->SetValue(m_params->user_comment);
+      m_comment_text->Bind(wxEVT_TEXT, [&](wxCommandEvent& e) {
+        m_params->user_comment = m_comment_text->GetValue();
+        e.Skip();
+      });
 
-private:
-  const std::shared_ptr<ConnectionParams>& m_params;
-};
+      auto flags = wxSizerFlags().Border();
+      Add(new wxStaticText(parent, wxID_ANY, _("Data port")), flags);
+      Add(m_port_combo, flags.Expand());
+      Add(new wxStaticText(parent, wxID_ANY, _("Baudrate")), flags);
+      Add(m_baud_choice, flags.Expand());
+      Add(new wxStaticText(parent, wxID_ANY, _("Protocol")), flags);
+      Add(m_protocol_choice, flags.Expand());
+      Add(new wxStaticText(parent, wxID_ANY, _("User Comment")), flags);
+      Add(m_comment_text, flags.Expand());
+    }
 
-class SerialConfigPanel : public wxPanel {
+    void Reload() {
+      LoadSerialPorts(m_port_combo);
+      LoadProtocols(m_protocol_choice);
+      LoadBaudrates(m_baud_choice);
+      m_comment_text->SetValue(m_params->user_comment);
+    }
+
+  private:
+    const std::shared_ptr<ConnectionParams>& m_params;
+    wxComboBox* m_port_combo;
+    wxChoice* m_baud_choice;
+    wxChoice* m_protocol_choice;
+    wxTextCtrl* m_comment_text;
+
+    void OnPortChange(wxCommandEvent& e) {
+      m_params->serial_port = m_port_combo->GetValue();
+      e.Skip();
+    }
+
+    void OnProtocolChange(wxCommandEvent& e) {
+      std::string protocol =
+          m_protocol_choice->GetStringSelection().ToStdString();
+      if (protocol == "0")
+        m_params->data_protocol = PROTO_NMEA0183;
+      else if (protocol == "1")
+        m_params->data_protocol = PROTO_NMEA2000;
+      else
+        wxLogWarning("Illegal serial protocol %s", protocol.c_str());
+      e.Skip();
+    }
+
+    void OnSpeedChange(wxCommandEvent& e) {
+      std::string speed = m_baud_choice->GetStringSelection().ToStdString();
+      try {
+        m_params->baudrate = std::stoi(speed);
+      } catch (std::logic_error&) {
+        assert(false && "Cannot parse preconfigured baudrate");
+      }
+      e.Skip();
+    }
+
+    void LoadSerialPorts(wxComboBox* box) {
+      /** Sort all links to same device as equals. */
+      class PortSorter {
+      private:
+        [[nodiscard]] static std::string GetKey(const std::string& s) {
+          if (s.find("->") == std::string::npos) return s;
+          return ocpn::trim(ocpn::split(s, "->")[1]) + " link";
+        }
+
+      public:
+        bool operator()(const std::string& lhs, const std::string& rhs) const {
+          return GetKey(lhs) < GetKey(rhs);
+        }
+      } port_sorter;
+
+      std::set<std::string, PortSorter> sorted_ports(port_sorter);
+      std::unique_ptr<wxArrayString> ports(EnumerateSerialPorts());
+      for (size_t i = 0; i < ports->GetCount(); i++)
+        sorted_ports.insert((*ports)[i].ToStdString());
+
+      auto value = box->GetValue();
+      box->Clear();
+      for (auto& p : sorted_ports) box->Append(p);
+      if (!value.empty())
+        box->SetValue(value);
+      else if (box->FindString(m_params->serial_port) != wxNOT_FOUND)
+        box->Select(box->FindString(m_params->serial_port));
+      else if (!sorted_ports.empty())
+        box->SetSelection(0);
+    }
+
+    void LoadBaudrates(wxChoice* box) {
+      static const std::vector<std::string> speeds = {
+          "150",   "300",   "600",   "1200",   "2400",   "4800",   "9600",
+          "19200", "38400", "57600", "115200", "230400", "460800", "921600"};
+      box->Clear();
+      for (const auto& speed : speeds) box->Append(speed);
+      auto found = box->FindString(std::to_string(m_params->baudrate));
+      if (found != wxNOT_FOUND)
+        box->SetSelection(found);
+      else
+        box->SetSelection(5);  // 4800
+    }
+
+    void LoadProtocols(wxChoice* box) {
+      box->Clear();
+      box->Append("NMEA 0183");
+      box->Append("NMEA 2000");
+      int proto = m_params->data_protocol;
+      box->SetSelection(0);
+      if (proto == PROTO_NMEA2000) box->SetSelection(1);
+    }
+
+  };  // NetGrid
+
 public:
   SerialConfigPanel(wxWindow* parent,
                     const std::shared_ptr<ConnectionParams>& cp)
       : wxPanel(parent), m_params(cp) {
     auto vbox = new wxBoxSizer(wxVERTICAL);
-    vbox->Add(new wxStaticText(this, wxID_ANY, "Configure serial"));
+    m_grid = new NetGrid(this, cp);
+    vbox->Add(m_grid);
+    SetSizer(vbox);
+    wxWindow::Layout();
+    wxWindow::Show();
+  }
+  void Reload() override { m_grid->Reload(); }
+
+private:
+  const std::shared_ptr<ConnectionParams>& m_params;
+  NetGrid* m_grid;
+};
+
+class NetConfigPanel : public wxPanel {
+public:
+  NetConfigPanel(wxWindow* parent, const std::shared_ptr<ConnectionParams>& cp)
+      : wxPanel(parent), m_params(cp) {
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    vbox->Add(new wxStaticText(this, wxID_ANY, "Configure Network"));
     SetSizer(vbox);
     wxWindow::Layout();
     wxWindow::Show();
@@ -2734,14 +2884,14 @@ public:
   explicit ConnectionEditDlg(wxWindow* parent, ConnEditCallback ceb)
       : AbstractConnectionEditDlg(parent),
         m_on_ok_cancel(std::move(ceb)),
-        m_start_params(std::move(GetDefaultParams())),
+        m_start_params(GetDefaultParams()),
         m_edited_params(std::make_unique<ConnectionParams>(*m_start_params)),
         m_is_new(true) {
     auto vbox = new wxBoxSizer(wxVERTICAL);
     auto statbox = new wxStaticBoxSizer(wxVERTICAL, this, _("Edit connection"));
     auto on_type_btn_click = [&](ConnectionType ct) { OnTypeBtnClick(ct); };
     auto flags = wxSizerFlags().Border();
-    m_type_buttons = new TypeButtons(this, on_type_btn_click);
+    m_type_buttons = new TypeButtons(this, on_type_btn_click, m_edited_params);
     statbox->Add(m_type_buttons, wxSizerFlags().Border());
     m_serial_config_panel = new SerialConfigPanel(this, m_edited_params);
     statbox->Add(m_serial_config_panel);
@@ -2766,7 +2916,7 @@ public:
     m_is_new = !bool(p);
     m_start_params = p ? std::move(p) : std::move(GetDefaultParams());
     m_edited_params = std::make_unique<ConnectionParams>(*m_start_params);
-    m_type_buttons->SetSelectedType(m_edited_params->type);
+    Reload();
   }
 
   std::unique_ptr<ConnectionParams> GetEditedParams() override {
@@ -2788,6 +2938,15 @@ private:
   wxWindow* m_can_config_panel;
   wxWindow* m_serial_config_panel;
   bool m_is_new;
+
+  void DoReload(wxWindow* root) {
+    for (wxWindow* child : root->GetChildren()) {
+      if (auto widget = dynamic_cast<Reloadable*>(child)) widget->Reload();
+      DoReload(child);
+    }
+  }
+
+  void Reload() { DoReload(this); }
 
   void OnTypeBtnClick(ConnectionType ct) {
     m_net_config_panel->Show(ct == ConnectionType::NETWORK);
