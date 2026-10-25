@@ -55,6 +55,7 @@
 #include "conn_edit.h"
 
 #include "libgui/text_ctrl_w_help.h"
+#include "libgui/expand_panel.h"
 
 #include "model/comm_drv_factory.h"
 #include "model/config_vars.h"
@@ -1960,7 +1961,6 @@ void ConnectionEditDialog::OnBtnIStcs(wxCommandEvent& event) {
   const wxArrayString list =
       wxStringTokenize(m_input_stc_tctrl->GetValue(), ",");
   SentenceListDlg dlg(m_parent, FILTER_INPUT, type, list);
-
   if (dlg.ShowModal() == wxID_OK)
     m_input_stc_tctrl->SetValue(dlg.GetSentences());
 }
@@ -2607,6 +2607,99 @@ private:
   }
 };
 
+/** Configure input filters: accept or ignore list of sentences. */
+class FilterConfigPanel : public wxPanel, public Reloadable {
+  /** Container fir accept/ignore buttons and  filtered sentences. */
+  class Statbox : public wxStaticBox, public Reloadable {
+  public:
+    Statbox(wxWindow* parent, ConnectionParams& params)
+        : wxStaticBox(parent, wxID_ANY, _("Input filtering")),
+          m_params(params) {
+      auto radio_btn_box = new wxBoxSizer(wxHORIZONTAL);
+      m_accept_btn =
+          new wxRadioButton(this, wxID_ANY, _("Accept only sentences"));
+      m_ignore_btn = new wxRadioButton(this, wxID_ANY, _("Ignore sentences"));
+      radio_btn_box->Add(m_accept_btn, wxSizerFlags().Border());
+      radio_btn_box->Add(m_ignore_btn, wxSizerFlags().Border());
+
+      auto setup_box = new wxBoxSizer(wxHORIZONTAL);
+      m_sentences_text = new wxTextCtrl(this, wxID_ANY, "");
+      m_sentences_text->Disable();
+      m_edit_btn = new wxButton(this, wxID_ANY, "...");
+      m_edit_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& e) { OnEdit(e); });
+      m_edit_btn->SetMaxSize(wxSize(wxWindow::GetCharWidth() * 4, -1));
+      setup_box->Add(m_sentences_text, wxSizerFlags(1).Border());
+      setup_box->Add(m_edit_btn, wxSizerFlags().Border());
+
+      auto vbox = new wxBoxSizer(wxVERTICAL);
+      vbox->Add(radio_btn_box, wxSizerFlags().Border());
+      vbox->Add(setup_box, wxSizerFlags(1).Border().Expand());
+      SetSizer(vbox);
+      // FIXME (leamas) - Why?
+      wxWindowBase::SetMinSize(wxSize(-1, 7 * wxWindow::GetCharHeight()));
+      wxWindow::Layout();
+
+      Statbox::Reload();
+      m_ignore_btn->Bind(wxEVT_RADIOBUTTON,
+                         [&](wxCommandEvent& e) { OnDirectionChange(e); });
+      m_accept_btn->Bind(wxEVT_RADIOBUTTON,
+                         [&](wxCommandEvent& e) { OnDirectionChange(e); });
+    }
+
+    void Reload() override {
+      bool accept = m_params.input_sentence_list_type == ListType::WHITELIST;
+      m_accept_btn->SetValue(accept);
+      bool ignore = m_params.input_sentence_list_type == ListType::BLACKLIST;
+      m_ignore_btn->SetValue(ignore);
+      m_sentences_text->SetValue(
+          StringArrayToString(m_params.input_sentence_list));
+    }
+
+  private:
+    ConnectionParams& m_params;
+    wxRadioButton* m_accept_btn;
+    wxRadioButton* m_ignore_btn;
+    wxTextCtrl* m_sentences_text;
+    wxButton* m_edit_btn;
+
+    void OnDirectionChange(wxCommandEvent& e) {
+      if (m_accept_btn->GetValue())
+        m_params.input_sentence_list_type = ListType::WHITELIST;
+      if (m_ignore_btn->GetValue())
+        m_params.input_sentence_list_type = ListType::BLACKLIST;
+      e.Skip();
+    }
+
+    void OnEdit(wxCommandEvent& e) {
+      const ListType type = m_params.input_sentence_list_type;
+      const wxArrayString list =
+          wxStringTokenize(m_sentences_text->GetValue(), ",");
+      SentenceListDlg dlg(m_parent, FILTER_INPUT, type, list);
+      if (dlg.ShowModal() != wxID_OK) return;
+
+      m_sentences_text->SetValue(dlg.GetSentences());
+      m_params.input_sentence_list =
+          wxStringTokenize(m_sentences_text->GetValue(), ",");
+    }
+  };  // Statbox
+
+public:
+  FilterConfigPanel(wxWindow* parent, ConnectionParams& params)
+      : wxPanel(parent, wxID_ANY), m_params(params) {
+    auto* vbox = new wxBoxSizer(wxVERTICAL);
+    auto flags = wxSizerFlags().Border();
+    auto* box = new Statbox(this, m_params);
+    vbox->Add(box, flags);
+    SetSizer(vbox);
+    wxWindowBase::Layout();
+  }
+
+  void Reload() override {}
+
+private:
+  ConnectionParams& m_params;
+};  // FilterConfigPanel
+
 class SerialConfigPanel : public wxPanel {
   /** Select serial port combobox. */
   class PortCombo : public wxComboBox, public Reloadable {
@@ -2662,7 +2755,7 @@ class SerialConfigPanel : public wxPanel {
   public:
     BaudChoice(wxWindow* parent, int& baudrate)
         : wxComboBox(parent, wxID_ANY), m_baudrate(baudrate) {
-      Reload();
+      BaudChoice::Reload();
       Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) { OnBaudChange(e); });
     };
 
@@ -2700,7 +2793,7 @@ class SerialConfigPanel : public wxPanel {
   public:
     ProtocolChoice(wxWindow* parent, DataProtocol& protocol)
         : wxChoice(parent, wxID_ANY), m_protocol(protocol) {
-      Reload();
+      ProtocolChoice::Reload();
       Bind(wxEVT_CHOICE, [&](wxCommandEvent& e) { OnProtocolChange(e); });
     };
 
@@ -2734,7 +2827,7 @@ class SerialConfigPanel : public wxPanel {
   public:
     CommentText(wxWindow* parent, wxString& comment)
         : wxTextCtrl(parent, wxID_ANY), m_comment(comment) {
-      wxTextCtrl::SetValue(m_comment);
+      CommentText::Reload();
       Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { m_comment = GetValue(); });
     }
 
@@ -2744,18 +2837,19 @@ class SerialConfigPanel : public wxPanel {
     wxString& m_comment;
   };
 
-  class NetGrid : public wxFlexGridSizer {
+  class SerialParamsGrid : public wxFlexGridSizer {
   public:
-    NetGrid(wxWindow* parent, ConnectionParams& params)
+    SerialParamsGrid(wxWindow* parent, ConnectionParams& params)
         : wxFlexGridSizer(2), m_params(params) {
       auto flags = wxSizerFlags().Border();
-      Add(new wxStaticText(parent, wxID_ANY, _("Data port")), flags);
+      auto text_flags = flags.CentreVertical();
+      Add(new wxStaticText(parent, wxID_ANY, _("Data port")), text_flags);
       Add(new PortCombo(parent, m_params.serial_port), flags.Expand());
-      Add(new wxStaticText(parent, wxID_ANY, _("Baudrate")), flags);
+      Add(new wxStaticText(parent, wxID_ANY, _("Baudrate")), text_flags);
       Add(new BaudChoice(parent, m_params.baudrate), flags.Expand());
-      Add(new wxStaticText(parent, wxID_ANY, _("Protocol")), flags);
+      Add(new wxStaticText(parent, wxID_ANY, _("Protocol")), text_flags);
       Add(new ProtocolChoice(parent, m_params.data_protocol), flags.Expand());
-      Add(new wxStaticText(parent, wxID_ANY, _("User Comment")), flags);
+      Add(new wxStaticText(parent, wxID_ANY, _("User Comment")), text_flags);
       Add(new CommentText(parent, m_params.user_comment), flags.Expand());
     }
 
@@ -2763,6 +2857,7 @@ class SerialConfigPanel : public wxPanel {
     ConnectionParams& m_params;
   };  // NetGrid
 
+  /** Two checkboxes for enabling port input and/or output. */
   class InputOutputPanel : public wxPanel {
     class InputCheckBox : public wxCheckBox, public Reloadable {
     public:
@@ -2771,7 +2866,7 @@ class SerialConfigPanel : public wxPanel {
           : wxCheckBox(parent, wxID_ANY, _("Receive Input on this Port")),
             m_params(params),
             m_on_change(std::move(on_change)) {
-        Reload();
+        InputCheckBox::Reload();
         Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
           m_on_change();
           ev.Skip();
@@ -2795,7 +2890,7 @@ class SerialConfigPanel : public wxPanel {
                        _("Output on this port as autopilot or NMEA repeater")),
             m_params(params),
             m_on_change(std::move(on_change)) {
-        Reload();
+        OutputCheckBox::Reload();
         Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
           m_on_change();
           ev.Skip();
@@ -2839,15 +2934,60 @@ class SerialConfigPanel : public wxPanel {
       else
         wxLogWarning("Inconsistent GUI direction state");
     }
-  };  // InputOutputPanel
+  };  //  InputOutputPanel
+
+  class AdvancedPanel : public wxPanel {
+    class GarminCheckBox : public wxCheckBox, public Reloadable {
+    public:
+      GarminCheckBox(wxWindow* parent, ConnectionParams& params)
+          : wxCheckBox(parent, wxID_ANY, _("Use Garmin (GRMN) mode for input")),
+            m_params(params) {
+        GarminCheckBox::Reload();
+        Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
+          m_params.is_garmin = GetValue();
+          ev.Skip();
+        });
+      }
+
+      void Reload() override { SetValue(m_params.is_garmin); }
+
+    private:
+      ConnectionParams& m_params;
+    };
+
+  public:
+    AdvancedPanel(wxWindow* parent, ConnectionParams& params)
+        : wxPanel(parent, wxID_ANY), m_params(params) {
+      auto vbox = new wxBoxSizer(wxVERTICAL);
+      auto flags = wxSizerFlags().Border();
+      vbox->Add(new GarminCheckBox(this, m_params), flags);
+      vbox->Add(new FilterConfigPanel(this, m_params), flags);
+      SetSizer(vbox);
+      wxWindowBase::Layout();
+    }
+
+  private:
+    ConnectionParams& m_params;
+  };
 
 public:
   SerialConfigPanel(wxWindow* parent, ConnectionParams& params)
       : wxPanel(parent), m_params(params) {
+    auto flags = wxSizerFlags().Border();
+    m_grid = new SerialParamsGrid(this, params);
+
+    m_advanced_panel = new AdvancedPanel(this, params);
+    auto advanced_ctrl = new ExpandablePanel(this, m_advanced_panel,
+                                             [&] { GetParent()->Layout(); });
+    auto hbox = new wxBoxSizer(wxHORIZONTAL);
+    hbox->Add(new wxStaticText(this, wxID_ANY, _("Advanced")), flags);
+    hbox->Add(advanced_ctrl, flags);
+
     auto vbox = new wxBoxSizer(wxVERTICAL);
-    m_grid = new NetGrid(this, params);
-    vbox->Add(m_grid, wxSizerFlags().Border());
-    vbox->Add(new InputOutputPanel(this, params), wxSizerFlags().Border());
+    vbox->Add(m_grid, flags);
+    vbox->Add(new InputOutputPanel(this, params), flags);
+    vbox->Add(hbox, flags);
+    vbox->Add(m_advanced_panel, flags);
     SetSizer(vbox);
     wxWindow::Layout();
     wxWindow::Show();
@@ -2855,7 +2995,8 @@ public:
 
 private:
   ConnectionParams& m_params;
-  NetGrid* m_grid;
+  wxWindow* m_advanced_panel;
+  SerialParamsGrid* m_grid;
 };
 
 class NetConfigPanel : public wxPanel {
@@ -3070,6 +3211,7 @@ public:
     m_is_new = !bool(p);
     m_params = p ? *p : GetDefaultParams();
     Reload();
+    OnTypeBtnClick(m_params.type);
   }
 
   std::unique_ptr<ConnectionParams> GetEditedParams() override {
@@ -3092,7 +3234,7 @@ private:
   wxWindow* m_serial_config_panel;
   bool m_is_new;
 
-  void DoReload(wxWindow* root) {
+  static void DoReload(wxWindow* root) {
     for (wxWindow* child : root->GetChildren()) {
       if (auto widget = dynamic_cast<Reloadable*>(child)) widget->Reload();
       DoReload(child);
