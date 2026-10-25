@@ -2763,12 +2763,91 @@ class SerialConfigPanel : public wxPanel {
     ConnectionParams& m_params;
   };  // NetGrid
 
+  class InputOutputPanel : public wxPanel {
+    class InputCheckBox : public wxCheckBox, public Reloadable {
+    public:
+      InputCheckBox(wxWindow* parent, ConnectionParams& params,
+                    std::function<void()> on_change)
+          : wxCheckBox(parent, wxID_ANY, _("Receive Input on this Port")),
+            m_params(params),
+            m_on_change(std::move(on_change)) {
+        Reload();
+        Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
+          m_on_change();
+          ev.Skip();
+        });
+      }
+
+      void Reload() override {
+        SetValue(m_params.direction != PortDirection::kOutput);
+      }
+
+    private:
+      ConnectionParams& m_params;
+      std::function<void()> m_on_change;
+    };
+
+    class OutputCheckBox : public wxCheckBox, public Reloadable {
+    public:
+      OutputCheckBox(wxWindow* parent, ConnectionParams& params,
+                     std::function<void()> on_change)
+          : wxCheckBox(parent, wxID_ANY,
+                       _("Output on this port as autopilot or NMEA repeater")),
+            m_params(params),
+            m_on_change(std::move(on_change)) {
+        Reload();
+        Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
+          m_on_change();
+          ev.Skip();
+        });
+      }
+
+      void Reload() override {
+        SetValue(m_params.direction != PortDirection::kInput);
+      }
+
+    private:
+      ConnectionParams& m_params;
+      std::function<void()> m_on_change;
+    };
+
+  public:
+    InputOutputPanel(wxWindow* parent, ConnectionParams& params)
+        : wxPanel(parent), m_params(params) {
+      auto vbox = new wxBoxSizer(wxVERTICAL);
+      auto flags = wxSizerFlags().Border();
+      m_input_box = new InputCheckBox(this, m_params, [&] { OnChange(); });
+      m_output_box = new OutputCheckBox(this, m_params, [&] { OnChange(); });
+      vbox->Add(m_input_box, flags);
+      vbox->Add(m_output_box, flags);
+      SetSizer(vbox);
+      wxWindow::Layout();
+    }
+
+  private:
+    ConnectionParams& m_params;
+    wxCheckBox* m_input_box;
+    wxCheckBox* m_output_box;
+
+    void OnChange() {
+      if (m_input_box->GetValue() && m_output_box->GetValue())
+        m_params.direction = PortDirection::kInOut;
+      else if (m_input_box->GetValue())
+        m_params.direction = PortDirection::kInput;
+      else if (m_output_box->GetValue())
+        m_params.direction = PortDirection::kOutput;
+      else
+        wxLogWarning("Inconsistent GUI direction state");
+    }
+  };  // InputOutputPanel
+
 public:
   SerialConfigPanel(wxWindow* parent, ConnectionParams& params)
       : wxPanel(parent), m_params(params) {
     auto vbox = new wxBoxSizer(wxVERTICAL);
     m_grid = new NetGrid(this, params);
-    vbox->Add(m_grid);
+    vbox->Add(m_grid, wxSizerFlags().Border());
+    vbox->Add(new InputOutputPanel(this, params), wxSizerFlags().Border());
     SetSizer(vbox);
     wxWindow::Layout();
     wxWindow::Show();
