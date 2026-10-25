@@ -1052,14 +1052,16 @@ public:
     top_panel =
         new TopPanel(this, connections, evt_add_connection, on_edit_connection);
     vbox->Add(top_panel, wxSizerFlags(1).Expand());
+    auto on_cancel = [&] { SwitchToGrid(); };
 
     auto on_edit_click = [&](std::unique_ptr<ConnectionParams> params,
-                             bool new_mode, bool ok_cancel) {
-      HandleEditFinish(std::move(params), new_mode, ok_cancel);
+                             bool new_mode) {
+      HandleEditFinish(std::move(params), new_mode);
     };
 
     // m_edit_panel = new ConnectionEditDlg(this, on_edit_click);
-    m_edit_panel = AbstractConnectionEditDlg::Create(this, on_edit_click);
+    m_edit_panel =
+        AbstractConnectionEditDlg::Create(this, on_cancel, on_edit_click);
     wxWindow* options = FindWindowByName("Options");
     assert(options && "Null Options window!");
     int fraction = 9;
@@ -1111,11 +1113,7 @@ public:
   }
 
   void HandleEditFinish(std::unique_ptr<ConnectionParams> cp_orig,
-                        bool new_mode, bool ok_cancel) {
-    if (!ok_cancel) {
-      SwitchToGrid();
-      return;
-    }
+                        bool new_mode) {
     // OK from EDIT mode
     if (!new_mode) {
       std::unique_ptr<ConnectionParams> cp_edited =

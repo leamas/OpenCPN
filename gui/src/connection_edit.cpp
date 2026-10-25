@@ -2955,9 +2955,11 @@ private:
 
 class ConnectionEditDlg : public AbstractConnectionEditDlg {
 public:
-  explicit ConnectionEditDlg(wxWindow* parent, ConnEditCallback ceb)
+  explicit ConnectionEditDlg(wxWindow* parent, std::function<void()> on_cancel,
+                             ConnEditCallback on_ok)
       : AbstractConnectionEditDlg(parent),
-        m_on_ok_cancel(std::move(ceb)),
+        m_on_ok(std::move(on_ok)),
+        m_on_cancel(std::move(on_cancel)),
         m_params(GetDefaultParams()),
         m_is_new(true) {
     auto vbox = new wxBoxSizer(wxVERTICAL);
@@ -2973,9 +2975,9 @@ public:
     m_can_config_panel = new CanConfigPanel(this, m_params);
     statbox->Add(m_can_config_panel);
     vbox->Add(statbox, flags.Expand());
-    auto on_ok = [&](wxCommandEvent& ev) { OnOkCancel(ev, true); };
-    auto on_cancel = [&](wxCommandEvent& ev) { OnOkCancel(ev, false); };
-    auto button_sizer = new ButtonSizer(this, on_ok, on_cancel);
+    auto on_ok_ = [&](wxCommandEvent& ev) { OnOkCancel(ev, true); };
+    auto on_cancel_ = [&](wxCommandEvent& ev) { OnOkCancel(ev, false); };
+    auto button_sizer = new ButtonSizer(this, on_ok_, on_cancel_);
     vbox->Add(button_sizer, flags.Expand());
     m_type_buttons->SetSelectedType(ConnectionType::NETWORK);
     OnTypeBtnClick(ConnectionType::NETWORK);
@@ -3000,7 +3002,8 @@ public:
   void Cancel() override {}
 
 private:
-  ConnEditCallback m_on_ok_cancel;
+  ConnEditCallback m_on_ok;
+  std::function<void()> m_on_cancel;
   // std::shared_ptr<ConnectionParams> m_start_params;
   ConnectionParams m_params;
 
@@ -3028,7 +3031,10 @@ private:
   }
 
   void OnOkCancel(wxCommandEvent&, bool ok) {
-    m_on_ok_cancel(std::make_unique<ConnectionParams>(m_params), m_is_new, ok);
+    if (ok)
+      m_on_ok(std::make_unique<ConnectionParams>(m_params), m_is_new);
+    else
+      m_on_cancel();
   }
 
   static ConnectionParams GetDefaultParams() {
@@ -3039,6 +3045,6 @@ private:
 };
 
 AbstractConnectionEditDlg* AbstractConnectionEditDlg::Create(
-    wxWindow* parent, ConnEditCallback cb) {
-  return new ConnectionEditDlg(parent, std::move(cb));
+    wxWindow* parent, std::function<void()> on_cancel, ConnEditCallback cb) {
+  return new ConnectionEditDlg(parent, std::move(on_cancel), std::move(cb));
 }
