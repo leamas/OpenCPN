@@ -2700,6 +2700,85 @@ private:
   ConnectionParams& m_params;
 };  // FilterConfigPanel
 
+/** Two checkboxes for enabling port input and/or output. */
+class InputOutputPanel : public wxPanel {
+  class InputCheckBox : public wxCheckBox, public Reloadable {
+  public:
+    InputCheckBox(wxWindow* parent, ConnectionParams& params,
+                  std::function<void()> on_change)
+        : wxCheckBox(parent, wxID_ANY, _("Receive Input on this Port")),
+          m_params(params),
+          m_on_change(std::move(on_change)) {
+      InputCheckBox::Reload();
+      Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
+        m_on_change();
+        ev.Skip();
+      });
+    }
+
+    void Reload() override {
+      SetValue(m_params.direction != PortDirection::kOutput);
+    }
+
+  private:
+    ConnectionParams& m_params;
+    std::function<void()> m_on_change;
+  };
+
+  class OutputCheckBox : public wxCheckBox, public Reloadable {
+  public:
+    OutputCheckBox(wxWindow* parent, ConnectionParams& params,
+                   std::function<void()> on_change)
+        : wxCheckBox(parent, wxID_ANY,
+                     _("Output on this port as autopilot or NMEA repeater")),
+          m_params(params),
+          m_on_change(std::move(on_change)) {
+      OutputCheckBox::Reload();
+      Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
+        m_on_change();
+        ev.Skip();
+      });
+    }
+
+    void Reload() override {
+      SetValue(m_params.direction != PortDirection::kInput);
+    }
+
+  private:
+    ConnectionParams& m_params;
+    std::function<void()> m_on_change;
+  };
+
+public:
+  InputOutputPanel(wxWindow* parent, ConnectionParams& params)
+      : wxPanel(parent), m_params(params) {
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    auto flags = wxSizerFlags().Border();
+    m_input_box = new InputCheckBox(this, m_params, [&] { OnChange(); });
+    m_output_box = new OutputCheckBox(this, m_params, [&] { OnChange(); });
+    vbox->Add(m_input_box, flags);
+    vbox->Add(m_output_box, flags);
+    SetSizer(vbox);
+    wxWindow::Layout();
+  }
+
+private:
+  ConnectionParams& m_params;
+  wxCheckBox* m_input_box;
+  wxCheckBox* m_output_box;
+
+  void OnChange() {
+    if (m_input_box->GetValue() && m_output_box->GetValue())
+      m_params.direction = PortDirection::kInOut;
+    else if (m_input_box->GetValue())
+      m_params.direction = PortDirection::kInput;
+    else if (m_output_box->GetValue())
+      m_params.direction = PortDirection::kOutput;
+    else
+      wxLogWarning("Inconsistent GUI direction state");
+  }
+};  //  InputOutputPanel
+
 class SerialConfigPanel : public wxPanel {
   /** Select serial port combobox. */
   class PortCombo : public wxComboBox, public Reloadable {
@@ -2857,85 +2936,6 @@ class SerialConfigPanel : public wxPanel {
     ConnectionParams& m_params;
   };  // NetGrid
 
-  /** Two checkboxes for enabling port input and/or output. */
-  class InputOutputPanel : public wxPanel {
-    class InputCheckBox : public wxCheckBox, public Reloadable {
-    public:
-      InputCheckBox(wxWindow* parent, ConnectionParams& params,
-                    std::function<void()> on_change)
-          : wxCheckBox(parent, wxID_ANY, _("Receive Input on this Port")),
-            m_params(params),
-            m_on_change(std::move(on_change)) {
-        InputCheckBox::Reload();
-        Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
-          m_on_change();
-          ev.Skip();
-        });
-      }
-
-      void Reload() override {
-        SetValue(m_params.direction != PortDirection::kOutput);
-      }
-
-    private:
-      ConnectionParams& m_params;
-      std::function<void()> m_on_change;
-    };
-
-    class OutputCheckBox : public wxCheckBox, public Reloadable {
-    public:
-      OutputCheckBox(wxWindow* parent, ConnectionParams& params,
-                     std::function<void()> on_change)
-          : wxCheckBox(parent, wxID_ANY,
-                       _("Output on this port as autopilot or NMEA repeater")),
-            m_params(params),
-            m_on_change(std::move(on_change)) {
-        OutputCheckBox::Reload();
-        Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
-          m_on_change();
-          ev.Skip();
-        });
-      }
-
-      void Reload() override {
-        SetValue(m_params.direction != PortDirection::kInput);
-      }
-
-    private:
-      ConnectionParams& m_params;
-      std::function<void()> m_on_change;
-    };
-
-  public:
-    InputOutputPanel(wxWindow* parent, ConnectionParams& params)
-        : wxPanel(parent), m_params(params) {
-      auto vbox = new wxBoxSizer(wxVERTICAL);
-      auto flags = wxSizerFlags().Border();
-      m_input_box = new InputCheckBox(this, m_params, [&] { OnChange(); });
-      m_output_box = new OutputCheckBox(this, m_params, [&] { OnChange(); });
-      vbox->Add(m_input_box, flags);
-      vbox->Add(m_output_box, flags);
-      SetSizer(vbox);
-      wxWindow::Layout();
-    }
-
-  private:
-    ConnectionParams& m_params;
-    wxCheckBox* m_input_box;
-    wxCheckBox* m_output_box;
-
-    void OnChange() {
-      if (m_input_box->GetValue() && m_output_box->GetValue())
-        m_params.direction = PortDirection::kInOut;
-      else if (m_input_box->GetValue())
-        m_params.direction = PortDirection::kInput;
-      else if (m_output_box->GetValue())
-        m_params.direction = PortDirection::kOutput;
-      else
-        wxLogWarning("Inconsistent GUI direction state");
-    }
-  };  //  InputOutputPanel
-
   class AdvancedPanel : public wxPanel {
     class GarminCheckBox : public wxCheckBox, public Reloadable {
     public:
@@ -3000,11 +3000,237 @@ private:
 };
 
 class NetConfigPanel : public wxPanel {
+  class ExpertModeCheckBox : public wxCheckBox {
+  public:
+    ExpertModeCheckBox(wxWindow* parent) : wxCheckBox(parent, wxID_ANY, "") {}
+  };
+
+  class ConnectionTypeChoice : public wxChoice {
+  public:
+    ConnectionTypeChoice(wxWindow* parent, std::function<void()> on_choice)
+        : wxChoice(parent, wxID_ANY), m_on_choice(on_choice) {
+      for (const auto& view : kBasicNetViews) Append(view);  // FIXME
+      Append(kBasicNetViews[0]);
+      wxChoice::SetSelection(0);  // until OnConnectionTypeChanged()
+      Bind(wxEVT_CHOICE, [&](wxCommandEvent e) {
+        m_on_choice();
+        e.Skip();
+      });
+    }
+
+  private:
+    std::function<void()> m_on_choice;
+  };
+
+  class ProtocolChoice : public wxChoice, public Reloadable {
+  public:
+    ProtocolChoice(wxWindow* parent, ConnectionParams& params)
+        : wxChoice(parent, wxID_ANY), m_params(params) {
+      ProtocolChoice::Reload();
+      Bind(wxEVT_CHOICE, [&](wxCommandEvent& e) { OnChoice(e); });
+    }
+
+    void Reload() override {
+      Clear();
+      Append("NMEA 0183");
+      Append("NMEA 2000");
+      switch (m_params.data_protocol) {
+        case PROTO_NMEA0183:
+          SetSelection(0);
+          break;
+        case PROTO_NMEA2000:
+          SetSelection(1);
+          break;
+        default:
+          assert(false && "Illegal SignalK protocol");
+          break;
+      }
+      Enable();
+    }
+
+  private:
+    ConnectionParams& m_params;
+
+    void OnChoice(wxCommandEvent& e) {
+      switch (GetSelection()) {
+        case 0:
+          m_params.data_protocol = PROTO_NMEA0183;
+          break;
+        case 1:
+          m_params.data_protocol = PROTO_NMEA2000;
+          break;
+        default:
+          assert(false && "Illegal protocol combobox value");
+      };
+      e.Skip();
+    }
+  };  // ProtocolChoice
+
+  class AddressTextCtrl : public wxTextCtrl, public Reloadable {
+  public:
+    AddressTextCtrl(wxWindow* parent, ConnectionParams& params)
+        : wxTextCtrl(parent, wxID_ANY), m_params(params) {
+      AddressTextCtrl::Reload();
+      Bind(wxEVT_TEXT, [&](wxCommandEvent& e) {
+        m_params.network_address = GetLabel();
+        e.Skip();
+      });
+    }
+
+    void Reload() override { SetLabel(m_params.network_address); }
+
+  private:
+    ConnectionParams& m_params;
+  };
+
+  class PortTextCtrl : public wxTextCtrl, public Reloadable {
+  public:
+    PortTextCtrl(wxWindow* parent, ConnectionParams& params)
+        : wxTextCtrl(parent, wxID_ANY), m_params(params) {
+      PortTextCtrl::Reload();
+      Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { OnChange(e); });
+    }
+
+    void Reload() override { SetLabel(std::to_string(m_params.network_port)); }
+
+  private:
+    ConnectionParams& m_params;
+
+    void OnChange(wxCommandEvent& event) {
+      try {
+        m_params.network_port = std::stoi(GetLabel().ToStdString());
+      } catch (std::logic_error& e) {
+        wxLogWarning("Cannot parse configuration network port: %s", e.what());
+        m_params.network_port = 99999;  // Illegal for ipv4
+      }
+      event.Skip();
+    }
+  };  // PortTextCtrl
+
+  class CommentTextCtrl : public wxTextCtrl, public Reloadable {
+  public:
+    CommentTextCtrl(wxWindow* parent, ConnectionParams& params)
+        : wxTextCtrl(parent, wxID_ANY), m_params(params) {
+      CommentTextCtrl::Reload();
+      Bind(wxEVT_TEXT, [&](wxCommandEvent& e) {
+        m_params.user_comment = GetLabel();
+        e.Skip();
+      });
+    }
+
+    void Reload() override { SetLabel(m_params.user_comment); }
+
+  private:
+    ConnectionParams& m_params;
+  };
+
+  class NetGrid : public wxFlexGridSizer {
+  public:
+    NetGrid(wxWindow* parent, ConnectionParams& params)
+        : wxFlexGridSizer(2), m_parent(parent), m_params(params) {
+      auto flags = wxSizerFlags().Border();
+      auto label_flags = wxSizerFlags().Border().CentreVertical();
+
+      m_expert_mode_checkbox = new ExpertModeCheckBox(parent);
+      m_expert_mode_checkbox->Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& e) {
+        OnExpertModeChange();
+        e.Skip();
+      });
+      m_expert_mode_label =
+          new wxStaticText(parent, wxID_ANY, _("Expert mode"));
+      Add(m_expert_mode_label, label_flags);
+      Add(m_expert_mode_checkbox, flags);
+
+      m_connection_type_label =
+          new wxStaticText(parent, wxID_ANY, _("Connection type"));
+      m_connection_type_choice =
+          new ConnectionTypeChoice(parent, [&] { OnConnTypeChange(); });
+      Add(m_connection_type_label, label_flags);
+      Add(m_connection_type_choice, flags);
+
+      m_protocol_label = new wxStaticText(parent, wxID_ANY, _("Data Protocol"));
+      m_protocol_choice = new ProtocolChoice(parent, m_params);
+      Add(m_protocol_label, label_flags);
+      Add(m_protocol_choice, flags);
+
+      m_address_label = new wxStaticText(parent, wxID_ANY, _("Server address"));
+      m_address_textctrl = new AddressTextCtrl(parent, m_params);
+      Add(m_address_label, label_flags);
+      Add(m_address_textctrl, wxSizerFlags(1).Expand().Border());
+
+      m_port_label = new wxStaticText(parent, wxID_ANY, _("Data Port"));
+      m_port_textctrl = new PortTextCtrl(parent, m_params);
+      Add(m_port_label, label_flags);
+      Add(m_port_textctrl, flags);
+
+      m_comment_label = new wxStaticText(parent, wxID_ANY, _("User comment"));
+      m_comment_textctrl = new CommentTextCtrl(parent, m_params);
+      Add(m_comment_label, label_flags);
+      Add(m_comment_textctrl, wxSizerFlags(1).Expand().Border());
+    }
+
+  private:
+    wxWindow* m_parent;
+    ConnectionParams& m_params;
+    wxStaticText* m_expert_mode_label;
+    ExpertModeCheckBox* m_expert_mode_checkbox;
+    wxStaticText* m_connection_type_label;
+    wxChoice* m_connection_type_choice;
+    wxStaticText* m_protocol_label;
+    wxChoice* m_protocol_choice;
+    wxStaticText* m_address_label;
+    wxTextCtrl* m_address_textctrl;
+    wxStaticText* m_port_label;
+    wxTextCtrl* m_port_textctrl;
+    wxStaticText* m_comment_label;
+    wxTextCtrl* m_comment_textctrl;
+
+    void OnExpertModeChange() {
+      bool advanced = m_expert_mode_checkbox->GetValue();
+      int view = m_connection_type_choice->GetSelection();
+      m_connection_type_choice->Clear();
+      if (advanced) {
+        for (const auto& choice : kAdvancedNetViews)
+          m_connection_type_choice->Append(choice);
+        m_connection_type_choice->SetLabel(_("Connection type"));
+        if (m_comment_label) m_comment_label->Show();
+        if (m_comment_textctrl) m_comment_textctrl->Show();
+      } else {
+        if (view != wxNOT_FOUND) {
+          if (static_cast<size_t>(view) >= kBasicNetViews.size()) view = 0;
+        }
+        for (const auto& choice : kBasicNetViews)
+          m_connection_type_choice->Append(choice);
+        m_connection_type_label->SetLabel(_("Connect to"));
+        if (m_comment_label) m_comment_label->Hide();
+        if (m_comment_textctrl) m_comment_textctrl->Hide();
+      }
+      m_connection_type_choice->SetSelection(view);
+      auto view_str =
+          m_connection_type_choice->GetStringSelection().ToStdString();
+      // if (!view_str.empty()) ConfigureControlsForView(view_str);
+      m_parent->Layout();
+    }
+
+    void OnConnTypeChange() {}
+  };  // NetGrid
+
 public:
   NetConfigPanel(wxWindow* parent, ConnectionParams& params)
       : wxPanel(parent), m_params(params) {
+    auto flags = wxSizerFlags().Border();
     auto vbox = new wxBoxSizer(wxVERTICAL);
-    vbox->Add(new wxStaticText(this, wxID_ANY, "Configure Network"));
+    vbox->Add(new NetGrid(this, m_params), flags);
+    vbox->Add(new InputOutputPanel(this, m_params), flags);
+
+    auto advanced_panel = new FilterConfigPanel(this, m_params);
+    auto hbox = new wxBoxSizer(wxHORIZONTAL);
+    hbox->Add(new wxStaticText(this, wxID_ANY, _("Advanced")));
+    hbox->Add(new ExpandablePanel(this, advanced_panel,
+                                  [&] { GetParent()->Layout(); }));
+    vbox->Add(hbox, flags);
+    vbox->Add(advanced_panel, flags);
+
     SetSizer(vbox);
     wxWindow::Layout();
     wxWindow::Show();
