@@ -100,6 +100,15 @@ static const std::string kTcpServer = _("TCP Server");
 static const std::string kUdpInput = _("UDP Receive");
 static const std::string kMulticastServer = _("UDP Multicast Receive and Send");
 static const std::string kMulticastClient = _("UDP Multicast Send");
+static const std::string kDefaultTcpPort = "10110";
+static const std::string kDefaultUdpPort = "10110";
+static const std::string kDefaultGpsdPort = "2947";
+static const std::string kDefaultSignalkPort = "3000";
+static const std::string kDefaultIpAddress = "localhost";
+static const std::string kDefaultMulticastAddr = "224.0.2.21";
+// "LIMITED BROADCAST" address
+//  Deprecated, but still useful on simple mobile networks.
+static const wxString DEFAULT_UDP_OUT_ADDRESS = "255.255.255.255";
 
 static const std::vector<std::string> kBasicNetViews = {
     kTcpDevice, kUdpReceive, kUdpSend, kGpsdDevice, kSignalkDevice};
@@ -1241,7 +1250,7 @@ void ConnectionEditDialog::OnScanBtClick(wxCommandEvent& event) {
     if (m_scan_bt_btn) {
       m_scan_bt_btn->SetLabel(_("Stop Scan"));
     }
-  }
+  };
 }
 
 void ConnectionEditDialog::OnBtScanTimer(wxTimerEvent& event) {
@@ -2762,6 +2771,14 @@ public:
     wxWindow::Layout();
   }
 
+  void EnableOutput(bool enabled = true) { m_output_box->Enable(enabled); }
+
+  void EnableInput(bool enabled = true) { m_input_box->Enable(enabled); }
+
+  void SetOutput(bool value) { m_output_box->SetValue(value); }
+
+  void SetInput(bool value) { m_input_box->SetValue(value); }
+
 private:
   ConnectionParams& m_params;
   wxCheckBox* m_input_box;
@@ -3066,15 +3083,18 @@ class NetConfigPanel : public wxPanel {
     }
   };  // ProtocolChoice
 
-  class AddressTextCtrl : public wxTextCtrl, public Reloadable {
+  class AddressTextCtrl : public TextCtrlWithHelp, public Reloadable {
   public:
     AddressTextCtrl(wxWindow* parent, ConnectionParams& params)
-        : wxTextCtrl(parent, wxID_ANY), m_params(params) {
+        : TextCtrlWithHelp(parent,
+                           "IP address or hostname, often 255.255.255.255"),
+          m_params(params) {
       AddressTextCtrl::Reload();
       Bind(wxEVT_TEXT, [&](wxCommandEvent& e) {
         m_params.network_address = GetLabel();
         e.Skip();
       });
+      SetMinSize(wxSize(60 * GetCharWidth(), -1));
     }
 
     void Reload() override { SetLabel(m_params.network_address); }
@@ -3083,10 +3103,11 @@ class NetConfigPanel : public wxPanel {
     ConnectionParams& m_params;
   };
 
-  class PortTextCtrl : public wxTextCtrl, public Reloadable {
+  class PortTextCtrl : public TextCtrlWithHelp, public Reloadable {
   public:
     PortTextCtrl(wxWindow* parent, ConnectionParams& params)
-        : wxTextCtrl(parent, wxID_ANY), m_params(params) {
+        : TextCtrlWithHelp(parent, "Port number (1025 - 65535, often 10110)"),
+          m_params(params) {
       PortTextCtrl::Reload();
       Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { OnChange(e); });
     }
@@ -3126,8 +3147,12 @@ class NetConfigPanel : public wxPanel {
 
   class NetGrid : public wxFlexGridSizer {
   public:
-    NetGrid(wxWindow* parent, ConnectionParams& params)
-        : wxFlexGridSizer(2), m_parent(parent), m_params(params) {
+    NetGrid(wxWindow* parent, ConnectionParams& params,
+            InputOutputPanel* in_out_panel)
+        : wxFlexGridSizer(2),
+          m_parent(parent),
+          m_params(params),
+          m_in_out_panel(in_out_panel) {
       auto flags = wxSizerFlags().Border();
       auto label_flags = wxSizerFlags().Border().CentreVertical();
 
@@ -3144,7 +3169,7 @@ class NetConfigPanel : public wxPanel {
       m_connection_type_label =
           new wxStaticText(parent, wxID_ANY, _("Connection type"));
       m_connection_type_choice =
-          new ConnectionTypeChoice(parent, [&] { OnConnTypeChange(); });
+          new ConnectionTypeChoice(parent, [&] { OnConnectionTypeChange(); });
       Add(m_connection_type_label, label_flags);
       Add(m_connection_type_choice, flags);
 
@@ -3161,7 +3186,7 @@ class NetConfigPanel : public wxPanel {
       m_port_label = new wxStaticText(parent, wxID_ANY, _("Data Port"));
       m_port_textctrl = new PortTextCtrl(parent, m_params);
       Add(m_port_label, label_flags);
-      Add(m_port_textctrl, flags);
+      Add(m_port_textctrl, wxSizerFlags(1).Expand().Border());
 
       m_comment_label = new wxStaticText(parent, wxID_ANY, _("User comment"));
       m_comment_textctrl = new CommentTextCtrl(parent, m_params);
@@ -3172,6 +3197,7 @@ class NetConfigPanel : public wxPanel {
   private:
     wxWindow* m_parent;
     ConnectionParams& m_params;
+    InputOutputPanel* m_in_out_panel;
     wxStaticText* m_expert_mode_label;
     ExpertModeCheckBox* m_expert_mode_checkbox;
     wxStaticText* m_connection_type_label;
@@ -3179,9 +3205,9 @@ class NetConfigPanel : public wxPanel {
     wxStaticText* m_protocol_label;
     wxChoice* m_protocol_choice;
     wxStaticText* m_address_label;
-    wxTextCtrl* m_address_textctrl;
+    TextCtrlWithHelp* m_address_textctrl;
     wxStaticText* m_port_label;
-    wxTextCtrl* m_port_textctrl;
+    TextCtrlWithHelp* m_port_textctrl;
     wxStaticText* m_comment_label;
     wxTextCtrl* m_comment_textctrl;
 
@@ -3208,11 +3234,120 @@ class NetConfigPanel : public wxPanel {
       m_connection_type_choice->SetSelection(view);
       auto view_str =
           m_connection_type_choice->GetStringSelection().ToStdString();
-      // if (!view_str.empty()) ConfigureControlsForView(view_str);
+      if (!view_str.empty()) ConfigureControlsForView(view_str);
       m_parent->Layout();
     }
 
-    void OnConnTypeChange() {}
+    void OnConnectionTypeChange() {
+      int selection = m_connection_type_choice->GetSelection();
+      if (selection == wxNOT_FOUND) return;
+      std::string view =
+          m_connection_type_choice->GetStringSelection().ToStdString();
+      ConfigureControlsForView(view);
+      OnExpertModeChange();
+    }
+
+    void ConfigureControlsForView(const std::string& view) {
+      auto found =
+          std::find(kBasicNetViews.begin(), kBasicNetViews.end(), view);
+      int selection = m_connection_type_choice->GetSelection();
+      assert(selection != wxNOT_FOUND);
+      m_expert_mode_checkbox->SetValue(found == kBasicNetViews.end());
+      m_address_textctrl->Enable();
+      m_address_label->SetLabel(_("Server address"));
+      m_in_out_panel->EnableOutput(false);
+      m_in_out_panel->EnableInput(false);
+      m_address_label->Show();
+      m_address_textctrl->Show();
+      auto port = m_port_textctrl->GetValue();
+      if (port == kDefaultGpsdPort || port == kDefaultSignalkPort ||
+          port.empty())
+        m_port_textctrl->RestoreHelp();
+      if (m_protocol_choice->GetCount() != 2)
+        SetupProtocolChoice(m_protocol_choice);  // FIXME - leamas
+      if (view == kTcpDevice || view == kTcpClient) {
+        m_address_label->Show();
+        m_address_label->Show();
+        if (m_address_textctrl->GetValue() == "0.0.0.0")
+          m_address_textctrl->RestoreHelp();
+        if (m_address_textctrl->IsPristine())
+          m_address_textctrl->SetHelp(kAddressDefaultHelp);
+        if (m_port_textctrl->IsPristine())
+          m_port_textctrl->SetHelp(
+              _("Port number (1025 - 65535, often 10110)"));
+        m_in_out_panel->EnableInput();
+        m_in_out_panel->EnableOutput();
+      } else if (view == kUdpReceive || view == kUdpInput) {
+        m_address_label->Hide();
+        m_address_textctrl->ChangeValue("0.0.0.0");
+        m_address_textctrl->Disable();
+        m_address_textctrl->Hide();
+        if (m_address_textctrl->IsPristine())
+          m_address_textctrl->SetHelp(kAddressDefaultHelp);
+        if (m_port_textctrl->IsPristine())
+          m_port_textctrl->SetHelp(
+              _("Port number (1025 - 65535, often 10110)"));
+        m_in_out_panel->SetOutput(false);
+        m_in_out_panel->SetInput(true);
+      } else if (view == kUdpSend || view == kUdpOutput) {
+        if (m_address_textctrl->GetValue() == "0.0.0.0")
+          m_address_textctrl->RestoreHelp();
+        if (m_address_textctrl->IsPristine())
+          m_address_textctrl->SetHelp(kAddressUdpHelp);
+        m_in_out_panel->SetInput(false);
+        m_in_out_panel->SetOutput(true);
+      } else if (view == kGpsdClient || view == kGpsdDevice) {
+        m_protocol_choice->Clear();
+        m_protocol_choice->Append("gpsd");
+        m_protocol_choice->SetSelection(0);
+        m_protocol_choice->Disable();
+        if (m_address_textctrl->GetValue() == "0.0.0.0")
+          m_address_textctrl->RestoreHelp();
+        if (m_address_textctrl->IsPristine())
+          m_address_textctrl->SetHelp(kAddressDefaultHelp);
+        if (m_port_textctrl->IsPristine())
+          m_port_textctrl->ChangeValue(kDefaultGpsdPort);
+        m_in_out_panel->SetInput(true);
+        m_in_out_panel->SetOutput(false);
+      } else if (view == kSignalkClient || view == kSignalkDevice) {
+        m_protocol_choice->Clear();
+        m_protocol_choice->Append("SignalK");
+        m_protocol_choice->SetSelection(0);
+        m_protocol_choice->Disable();
+        if (m_address_textctrl->GetValue() == "0.0.0.0")
+          m_address_textctrl->RestoreHelp();
+        if (m_address_textctrl->IsPristine())
+          m_address_textctrl->SetHelp(kAddressDefaultHelp);
+        if (m_port_textctrl->IsPristine())
+          m_port_textctrl->ChangeValue(kDefaultSignalkPort);
+        m_in_out_panel->SetInput(true);
+        m_in_out_panel->SetOutput(false);
+      } else if (view == kTcpServer) {
+        m_address_label->SetLabel(_("Interface"));
+        m_address_textctrl->ChangeValue("0.0.0.0");
+        m_address_textctrl->Disable();
+        m_in_out_panel->EnableInput();
+        m_in_out_panel->EnableOutput();
+      } else if (view == kMulticastClient || view == kMulticastServer) {
+        if (m_address_textctrl->GetValue().empty())
+          m_address_textctrl->RestoreHelp();
+        m_address_label->SetLabel(_("Multicast group"));
+        if (m_port_textctrl->IsPristine())
+          m_port_textctrl->SetHelp(_("Port number, usually 49152 - 65535"));
+        if (m_address_textctrl->IsPristine())
+          m_address_textctrl->SetHelp(kAddressMcastHelp);
+        if (view == kMulticastClient) {
+          m_in_out_panel->SetInput(false);
+          m_in_out_panel->SetOutput(true);
+        } else {
+          m_in_out_panel->SetInput(true);
+          m_in_out_panel->EnableOutput();
+        }
+      } else {
+        wxLogError("Illegal view: %s", view.c_str());
+        assert(false && "Illegal view");
+      }
+    }
   };  // NetGrid
 
 public:
@@ -3220,8 +3355,9 @@ public:
       : wxPanel(parent), m_params(params) {
     auto flags = wxSizerFlags().Border();
     auto vbox = new wxBoxSizer(wxVERTICAL);
-    vbox->Add(new NetGrid(this, m_params), flags);
-    vbox->Add(new InputOutputPanel(this, m_params), flags);
+    auto input_output_panel = new InputOutputPanel(this, m_params);
+    vbox->Add(new NetGrid(this, m_params, input_output_panel), flags);
+    vbox->Add(input_output_panel, flags);
 
     auto advanced_panel = new FilterConfigPanel(this, m_params);
     auto hbox = new wxBoxSizer(wxHORIZONTAL);
