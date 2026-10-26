@@ -48,15 +48,9 @@ public:
   /** Return edited parameters */
   virtual std::unique_ptr<ConnectionParams> GetEditedParams() = 0;
 
-  /** Apply edited parameters and restart connection. */
-  virtual void Apply() = 0;
-
-  /** Restore all edited values to pristine state as of SetParams(). */
-  virtual void Cancel() = 0;
-
   static AbstractConnectionEditDlg* Create(wxWindow* parent,
                                            std::function<void()> on_cancel,
-                                           ConnEditCallback cb);
+                                           ConnEditCallback on_ok);
 
 protected:
   AbstractConnectionEditDlg(wxWindow* parent) : wxPanel(parent) {}
