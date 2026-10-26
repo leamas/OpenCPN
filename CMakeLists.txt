@@ -839,6 +839,7 @@ set(GUI_HDRS
     ${GUI_HDR_DIR}/dychart.h
     ${GUI_HDR_DIR}/emboss_data.h
     ${GUI_HDR_DIR}/flex_hash.h
+    ${GUI_HDR_DIR}/filter_sentence_dlg.h
     ${GUI_HDR_DIR}/font_desc.h
     ${GUI_HDR_DIR}/font_mgr.h
     ${GUI_HDR_DIR}/go_to_position_dlg.h
@@ -963,6 +964,7 @@ set(GUI_SRC
     ${GUI_SRC_DIR}/displays.cpp
     ${GUI_SRC_DIR}/download_mgr.cpp
     ${GUI_SRC_DIR}/filter_dlg.cpp
+    ${GUI_SRC_DIR}/filter_sentence_dlg.cpp
     ${GUI_SRC_DIR}/flex_hash.cpp
     ${GUI_SRC_DIR}/font_desc.cpp
     ${GUI_SRC_DIR}/font_mgr.cpp

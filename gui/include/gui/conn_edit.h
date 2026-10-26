@@ -56,29 +56,4 @@ protected:
   AbstractConnectionEditDlg(wxWindow* parent) : wxPanel(parent) {}
 };
 
-/** Filter list editing dialog. */
-class SentenceListDlg : public wxDialog {
-public:
-  explicit SentenceListDlg(wxWindow* parent, FilterDirection dir, ListType type,
-                           const wxArrayString& list);
-  wxString GetSentences();
-
-private:
-  void OnAddClick(wxCommandEvent& event);
-  void OnDeleteClick(wxCommandEvent& event);
-  void OnCLBSelect(wxCommandEvent& event);
-  void OnCheckAllClick(wxCommandEvent& event);
-  void OnClearAllClick(wxCommandEvent& event);
-
-  void Populate(const wxArrayString& list);
-  [[nodiscard]] wxString GetBoxLabel() const;
-
-  wxCheckListBox* m_sentences_clb;
-  wxButton* m_del_btn;
-
-  ListType m_type;
-  FilterDirection m_dir;
-  wxArrayString m_sentences;
-};
-
 #endif  // COnn_EDIT_H
