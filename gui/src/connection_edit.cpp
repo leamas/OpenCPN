@@ -31,8 +31,6 @@
 #include <wx/wx.h>
 #endif
 
-#include "config.h"
-
 #include <wx/tokenzr.h>
 #include <wx/regex.h>
 #include <wx/statline.h>
@@ -58,7 +56,6 @@
 #include "libgui/text_ctrl_w_help.h"
 #include "libgui/expand_panel.h"
 
-#include "model/comm_drv_factory.h"
 #include "model/config_vars.h"
 #include "model/conn_params.h"
 #include "model/ocpn_utils.h"
@@ -70,10 +67,8 @@
 #include "gui_lib.h"
 #include "nmea0183.h"
 #include "ocpn_platform.h"
-#include "ocpn_plugin.h"  // FIXME for GetOCPNScaledFont_PlugIn
 #include "options.h"
 #include "priority_gui.h"
-#include "udev_rule_mgr.h"
 
 // Make _() return std::string instead of wxString;
 #undef _
@@ -102,15 +97,10 @@ static const std::string kTcpServer = _("TCP Server");
 static const std::string kUdpInput = _("UDP Receive");
 static const std::string kMulticastServer = _("UDP Multicast Receive and Send");
 static const std::string kMulticastClient = _("UDP Multicast Send");
-static const std::string kDefaultTcpPort = "10110";
-static const std::string kDefaultUdpPort = "10110";
 static const std::string kDefaultGpsdPort = "2947";
 static const std::string kDefaultSignalkPort = "3000";
-static const std::string kDefaultIpAddress = "localhost";
-static const std::string kDefaultMulticastAddr = "224.0.2.21";
 // "LIMITED BROADCAST" address
 //  Deprecated, but still useful on simple mobile networks.
-static const wxString DEFAULT_UDP_OUT_ADDRESS = "255.255.255.255";
 
 static const std::vector<std::string> kBasicNetViews = {
     kTcpDevice, kUdpReceive, kUdpSend, kGpsdDevice, kSignalkDevice};
@@ -174,109 +164,6 @@ static bool IsAddressMultiCast(const wxString& ip) {
 
 static bool IsAddressListener(const std::string& address) {
   return address.empty() || address == "0.0.0.0";
-}
-
-/** Return  selected option from a wxChoice widget */
-static std::string GetChoiceSelection(const wxChoice* choice) {
-  int selected = choice->GetSelection();
-  return choice->GetString(selected).ToStdString();
-}
-
-/**
- * Return net view name for given ConnectionParams. For ambigious cases
- * like kTcpDevice (basic view)/kTcpClient (Advanced view) return
- * the basic view.
- */
-static std::string NetViewByConnection(const ConnectionParams* cp) {
-  bool is_server = IsAddressListener(cp->network_address.ToStdString());
-  if (IsAddressMultiCast(cp->network_address))
-    return is_server ? kMulticastServer : kMulticastClient;
-  switch (cp->net_protocol) {
-    case NetworkProtocol::GPSD:
-      return kGpsdDevice;
-    case NetworkProtocol::SIGNALK:
-      return kSignalkDevice;
-    case NetworkProtocol::UDP:
-      return is_server ? kUdpReceive : kUdpSend;
-    case NetworkProtocol::TCP:
-      return is_server ? kTcpServer : kTcpDevice;
-    default:
-      wxLogWarning("Cannot deduce connection params view type");
-      return "";
-  }
-  return "";  // for the compiler
-}
-
-static wxArrayString GetAvailableSocketCANInterfaces() {
-  wxArrayString rv;
-
-#if defined(__linux__) && !defined(__ANDROID__)
-  can_if_candidates.clear();
-
-  if ((intf = intf_open()) == nullptr) {
-    wxLogWarning("Error opening interface list");
-    return rv;
-  }
-
-  if (intf_loop(intf, print_intf, nullptr) < 0) {
-    wxLogWarning("Error looping over interface list");
-  }
-  intf_close(intf);
-
-  for (const auto& iface : can_if_candidates) {
-    int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
-    if (sock < 0) {
-      continue;
-    }
-
-    // Get the interface index
-    struct ifreq if_request = {{0}};
-    strcpy(if_request.ifr_name, iface.c_str());
-    if (ioctl(sock, SIOCGIFINDEX, &if_request) < 0) {
-      continue;
-    }
-
-    // Check if interface is UP
-    struct sockaddr_can can_address = {0};
-    can_address.can_family = AF_CAN;
-    can_address.can_ifindex = if_request.ifr_ifindex;
-    if (ioctl(sock, SIOCGIFFLAGS, &if_request) < 0) {
-      continue;
-    }
-    if (if_request.ifr_flags & IFF_UP) {
-      rv.Add(iface);
-    } else {
-      continue;
-    }
-  }
-#endif
-  return rv;
-}
-
-static void LoadSerialPorts(wxComboBox* box) {
-  /** Sort all links to same device as equals. */
-  class PortSorter {
-  private:
-    [[nodiscard]] static std::string GetKey(const std::string& s) {
-      if (s.find("->") == std::string::npos) return s;
-      return ocpn::trim(ocpn::split(s, "->")[1]) + " link";
-    }
-
-  public:
-    bool operator()(const std::string& lhs, const std::string& rhs) const {
-      return GetKey(lhs) < GetKey(rhs);
-    }
-  } port_sorter;
-
-  std::set<std::string, PortSorter> sorted_ports(port_sorter);
-  std::unique_ptr<wxArrayString> ports(EnumerateSerialPorts());
-  for (size_t i = 0; i < ports->GetCount(); i++)
-    sorted_ports.insert((*ports)[i].ToStdString());
-
-  auto value = box->GetValue();
-  box->Clear();
-  for (auto& p : sorted_ports) box->Append(p);
-  if (!value.empty()) box->SetValue(value);
 }
 
 static bool CheckPort(wxWindow* parent, TextCtrlWithHelp& ctrl) {
@@ -722,8 +609,11 @@ private:
 class InternalBtConfigPanel : public wxPanel, public Reloadable {
   class ScanTimer : public wxTimer {
   public:
+    ScanTimer() : wxTimer(), m_owner(nullptr) {}
     void SetOwner(InternalBtConfigPanel* owner) { m_owner = owner; }
-    void Notify() override { m_owner->OnBtScanTimer(); }
+    void Notify() override {
+      if (m_owner) m_owner->OnBtScanTimer();
+    }
 
   private:
     InternalBtConfigPanel* m_owner;
@@ -834,8 +724,8 @@ private:
     //  Watch for changes.  When no changes occur after n seconds, stop the
     //  scan
     if (m_bt_no_change_counter > 5) StopBtScan();
-
-    if ((int)m_bt_scan_results.GetCount() == m_bt_last_result_count)
+    int count = static_cast<int>(m_bt_scan_results.GetCount());
+    if (count == m_bt_last_result_count)
       m_bt_no_change_counter++;
     else
       m_bt_no_change_counter = 0;
@@ -1119,13 +1009,14 @@ private:
 class NetConfigPanel : public wxPanel {
   class ExpertModeCheckBox : public wxCheckBox {
   public:
-    ExpertModeCheckBox(wxWindow* parent) : wxCheckBox(parent, wxID_ANY, "") {}
+    explicit ExpertModeCheckBox(wxWindow* parent)
+        : wxCheckBox(parent, wxID_ANY, "") {}
   };
 
   class ConnectionTypeChoice : public wxChoice {
   public:
     ConnectionTypeChoice(wxWindow* parent, std::function<void()> on_choice)
-        : wxChoice(parent, wxID_ANY), m_on_choice(on_choice) {
+        : wxChoice(parent, wxID_ANY), m_on_choice(std::move(on_choice)) {
       for (const auto& view : kBasicNetViews) Append(view);  // FIXME
       Append(kBasicNetViews[0]);
       wxChoice::SetSelection(0);  // until OnConnectionTypeChanged()
@@ -1194,7 +1085,7 @@ class NetConfigPanel : public wxPanel {
         m_params.network_address = GetLabel();
         e.Skip();
       });
-      SetMinSize(wxSize(60 * GetCharWidth(), -1));
+      wxWindowBase::SetMinSize(wxSize(60 * wxWindow::GetCharWidth(), -1));
     }
 
     void Reload() override { SetLabel(m_params.network_address); }
@@ -1479,8 +1370,6 @@ class CanConfigPanel : public wxPanel {
       std::vector<std::string> rv;
 
 #if defined(__linux__) && !defined(__ANDROID__)
-      struct intf_entry* entry;
-
       can_if_candidates.clear();  // FIXME: global...
 
       if ((intf = intf_open()) == nullptr) {
@@ -1500,14 +1389,14 @@ class CanConfigPanel : public wxPanel {
         }
 
         // Get the interface index
-        ifreq if_request;
+        ifreq if_request = {0};
         strcpy(if_request.ifr_name, iface.c_str());
         if (ioctl(sock, SIOCGIFINDEX, &if_request) < 0) {
           continue;
         }
 
         // Check if interface is UP
-        sockaddr_can can_address;
+        sockaddr_can can_address = {0};
         can_address.can_family = AF_CAN;
         can_address.can_ifindex = if_request.ifr_ifindex;
         if (ioctl(sock, SIOCGIFFLAGS, &if_request) < 0) {
@@ -1539,52 +1428,6 @@ public:
 private:
   ConnectionParams& m_params;
   wxChoice* m_choice;
-
-  static std::vector<std::string> GetAvailableSocketCanInterfaces() {
-    std::vector<std::string> rv;
-
-#if defined(__linux__) && !defined(__ANDROID__)
-    struct intf_entry* entry;
-
-    can_if_candidates.clear();  // FIXME: global...
-
-    if ((intf = intf_open()) == nullptr) {
-      wxLogWarning("Error opening interface list");
-      return rv;
-    }
-
-    if (intf_loop(intf, print_intf, nullptr) < 0) {
-      wxLogWarning("Error looping over interface list");
-    }
-    intf_close(intf);
-
-    for (const auto& iface : can_if_candidates) {
-      int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
-      if (sock < 0) {
-        continue;
-      }
-
-      // Get the interface index
-      ifreq if_request;
-      strcpy(if_request.ifr_name, iface.c_str());
-      if (ioctl(sock, SIOCGIFINDEX, &if_request) < 0) {
-        continue;
-      }
-
-      // Check if interface is UP
-      sockaddr_can can_address;
-      can_address.can_family = AF_CAN;
-      can_address.can_ifindex = if_request.ifr_ifindex;
-      if (ioctl(sock, SIOCGIFFLAGS, &if_request) < 0) {
-        continue;
-      }
-      if (if_request.ifr_flags & IFF_UP) {
-        rv.push_back(iface);
-      }
-    }
-#endif  // defined(__linux__) && !defined(__ANDROID__)
-    return rv;
-  }
 };
 
 class ButtonSizer : public wxStdDialogButtonSizer {
