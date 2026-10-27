@@ -1658,9 +1658,7 @@ public:
     OnTypeBtnClick(m_params.type);
   }
 
-  std::unique_ptr<ConnectionParams> GetEditedParams() override {
-    return std::make_unique<ConnectionParams>(m_params);
-  }
+  ConnectionParams GetEditedParams() override { return m_params; }
 
 private:
   ConnEditCallback m_on_ok;

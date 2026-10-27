@@ -1115,41 +1115,38 @@ public:
                         bool new_mode) {
     // OK from EDIT mode
     if (!new_mode) {
-      std::unique_ptr<ConnectionParams> cp_edited =
-          m_edit_panel->GetEditedParams();
+      ConnectionParams cp_edited = m_edit_panel->GetEditedParams();
       delete cp_orig->options_panel;
       StopAndRemoveCommDriver(cp_orig->GetStrippedDSPort(),
                               cp_orig->GetCommProtocol());
       int index =
           top_panel->GetConnectionsGrid()->FindConnectionIndex(cp_orig.get());
       assert(index != -1 && "Cannot look up connection index");
-      *TheConnectionParams()[index] = *cp_edited;
-      cp_edited->is_setup = false;  // Trigger new stream
+      *TheConnectionParams()[index] = cp_edited;
+      cp_edited.is_setup = false;  // Trigger new stream
     }
     //  OK from NEW mode
     else {
-      std::unique_ptr<ConnectionParams> cp = m_edit_panel->GetEditedParams();
-      if (cp) {
-        if (FindConnectionByIface(cp)) {
-          wxMessageDialog dialog(this, kInterfaceExistsMessage,
-                                 _("Driver creation warning"),
-                                 wxOK | wxCENTRE | wxICON_WARNING);
-          dialog.ShowModal();
-        }
-        if (cp->IsPortValid()) {
-          // Trigger new stream
-          cp->is_setup = false;
-          // transfer ownership FIXME use smart pointers
-          auto new_cp = new ConnectionParams(*cp);
-          TheConnectionParams().push_back(new_cp);
-        } else {
-          wxString msg =
-              _("Unable to create a connection as configured. "
-                "Connected port or address was missing.");
-          auto& noteman = NotificationManager::GetInstance();
-          noteman.AddNotification(NotificationSeverity::kWarning,
-                                  msg.ToStdString(), 60);
-        }
+      ConnectionParams cp = m_edit_panel->GetEditedParams();
+      if (FindConnectionByIface(&cp)) {
+        wxMessageDialog dialog(this, kInterfaceExistsMessage,
+                               _("Driver creation warning"),
+                               wxOK | wxCENTRE | wxICON_WARNING);
+        dialog.ShowModal();
+      }
+      if (cp.IsPortValid()) {
+        // Trigger new stream
+        cp.is_setup = false;
+        // transfer ownership FIXME use smart pointers
+        auto new_cp = new ConnectionParams(cp);
+        TheConnectionParams().push_back(new_cp);
+      } else {
+        wxString msg =
+            _("Unable to create a connection as configured. "
+              "Connected port or address was missing.");
+        auto& noteman = NotificationManager::GetInstance();
+        noteman.AddNotification(NotificationSeverity::kWarning,
+                                msg.ToStdString(), 60);
       }
       UpdateDatastreams();
       top_panel->m_evt_add_connection.Notify();

@@ -46,7 +46,7 @@ public:
   virtual void SetParams(std::unique_ptr<ConnectionParams> params) = 0;
 
   /** Return edited parameters */
-  virtual std::unique_ptr<ConnectionParams> GetEditedParams() = 0;
+  virtual ConnectionParams GetEditedParams() = 0;
 
   static AbstractConnectionEditDlg* Create(wxWindow* parent,
                                            std::function<void()> on_cancel,
