@@ -53,8 +53,7 @@
 
 #include "color_handler.h"
 #include "color_types.h"
-#include "conn_edit.h"
-// #include "connection_edit.h"
+#include "connection_edit.h"
 #include "conn_params_panel.h"
 #include "gui_lib.h"
 #include "navutil.h"

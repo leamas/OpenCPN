@@ -52,7 +52,7 @@
 #endif
 
 // #include "connection_edit.h"
-#include "conn_edit.h"
+#include "connection_edit.h"
 
 #include "libgui/text_ctrl_w_help.h"
 #include "libgui/expand_panel.h"
