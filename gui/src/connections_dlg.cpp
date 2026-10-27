@@ -61,6 +61,7 @@
 #include "options.h"
 #include "priority_gui.h"
 #include "std_filesystem.h"
+#include "libgui/expand_panel.h"
 #include "model/svg_utils.h"
 
 static constexpr auto TopScrollWindowName = "TopScroll";
@@ -769,31 +770,6 @@ private:
   UploadOptionsChoice* m_upload_options;
 };
 
-/** The "Show advanced" text + right/down triangle and handler. */
-class ShowAdvanced : public wxStaticText {
-public:
-  ShowAdvanced(wxWindow* parent, std::function<void(bool)> on_toggle)
-      : wxStaticText(parent, wxID_ANY, ""),
-        m_on_toggle(std::move(on_toggle)),
-        m_show_advanced(true) {
-    Toggle();
-    Bind(wxEVT_LEFT_DOWN, [&](const wxMouseEvent& ev) { Toggle(); });
-  }
-
-private:
-  wxString m_label = _("Advanced ");
-  std::function<void(bool)> m_on_toggle;
-  bool m_show_advanced;
-
-  void Toggle() {
-    m_show_advanced = !m_show_advanced;
-    m_label = _("Advanced ");
-    m_label += m_show_advanced ? UtfArrowDown() : UtfArrowRight();
-    SetLabelText(m_label);
-    m_on_toggle(m_show_advanced);
-  }
-};
-
 /** Indeed: The "Advanced" panel. */
 class AdvancedPanel : public wxPanel {
 public:
@@ -848,6 +824,7 @@ private:
       wxWindow::Show();
     }
   };
+
   class ExtraRmbRmcCheckbox final : public wxCheckBox, public ApplyCancel {
   public:
     explicit ExtraRmbRmcCheckbox(wxWindow* parent)
@@ -989,14 +966,12 @@ public:
 
     auto advanced_panel = new AdvancedPanel(this, panel_max_size);
     m_advanced_panel = advanced_panel;
-    auto on_toggle = [&, advanced_panel, vbox](bool show) {
-      // FIXME advanced_panel->SetMaxSize({conn_grid->GetSize().x, -1});
-      advanced_panel->Show(show);
-      vbox->SetSizeHints(this);
-      vbox->Fit(this);
-    };
-    vbox->Add(new ShowAdvanced(this, on_toggle), panel_flags);
-    vbox->Add(advanced_panel, panel_flags.ReserveSpaceEvenIfHidden());
+    auto adv_box = new wxBoxSizer(wxHORIZONTAL);
+    adv_box->Add(new wxStaticText(this, wxID_ANY, _("Advanced")));
+    adv_box->Add(new ExpandablePanel(this, advanced_panel,
+                                     [&] { GetParent()->Layout(); }));
+    vbox->Add(adv_box, wxSizerFlags().Border());
+    vbox->Add(advanced_panel, wxSizerFlags().Border());
 
     SetSizer(vbox);
     vbox->SetSizeHints(this);
