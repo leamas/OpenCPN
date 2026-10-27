@@ -56,16 +56,13 @@
 #include "libgui/text_ctrl_w_help.h"
 #include "libgui/expand_panel.h"
 
-#include "model/config_vars.h"
 #include "model/conn_params.h"
 #include "model/ocpn_utils.h"
 #include "model/ser_ports.h"
-#include "model/sys_events.h"
 
 #include "conn_params_panel.h"
 #include "filter_sentence_dlg.h"
 #include "gui_lib.h"
-#include "nmea0183.h"
 #include "ocpn_platform.h"
 #include "options.h"
 #include "priority_gui.h"
@@ -160,10 +157,6 @@ static bool IsAddressMultiCast(const wxString& ip) {
   unsigned long multicastStart = (224 << 24);
   unsigned long multicastEnd = (239 << 24) + (255 << 16) + (255 << 8) + 255;
   return ipNum >= multicastStart && ipNum <= multicastEnd;
-}
-
-static bool IsAddressListener(const std::string& address) {
-  return address.empty() || address == "0.0.0.0";
 }
 
 static bool CheckPort(wxWindow* parent, TextCtrlWithHelp& ctrl) {
@@ -1146,6 +1139,8 @@ class NetConfigPanel : public wxPanel {
 
       m_address_label = new wxStaticText(parent, wxID_ANY, _("Server address"));
       m_address_textctrl = new AddressTextCtrl(parent, m_params);
+      m_address_textctrl->Bind(wxEVT_KILL_FOCUS,
+                               [&](wxFocusEvent& ev) { OnAddressChange(ev); });
       Add(m_address_label, label_flags);
       Add(m_address_textctrl, wxSizerFlags(1).Expand().Border());
 
@@ -1160,6 +1155,12 @@ class NetConfigPanel : public wxPanel {
       Add(m_comment_textctrl, wxSizerFlags(1).Expand().Border());
       OnExpertModeChange();
       ConfigureControlsForView(kTcpDevice);
+    }
+
+    bool CheckStatus() {
+      bool ok = CheckAddress(m_parent, *m_address_textctrl);
+      if (ok) ok = CheckPort(m_parent, *m_port_textctrl);
+      return ok;
     }
 
   private:
@@ -1204,6 +1205,24 @@ class NetConfigPanel : public wxPanel {
           m_connection_type_choice->GetStringSelection().ToStdString();
       if (!view_str.empty()) ConfigureControlsForView(view_str);
       m_parent->Layout();
+    }
+
+    void OnAddressChange(wxFocusEvent& ev) {
+      int selection = m_connection_type_choice->GetSelection();
+      if (selection != wxNOT_FOUND) {
+        std::string type =
+            m_connection_type_choice->GetString(selection).ToStdString();
+        if (type == kMulticastClient || type == kMulticastServer) {
+          auto address = m_address_textctrl->GetValue().ToStdString();
+          if (!IsAddressMultiCast(address)) {
+            auto dlg =
+                wxMessageDialog(m_parent, _("Illegal multicast address"),
+                                _("OpenCPN warning"), wxOK | wxICON_WARNING);
+            dlg.ShowModal();
+          }
+        }
+      }
+      ev.Skip();
     }
 
     void OnConnectionTypeChange() {
@@ -1320,11 +1339,12 @@ class NetConfigPanel : public wxPanel {
 
 public:
   NetConfigPanel(wxWindow* parent, ConnectionParams& params)
-      : wxPanel(parent), m_params(params) {
+      : wxPanel(parent), m_params(params), m_grid(nullptr) {
     auto flags = wxSizerFlags().Border();
     auto vbox = new wxBoxSizer(wxVERTICAL);
     auto input_output_panel = new InputOutputPanel(this, m_params);
-    vbox->Add(new NetGrid(this, m_params, input_output_panel), flags);
+    m_grid = new NetGrid(this, m_params, input_output_panel);
+    vbox->Add(m_grid, flags);
     vbox->Add(input_output_panel, flags);
 
     auto advanced_panel = new FilterConfigPanel(this, m_params);
@@ -1340,8 +1360,15 @@ public:
     wxWindow::Show();
   }
 
+  /**
+   * check that user data is sane, possibly run dialogs.
+   * @return true if user data is ok to be submitted.
+   */
+  bool CheckStatus() { return m_grid->CheckStatus(); }
+
 private:
   ConnectionParams& m_params;
+  NetGrid* m_grid;
 };
 
 class CanConfigPanel : public wxPanel {
@@ -1513,7 +1540,7 @@ private:
   ConnectionParams m_params;
 
   TypeButtons* m_type_buttons;
-  wxWindow* m_net_config_panel;
+  NetConfigPanel* m_net_config_panel;
   wxWindow* m_can_config_panel;
   wxWindow* m_serial_config_panel;
   wxWindow* m_canable_config_panel;
@@ -1542,10 +1569,12 @@ private:
   }
 
   void OnOkCancel(wxCommandEvent&, bool ok) {
-    if (ok)
-      m_on_ok(std::make_unique<ConnectionParams>(m_params), m_is_new);
-    else
+    if (!ok) {
       m_on_cancel();
+      return;
+    }
+    if (m_net_config_panel->CheckStatus())
+      m_on_ok(std::make_unique<ConnectionParams>(m_params), m_is_new);
   }
 
   static ConnectionParams GetDefaultParams() {
