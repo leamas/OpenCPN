@@ -419,6 +419,8 @@ public:
         m_serial_btn(new wxRadioButton(this, wxID_ANY, _("Serial"))),
         m_net_btn(new wxRadioButton(this, wxID_ANY, _("Network"))),
         m_can_btn(nullptr),
+        m_canable_btn(nullptr),
+        m_internal_gps_btn(nullptr),
         m_on_click(std::move(on_click)),
         m_params(params) {
     auto hbox = new wxBoxSizer(wxHORIZONTAL);
@@ -438,6 +440,11 @@ public:
       m_canable_btn = new wxRadioButton(this, wxID_ANY, _("Canable (SLCAN)"));
       m_canable_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
       hbox->Add(m_canable_btn, wxSizerFlags().Border());
+    }
+    if (OCPNPlatform::hasInternalGPS()) {
+      m_internal_gps_btn = new wxRadioButton(this, wxID_ANY, _("Internal GPS"));
+      m_internal_gps_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
+      hbox->Add(m_internal_gps_btn, wxSizerFlags().Border());
     }
     SetSelectedType(ConnectionType::SERIAL);
 
@@ -462,6 +469,9 @@ public:
       case ConnectionType::CANABLE:
         m_canable_btn->SetValue(true);
         break;
+      case ConnectionType::INTERNAL_GPS:
+        m_internal_gps_btn->SetValue(true);
+        break;
       default:
         assert(false && "Illegal connection type");
     }
@@ -472,6 +482,7 @@ private:
   wxRadioButton* m_net_btn;
   wxRadioButton* m_can_btn;
   wxRadioButton* m_canable_btn;
+  wxRadioButton* m_internal_gps_btn;
   std::function<void(ConnectionType)> m_on_click;
   ConnectionParams& m_params;
 
@@ -486,6 +497,8 @@ private:
     if (m_can_btn && m_can_btn->GetValue()) return ConnectionType::SOCKETCAN;
     if (m_canable_btn && m_canable_btn->GetValue())
       return ConnectionType::CANABLE;
+    if (m_internal_gps_btn && m_internal_gps_btn->GetValue())
+      return ConnectionType::INTERNAL_GPS;
     assert(false && "No connection type radiobutton active(!)");
     return ConnectionType::UNKNOWN;
   }
@@ -671,6 +684,37 @@ private:
   }
 };  //  InputOutputPanel
 
+/** Configure internal GPS usage, usually on Android */
+class InternalGpsConfigPanel : public wxPanel {
+public:
+  InternalGpsConfigPanel(wxWindow* parent, ConnectionParams& params)
+      : wxPanel(parent, wxID_ANY), m_params(params) {
+    auto checkbox = new wxCheckBox(this, wxID_ANY, _("Use internal GPS"));
+    checkbox->SetValue(true);
+    checkbox->Disable();
+
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    vbox->Add(checkbox);
+    auto top_box = new wxBoxSizer(wxVERTICAL);
+    top_box->Add(vbox, wxSizerFlags().Border());
+    SetSizer(top_box);
+    wxWindowBase::Layout();
+    SetParams();
+  }
+
+private:
+  ConnectionParams& m_params;
+
+  void SetParams() {
+    m_params.type = ConnectionType::INTERNAL_GPS;
+    m_params.network_address = "";
+    m_params.network_port = 0;
+    m_params.net_protocol = PROTO_UNDEFINED;
+    m_params.baudrate = 0;
+    m_params.serial_port = "Internal GPS";
+  }
+};  // InternalGpsConfigPanel
+
 /** Configure windows-only canable connection. */
 class CanableConfigPanel : public wxPanel {
 public:
@@ -701,7 +745,7 @@ private:
   ConnectionParams& m_params;
 
   void SetParams() {
-    m_params.type = CANABLE;
+    m_params.type = ConnectionType::CANABLE;
     m_params.data_protocol = PROTO_NMEA2000;
     m_params.direction = PortDirection::kInOut;
     m_params.network_address = "";
@@ -1433,6 +1477,8 @@ public:
     statbox->Add(m_can_config_panel);
     m_canable_config_panel = new CanableConfigPanel(this, m_params);
     statbox->Add(m_canable_config_panel);
+    m_internal_gps_config_panel = new InternalGpsConfigPanel(this, m_params);
+    statbox->Add(m_internal_gps_config_panel);
     vbox->Add(statbox, flags.Expand());
 
     auto on_ok_ = [&](wxCommandEvent& ev) { OnOkCancel(ev, true); };
@@ -1469,6 +1515,7 @@ private:
   wxWindow* m_can_config_panel;
   wxWindow* m_serial_config_panel;
   wxWindow* m_canable_config_panel;
+  wxWindow* m_internal_gps_config_panel;
   bool m_is_new;
 
   static void DoReload(wxWindow* root) {
@@ -1484,6 +1531,8 @@ private:
     m_net_config_panel->Show(ct == ConnectionType::NETWORK);
     m_can_config_panel->Show(ct == ConnectionType::SOCKETCAN);
     m_serial_config_panel->Show(ct == ConnectionType::SERIAL);
+    m_canable_config_panel->Show(ct == ConnectionType::CANABLE);
+    m_internal_gps_config_panel->Show(ct == ConnectionType::INTERNAL_GPS);
     m_params.type = ct;
     Layout();
   }
