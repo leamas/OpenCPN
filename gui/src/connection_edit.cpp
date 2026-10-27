@@ -365,6 +365,47 @@ public:
   virtual void Reload() = 0;
 };
 
+/** User comment text entry. */
+class CommentText : public wxTextCtrl, public Reloadable {
+public:
+  CommentText(wxWindow* parent, wxString& comment)
+      : wxTextCtrl(parent, wxID_ANY), m_comment(comment) {
+    CommentText::Reload();
+    Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { m_comment = GetValue(); });
+  }
+
+  void Reload() override { SetValue(m_comment); }
+
+private:
+  wxString& m_comment;
+};
+
+/** Entry handling "Data port" setting. */
+class PortTextCtrl : public TextCtrlWithHelp, public Reloadable {
+public:
+  PortTextCtrl(wxWindow* parent, ConnectionParams& params)
+      : TextCtrlWithHelp(parent, "Port number (1025 - 65535, often 10110)"),
+        m_params(params) {
+    PortTextCtrl::Reload();
+    Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { OnChange(e); });
+  }
+
+  void Reload() override { SetLabel(std::to_string(m_params.network_port)); }
+
+private:
+  ConnectionParams& m_params;
+
+  void OnChange(wxCommandEvent& event) {
+    try {
+      m_params.network_port = std::stoi(GetLabel().ToStdString());
+    } catch (std::logic_error& e) {
+      wxLogWarning("Cannot parse configuration network port: %s", e.what());
+      m_params.network_port = 99999;  // Illegal for ipv4
+    }
+    event.Skip();
+  }
+};  // PortTextCtrl
+
 /**
  * The three radio buttons selecting serial, network or socketcan
  * connection type.
@@ -393,6 +434,11 @@ public:
       m_can_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
       hbox->Add(m_can_btn, wxSizerFlags().Border());
     }
+    if (IsWindows()) {
+      m_canable_btn = new wxRadioButton(this, wxID_ANY, _("Canable (SLCAN)"));
+      m_canable_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
+      hbox->Add(m_canable_btn, wxSizerFlags().Border());
+    }
     SetSelectedType(ConnectionType::SERIAL);
 
     SetSizer(hbox);
@@ -413,6 +459,9 @@ public:
       case ConnectionType::SOCKETCAN:
         m_can_btn->SetValue(true);
         break;
+      case ConnectionType::CANABLE:
+        m_canable_btn->SetValue(true);
+        break;
       default:
         assert(false && "Illegal connection type");
     }
@@ -422,6 +471,7 @@ private:
   wxRadioButton* m_serial_btn;
   wxRadioButton* m_net_btn;
   wxRadioButton* m_can_btn;
+  wxRadioButton* m_canable_btn;
   std::function<void(ConnectionType)> m_on_click;
   ConnectionParams& m_params;
 
@@ -434,6 +484,8 @@ private:
     if (m_serial_btn->GetValue()) return ConnectionType::SERIAL;
     if (m_net_btn->GetValue()) return ConnectionType::NETWORK;
     if (m_can_btn && m_can_btn->GetValue()) return ConnectionType::SOCKETCAN;
+    if (m_canable_btn && m_canable_btn->GetValue())
+      return ConnectionType::CANABLE;
     assert(false && "No connection type radiobutton active(!)");
     return ConnectionType::UNKNOWN;
   }
@@ -619,6 +671,46 @@ private:
   }
 };  //  InputOutputPanel
 
+/** Configure windows-only canable connection. */
+class CanableConfigPanel : public wxPanel {
+public:
+  CanableConfigPanel(wxWindow* parent, ConnectionParams& params)
+      : wxPanel(parent, wxID_ANY), m_params(params) {
+    auto* grid_sizer = new wxFlexGridSizer(2, wxWindow::GetCharHeight() / 2, 0);
+    auto label_flags = wxSizerFlags().Border().CentreVertical();
+    auto ctrl_flags = wxSizerFlags(1).Expand();
+    grid_sizer->Add(new wxStaticText(this, wxID_ANY, _("Data port")),
+                    label_flags);
+    ;
+    auto port_text_ctrl = new PortTextCtrl(this, m_params);
+    port_text_ctrl->SetMinSize(wxSize(50 * wxWindow::GetCharWidth(), -1));
+    grid_sizer->Add(port_text_ctrl, ctrl_flags);
+    grid_sizer->Add(new wxStaticText(this, wxID_ANY, "User comment"),
+                    label_flags);
+    grid_sizer->Add(new CommentText(this, m_params.user_comment), ctrl_flags);
+
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    vbox->Add(grid_sizer, wxSizerFlags().Border());
+    SetSizer(vbox);
+
+    wxWindowBase::Layout();
+    SetParams();
+  }
+
+private:
+  ConnectionParams& m_params;
+
+  void SetParams() {
+    m_params.type = CANABLE;
+    m_params.data_protocol = PROTO_NMEA2000;
+    m_params.direction = PortDirection::kInOut;
+    m_params.network_address = "";
+    m_params.network_port = 0;
+    m_params.net_protocol = PROTO_UNDEFINED;
+    m_params.baudrate = 0;
+  }
+};  // CanableConfigPanel
+
 class SerialConfigPanel : public wxPanel {
   /** Select serial port combobox. */
   class PortCombo : public wxComboBox, public Reloadable {
@@ -740,21 +832,6 @@ class SerialConfigPanel : public wxPanel {
       if (m_protocol == PROTO_NMEA2000) SetSelection(1);
     }
   };  //  ProtocolChoice
-
-  /** User comment text entry. */
-  class CommentText : public wxTextCtrl, public Reloadable {
-  public:
-    CommentText(wxWindow* parent, wxString& comment)
-        : wxTextCtrl(parent, wxID_ANY), m_comment(comment) {
-      CommentText::Reload();
-      Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { m_comment = GetValue(); });
-    }
-
-    void Reload() override { SetValue(m_comment); }
-
-  private:
-    wxString& m_comment;
-  };
 
   class SerialParamsGrid : public wxFlexGridSizer {
   public:
@@ -925,31 +1002,6 @@ class NetConfigPanel : public wxPanel {
   private:
     ConnectionParams& m_params;
   };
-
-  class PortTextCtrl : public TextCtrlWithHelp, public Reloadable {
-  public:
-    PortTextCtrl(wxWindow* parent, ConnectionParams& params)
-        : TextCtrlWithHelp(parent, "Port number (1025 - 65535, often 10110)"),
-          m_params(params) {
-      PortTextCtrl::Reload();
-      Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { OnChange(e); });
-    }
-
-    void Reload() override { SetLabel(std::to_string(m_params.network_port)); }
-
-  private:
-    ConnectionParams& m_params;
-
-    void OnChange(wxCommandEvent& event) {
-      try {
-        m_params.network_port = std::stoi(GetLabel().ToStdString());
-      } catch (std::logic_error& e) {
-        wxLogWarning("Cannot parse configuration network port: %s", e.what());
-        m_params.network_port = 99999;  // Illegal for ipv4
-      }
-      event.Skip();
-    }
-  };  // PortTextCtrl
 
   class CommentTextCtrl : public wxTextCtrl, public Reloadable {
   public:
@@ -1379,7 +1431,10 @@ public:
     statbox->Add(m_net_config_panel);
     m_can_config_panel = new CanConfigPanel(this, m_params);
     statbox->Add(m_can_config_panel);
+    m_canable_config_panel = new CanableConfigPanel(this, m_params);
+    statbox->Add(m_canable_config_panel);
     vbox->Add(statbox, flags.Expand());
+
     auto on_ok_ = [&](wxCommandEvent& ev) { OnOkCancel(ev, true); };
     auto on_cancel_ = [&](wxCommandEvent& ev) { OnOkCancel(ev, false); };
     auto button_sizer = new ButtonSizer(this, on_ok_, on_cancel_);
@@ -1413,6 +1468,7 @@ private:
   wxWindow* m_net_config_panel;
   wxWindow* m_can_config_panel;
   wxWindow* m_serial_config_panel;
+  wxWindow* m_canable_config_panel;
   bool m_is_new;
 
   static void DoReload(wxWindow* root) {
