@@ -36,6 +36,7 @@
 #include <wx/tokenzr.h>
 #include <wx/regex.h>
 #include <wx/statline.h>
+#include <wx/wrapsizer.h>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <linux/can.h>
@@ -444,39 +445,39 @@ public:
         m_internal_bt_btn(nullptr),
         m_on_click(std::move(on_click)),
         m_params(params) {
-    auto hbox = new wxBoxSizer(wxHORIZONTAL);
+    auto wbox = new wxWrapSizer(wxHORIZONTAL);
     auto on_clicked = [&](wxCommandEvent& e) { OnClick(e); };
     m_serial_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
-    hbox->Add(m_serial_btn, wxSizerFlags().Border());
+    wbox->Add(m_serial_btn, wxSizerFlags().Border());
 
     m_net_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
-    hbox->Add(m_net_btn, wxSizerFlags().Border());
+    wbox->Add(m_net_btn, wxSizerFlags().Border());
 
     if (IsLinux()) {
       m_can_btn = new wxRadioButton(this, wxID_ANY, _("socketCAN"));
       m_can_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
-      hbox->Add(m_can_btn, wxSizerFlags().Border());
+      wbox->Add(m_can_btn, wxSizerFlags().Border());
     }
     if (IsWindows()) {
       m_canable_btn = new wxRadioButton(this, wxID_ANY, _("Canable (SLCAN)"));
       m_canable_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
-      hbox->Add(m_canable_btn, wxSizerFlags().Border());
+      wbox->Add(m_canable_btn, wxSizerFlags().Border());
     }
     if (OCPNPlatform::hasInternalGPS()) {
       m_internal_gps_btn = new wxRadioButton(this, wxID_ANY, _("Internal GPS"));
       m_internal_gps_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
-      hbox->Add(m_internal_gps_btn, wxSizerFlags().Border());
+      wbox->Add(m_internal_gps_btn, wxSizerFlags().Border());
     }
-    //  if (OCPNPlatform::hasInternalBT() {
-    m_internal_bt_btn =
-        new wxRadioButton(this, wxID_ANY, _("Internal Bluetooth"));
-    m_internal_bt_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
-    hbox->Add(m_internal_bt_btn, wxSizerFlags().Border());
-    // }
+    if (OCPNPlatform::hasInternalBT()) {
+      m_internal_bt_btn =
+          new wxRadioButton(this, wxID_ANY, _("Internal Bluetooth"));
+      m_internal_bt_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
+      wbox->Add(m_internal_bt_btn, wxSizerFlags().Border());
+    }
     SetSelectedType(ConnectionType::SERIAL);
 
-    SetSizer(hbox);
-    hbox->Layout();
+    SetSizer(wbox);
+    wbox->Layout();
     wxWindow::Show();
   }
 
@@ -1266,6 +1267,8 @@ class NetConfigPanel : public wxPanel {
       m_comment_textctrl = new CommentTextCtrl(parent, m_params);
       Add(m_comment_label, label_flags);
       Add(m_comment_textctrl, wxSizerFlags(1).Expand().Border());
+      OnExpertModeChange();
+      ConfigureControlsForView(kTcpDevice);
     }
 
   private:
@@ -1286,13 +1289,13 @@ class NetConfigPanel : public wxPanel {
     wxTextCtrl* m_comment_textctrl;
 
     void OnExpertModeChange() {
-      bool advanced = m_expert_mode_checkbox->GetValue();
+      bool is_expert = m_expert_mode_checkbox->GetValue();
       int view = m_connection_type_choice->GetSelection();
       m_connection_type_choice->Clear();
-      if (advanced) {
+      if (is_expert) {
         for (const auto& choice : kAdvancedNetViews)
           m_connection_type_choice->Append(choice);
-        m_connection_type_choice->SetLabel(_("Connection type"));
+        m_connection_type_label->SetLabel(_("Connection type"));
         if (m_comment_label) m_comment_label->Show();
         if (m_comment_textctrl) m_comment_textctrl->Show();
       } else {
