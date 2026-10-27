@@ -35,6 +35,7 @@
 
 #include <wx/tokenzr.h>
 #include <wx/regex.h>
+#include <wx/statline.h>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <linux/can.h>
@@ -365,6 +366,25 @@ public:
   virtual void Reload() = 0;
 };
 
+/** Garnin mode checkbox. */
+class GarminCheckBox : public wxCheckBox, public Reloadable {
+public:
+  GarminCheckBox(wxWindow* parent, ConnectionParams& params)
+      : wxCheckBox(parent, wxID_ANY, _("Use Garmin (GRMN) mode for input")),
+        m_params(params) {
+    GarminCheckBox::Reload();
+    Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
+      m_params.is_garmin = GetValue();
+      ev.Skip();
+    });
+  }
+
+  void Reload() override { SetValue(m_params.is_garmin); }
+
+private:
+  ConnectionParams& m_params;
+};
+
 /** User comment text entry. */
 class CommentText : public wxTextCtrl, public Reloadable {
 public:
@@ -421,6 +441,7 @@ public:
         m_can_btn(nullptr),
         m_canable_btn(nullptr),
         m_internal_gps_btn(nullptr),
+        m_internal_bt_btn(nullptr),
         m_on_click(std::move(on_click)),
         m_params(params) {
     auto hbox = new wxBoxSizer(wxHORIZONTAL);
@@ -446,6 +467,12 @@ public:
       m_internal_gps_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
       hbox->Add(m_internal_gps_btn, wxSizerFlags().Border());
     }
+    //  if (OCPNPlatform::hasInternalBT() {
+    m_internal_bt_btn =
+        new wxRadioButton(this, wxID_ANY, _("Internal Bluetooth"));
+    m_internal_bt_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
+    hbox->Add(m_internal_bt_btn, wxSizerFlags().Border());
+    // }
     SetSelectedType(ConnectionType::SERIAL);
 
     SetSizer(hbox);
@@ -472,6 +499,9 @@ public:
       case ConnectionType::INTERNAL_GPS:
         m_internal_gps_btn->SetValue(true);
         break;
+      case ConnectionType::INTERNAL_BT:
+        m_internal_bt_btn->SetValue(true);
+        break;
       default:
         assert(false && "Illegal connection type");
     }
@@ -483,6 +513,7 @@ private:
   wxRadioButton* m_can_btn;
   wxRadioButton* m_canable_btn;
   wxRadioButton* m_internal_gps_btn;
+  wxRadioButton* m_internal_bt_btn;
   std::function<void(ConnectionType)> m_on_click;
   ConnectionParams& m_params;
 
@@ -499,6 +530,8 @@ private:
       return ConnectionType::CANABLE;
     if (m_internal_gps_btn && m_internal_gps_btn->GetValue())
       return ConnectionType::INTERNAL_GPS;
+    if (m_internal_bt_btn && m_internal_bt_btn->GetValue())
+      return ConnectionType::INTERNAL_BT;
     assert(false && "No connection type radiobutton active(!)");
     return ConnectionType::UNKNOWN;
   }
@@ -683,6 +716,146 @@ private:
       wxLogWarning("Inconsistent GUI direction state");
   }
 };  //  InputOutputPanel
+
+/** Configure internal bluetooth serial connection. */
+class InternalBtConfigPanel : public wxPanel, public Reloadable {
+  class ScanTimer : public wxTimer {
+  public:
+    void SetOwner(InternalBtConfigPanel* owner) { m_owner = owner; }
+    void Notify() override { m_owner->OnBtScanTimer(); }
+
+  private:
+    InternalBtConfigPanel* m_owner;
+  };
+
+  class AdvancedPanel : public wxPanel {
+  public:
+    AdvancedPanel(wxWindow* parent, ConnectionParams& params)
+        : wxPanel(parent, wxID_ANY), m_params(params) {
+      auto vbox = new wxBoxSizer(wxVERTICAL);
+      auto flags = wxSizerFlags();
+      vbox->Add(new GarminCheckBox(this, m_params), flags);
+      vbox->Add(new FilterConfigPanel(this, m_params), flags);
+      SetSizer(vbox);
+      wxWindowBase::Layout();
+    }
+
+  private:
+    ConnectionParams& m_params;
+  };
+
+public:
+  InternalBtConfigPanel(wxWindow* parent, ConnectionParams& params)
+      : wxPanel(parent, wxID_ANY),
+        m_params(params),
+        m_bt_scanning(0),
+        m_bt_no_change_counter(0),
+        m_bt_last_result_count(0) {
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    auto flags = wxSizerFlags().Border();
+
+    vbox->Add(new wxStaticText(this, wxID_ANY, _("Bluetooth Data Sources")),
+              flags);
+
+    auto src_box = new wxBoxSizer(wxHORIZONTAL);
+    m_src_choice = new wxChoice(this, wxID_ANY);
+    m_src_choice->Append("unscanned");
+    m_src_choice->SetSelection(0);
+    m_scan_btn = new wxButton(this, wxID_ANY, _("Scan"));
+    m_scan_btn->Bind(wxEVT_BUTTON,
+                     [&](wxCommandEvent& e) { OnScanBtClick(e); });
+    src_box->Add(m_src_choice, flags);
+    src_box->Add(m_scan_btn, flags);
+    vbox->Add(src_box, flags);
+    vbox->Add(new InputOutputPanel(this, m_params));
+
+    auto advanced_panel = new AdvancedPanel(this, m_params);
+    auto adv_box = new wxBoxSizer(wxHORIZONTAL);
+    adv_box->Add(new wxStaticText(this, wxID_ANY, _("Advanced")));
+    adv_box->Add(new ExpandablePanel(this, advanced_panel,
+                                     [&] { GetParent()->Layout(); }));
+    vbox->Add(adv_box, flags);
+    vbox->Add(advanced_panel, flags);
+
+    SetSizer(vbox);
+    m_scan_timer.SetOwner(this);
+  }
+
+  ~InternalBtConfigPanel() override { m_scan_timer.Stop(); }
+
+  void Reload() override {}
+
+private:
+  ScanTimer m_scan_timer;
+  ConnectionParams& m_params;
+  wxButton* m_scan_btn;
+  wxChoice* m_src_choice;
+  int m_bt_scanning;
+  int m_bt_no_change_counter;
+  wxArrayString m_bt_scan_results;
+  int m_bt_last_result_count;
+
+  void OnScanBtClick(wxCommandEvent& event) {
+    if (m_bt_scanning)
+      StopBtScan();
+    else {
+      m_bt_no_change_counter = 0;
+      m_bt_last_result_count = 0;
+      m_scan_timer.Start(1000, wxTIMER_CONTINUOUS);
+      g_Platform->startBluetoothScan();
+      m_bt_scanning = 1;
+      if (m_scan_btn) {
+        m_scan_btn->SetLabel(_("Stop Scan"));
+      }
+    }
+  }
+
+  void OnBtScanTimer() {
+    if (!m_bt_scanning) return;
+    m_bt_scanning++;
+    m_bt_scan_results = g_Platform->getBluetoothScanResults();
+
+    m_src_choice->Clear();
+    m_src_choice->Append(m_bt_scan_results[0]);  // scan status
+
+    unsigned i = 1;
+    while ((i + 1) < m_bt_scan_results.GetCount()) {
+      wxString item1 = m_bt_scan_results[i] + ";";
+      wxString item2 = m_bt_scan_results.Item(i + 1);
+      m_src_choice->Append(item1 + item2);
+      i += 2;
+    }
+
+    if (m_bt_scan_results.GetCount() > 1) {
+      m_src_choice->SetSelection(1);
+    }
+
+    //  Watch for changes.  When no changes occur after n seconds, stop the
+    //  scan
+    if (m_bt_no_change_counter > 5) StopBtScan();
+
+    if ((int)m_bt_scan_results.GetCount() == m_bt_last_result_count)
+      m_bt_no_change_counter++;
+    else
+      m_bt_no_change_counter = 0;
+    m_bt_last_result_count = static_cast<int>(m_bt_scan_results.GetCount());
+
+    // Absolute fallback
+    if (m_bt_scanning >= 15) {
+      StopBtScan();
+    }
+  }
+
+  void StopBtScan() {
+    m_scan_timer.Stop();
+    g_Platform->stopBluetoothScan();
+    m_bt_scanning = 0;
+    if (m_scan_btn) {
+      m_scan_btn->SetLabel(_("BT Scan"));
+      m_scan_btn->Enable();
+    }
+  }
+};
 
 /** Configure internal GPS usage, usually on Android */
 class InternalGpsConfigPanel : public wxPanel {
@@ -898,24 +1071,6 @@ class SerialConfigPanel : public wxPanel {
   };  // NetGrid
 
   class AdvancedPanel : public wxPanel {
-    class GarminCheckBox : public wxCheckBox, public Reloadable {
-    public:
-      GarminCheckBox(wxWindow* parent, ConnectionParams& params)
-          : wxCheckBox(parent, wxID_ANY, _("Use Garmin (GRMN) mode for input")),
-            m_params(params) {
-        GarminCheckBox::Reload();
-        Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& ev) {
-          m_params.is_garmin = GetValue();
-          ev.Skip();
-        });
-      }
-
-      void Reload() override { SetValue(m_params.is_garmin); }
-
-    private:
-      ConnectionParams& m_params;
-    };
-
   public:
     AdvancedPanel(wxWindow* parent, ConnectionParams& params)
         : wxPanel(parent, wxID_ANY), m_params(params) {
@@ -1469,6 +1624,7 @@ public:
     auto flags = wxSizerFlags().Border();
     m_type_buttons = new TypeButtons(this, on_type_btn_click, m_params);
     statbox->Add(m_type_buttons, wxSizerFlags().Border());
+    statbox->Add(new wxStaticLine(this), wxSizerFlags().Expand());
     m_serial_config_panel = new SerialConfigPanel(this, m_params);
     statbox->Add(m_serial_config_panel);
     m_net_config_panel = new NetConfigPanel(this, m_params);
@@ -1479,6 +1635,8 @@ public:
     statbox->Add(m_canable_config_panel);
     m_internal_gps_config_panel = new InternalGpsConfigPanel(this, m_params);
     statbox->Add(m_internal_gps_config_panel);
+    m_internal_bt_config_panel = new InternalBtConfigPanel(this, m_params);
+    statbox->Add(m_internal_bt_config_panel);
     vbox->Add(statbox, flags.Expand());
 
     auto on_ok_ = [&](wxCommandEvent& ev) { OnOkCancel(ev, true); };
@@ -1516,6 +1674,7 @@ private:
   wxWindow* m_serial_config_panel;
   wxWindow* m_canable_config_panel;
   wxWindow* m_internal_gps_config_panel;
+  wxWindow* m_internal_bt_config_panel;
   bool m_is_new;
 
   static void DoReload(wxWindow* root) {
@@ -1533,8 +1692,9 @@ private:
     m_serial_config_panel->Show(ct == ConnectionType::SERIAL);
     m_canable_config_panel->Show(ct == ConnectionType::CANABLE);
     m_internal_gps_config_panel->Show(ct == ConnectionType::INTERNAL_GPS);
+    m_internal_bt_config_panel->Show(ct == ConnectionType::INTERNAL_BT);
     m_params.type = ct;
-    Layout();
+    GetParent()->Layout();
   }
 
   void OnOkCancel(wxCommandEvent&, bool ok) {
