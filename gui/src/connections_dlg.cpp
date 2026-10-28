@@ -971,7 +971,8 @@ public:
     adv_box->Add(new ExpandablePanel(this, advanced_panel,
                                      [&] { GetParent()->Layout(); }));
     vbox->Add(adv_box, wxSizerFlags().Border());
-    vbox->Add(advanced_panel, wxSizerFlags().Border());
+    vbox->Add(advanced_panel,
+              wxSizerFlags().Border().ReserveSpaceEvenIfHidden());
 
     SetSizer(vbox);
     vbox->SetSizeHints(this);

@@ -134,19 +134,6 @@ static wxString StringArrayToString(const wxArrayString& arr) {
   return ret;
 }
 
-// Check available SocketCAN interfaces
-#if defined(__linux__) && !defined(__ANDROID__)
-static intf_t* intf;
-std::vector<std::string> can_if_candidates;
-static int print_intf(const struct intf_entry* entry, void* arg) {
-  std::string iface = entry->intf_name;
-  if (entry->intf_type == 1 && iface.find("can") != std::string::npos) {
-    can_if_candidates.emplace_back(entry->intf_name);
-  }
-  return 0;
-}
-#endif
-
 static bool IsAddressMultiCast(const wxString& ip) {
   wxArrayString bytes = wxSplit(ip, '.');
   if (bytes.size() != 4) {
@@ -159,7 +146,7 @@ static bool IsAddressMultiCast(const wxString& ip) {
   return ipNum >= multicastStart && ipNum <= multicastEnd;
 }
 
-static bool CheckPort(wxWindow* parent, TextCtrlWithHelp& ctrl) {
+static bool CheckPort(wxWindow* parent, const TextCtrlWithHelp& ctrl) {
   if (ctrl.IsPristine() || ctrl.GetValue().empty()) {
     auto dlg = wxMessageDialog(parent, _("Required field port is missing"),
                                _("OpenCPN error"), wxOK | wxICON_ERROR);
@@ -187,7 +174,7 @@ operating system and should normally not be used by OpenCPN)");
   return true;
 }
 
-bool CheckAddress(wxWindow* parent, TextCtrlWithHelp& ctrl) {
+bool CheckAddress(wxWindow* parent, const TextCtrlWithHelp& ctrl) {
   if (ctrl.IsPristine() || ctrl.GetValue().empty()) {
     auto dlg = wxMessageDialog(parent, _("Required field address is missing"),
                                _("OpenCPN error"), wxOK | wxICON_ERROR);
@@ -237,6 +224,12 @@ m_type_canable_radiobtn->SetValue(false);
 
 /*--------------------------------------*/
 namespace {
+
+// CanConfigPanel global scope support
+#if defined(__linux__) && !defined(__APPLE__)
+intf_t* intf;
+std::vector<std::string> can_if_candidates;
+#endif
 
 /** Interface implemented by widgets supporting reload from parameter(s) */
 class Reloadable {
@@ -296,7 +289,7 @@ public:
 private:
   ConnectionParams& m_params;
 
-  void OnChange(wxCommandEvent& event) {
+  void OnChange(wxCommandEvent& event) const {
     try {
       m_params.network_port = std::stoi(GetLabel().ToStdString());
     } catch (std::logic_error& e) {
@@ -306,6 +299,54 @@ private:
     event.Skip();
   }
 };  // PortTextCtrl
+
+class PortCombo : public wxComboBox, public Reloadable {
+public:
+  PortCombo(wxWindow* parent, wxString& port)
+      : wxComboBox(parent, wxID_ANY), m_port(port) {
+    LoadSerialPorts();
+    Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) {
+      m_port = GetValue();
+      e.Skip();
+    });
+  }
+
+  void Reload() override { SetValue(m_port); }
+
+private:
+  wxString& m_port;
+
+  virtual void LoadSerialPorts() {
+    /** Sort all links to same device as equals. */
+    class PortSorter {
+    private:
+      [[nodiscard]] static std::string GetKey(const std::string& s) {
+        if (s.find("->") == std::string::npos) return s;
+        return ocpn::trim(ocpn::split(s, "->")[1]) + " link";
+      }
+
+    public:
+      bool operator()(const std::string& lhs, const std::string& rhs) const {
+        return GetKey(lhs) < GetKey(rhs);
+      }
+    } port_sorter;
+
+    std::set<std::string, PortSorter> sorted_ports(port_sorter);
+    std::unique_ptr<wxArrayString> ports(EnumerateSerialPorts());
+    for (size_t i = 0; i < ports->GetCount(); i++)
+      sorted_ports.insert((*ports)[i].ToStdString());
+
+    auto value = GetValue();
+    Clear();
+    for (auto& p : sorted_ports) Append(p);
+    if (!value.empty())
+      SetValue(value);
+    else if (FindString(m_port) != wxNOT_FOUND)
+      Select(FindString(m_port));
+    else if (!sorted_ports.empty())
+      SetSelection(0);
+  }
+};  // PortCombo
 
 /**
  * The three radio buttons selecting serial, network or socketcan
@@ -338,11 +379,11 @@ public:
       m_can_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
       wbox->Add(m_can_btn, wxSizerFlags().Border());
     }
-    if (IsWindows()) {
-      m_canable_btn = new wxRadioButton(this, wxID_ANY, _("Canable (SLCAN)"));
-      m_canable_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
-      wbox->Add(m_canable_btn, wxSizerFlags().Border());
-    }
+    // if (IsWindows()) {
+    m_canable_btn = new wxRadioButton(this, wxID_ANY, _("Canable (SLCAN)"));
+    m_canable_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
+    wbox->Add(m_canable_btn, wxSizerFlags().Border());
+    //}
     if (OCPNPlatform::hasInternalGPS()) {
       m_internal_gps_btn = new wxRadioButton(this, wxID_ANY, _("Internal GPS"));
       m_internal_gps_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
@@ -398,12 +439,7 @@ private:
   std::function<void(ConnectionType)> m_on_click;
   ConnectionParams& m_params;
 
-  void OnClick(wxCommandEvent& e) {
-    m_on_click(GetSelectedType());
-    e.Skip();
-  }
-
-  ConnectionType GetSelectedType() {
+  [[nodiscard]] ConnectionType GetSelectedType() const {
     if (m_serial_btn->GetValue()) return ConnectionType::SERIAL;
     if (m_net_btn->GetValue()) return ConnectionType::NETWORK;
     if (m_can_btn && m_can_btn->GetValue()) return ConnectionType::SOCKETCAN;
@@ -415,6 +451,11 @@ private:
       return ConnectionType::INTERNAL_BT;
     assert(false && "No connection type radiobutton active(!)");
     return ConnectionType::UNKNOWN;
+  }
+
+  void OnClick(wxCommandEvent& e) {
+    m_on_click(GetSelectedType());
+    e.Skip();
   }
 };
 
@@ -602,14 +643,15 @@ private:
 class InternalBtConfigPanel : public wxPanel, public Reloadable {
   class ScanTimer : public wxTimer {
   public:
-    ScanTimer() : wxTimer(), m_owner(nullptr) {}
+    ScanTimer() : m_owner(nullptr) {}
+
     void SetOwner(InternalBtConfigPanel* owner) { m_owner = owner; }
     void Notify() override {
-      if (m_owner) m_owner->OnBtScanTimer();
+      if (m_owner.get()) m_owner->OnBtScanTimer();
     }
 
   private:
-    InternalBtConfigPanel* m_owner;
+    wxWeakRef<InternalBtConfigPanel> m_owner;
   };
 
   class AdvancedPanel : public wxPanel {
@@ -782,7 +824,6 @@ public:
     auto ctrl_flags = wxSizerFlags(1).Expand();
     grid_sizer->Add(new wxStaticText(this, wxID_ANY, _("Data port")),
                     label_flags);
-    ;
     auto port_text_ctrl = new PortTextCtrl(this, m_params);
     port_text_ctrl->SetMinSize(wxSize(50 * wxWindow::GetCharWidth(), -1));
     grid_sizer->Add(port_text_ctrl, ctrl_flags);
@@ -814,53 +855,6 @@ private:
 
 class SerialConfigPanel : public wxPanel {
   /** Select serial port combobox. */
-  class PortCombo : public wxComboBox, public Reloadable {
-  public:
-    PortCombo(wxWindow* parent, wxString& port)
-        : wxComboBox(parent, wxID_ANY), m_port(port) {
-      LoadSerialPorts();
-      Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) {
-        m_port = GetValue();
-        e.Skip();
-      });
-    }
-
-    void Reload() override { SetValue(m_port); }
-
-  private:
-    wxString& m_port;
-
-    void LoadSerialPorts() {
-      /** Sort all links to same device as equals. */
-      class PortSorter {
-      private:
-        [[nodiscard]] static std::string GetKey(const std::string& s) {
-          if (s.find("->") == std::string::npos) return s;
-          return ocpn::trim(ocpn::split(s, "->")[1]) + " link";
-        }
-
-      public:
-        bool operator()(const std::string& lhs, const std::string& rhs) const {
-          return GetKey(lhs) < GetKey(rhs);
-        }
-      } port_sorter;
-
-      std::set<std::string, PortSorter> sorted_ports(port_sorter);
-      std::unique_ptr<wxArrayString> ports(EnumerateSerialPorts());
-      for (size_t i = 0; i < ports->GetCount(); i++)
-        sorted_ports.insert((*ports)[i].ToStdString());
-
-      auto value = GetValue();
-      Clear();
-      for (auto& p : sorted_ports) Append(p);
-      if (!value.empty())
-        SetValue(value);
-      else if (FindString(m_port) != wxNOT_FOUND)
-        Select(FindString(m_port));
-      else if (!sorted_ports.empty())
-        SetSelection(0);
-    }
-  };  // PortCombo
 
   /** Select baudrate  combobox. */
   class BaudChoice : public wxComboBox, public Reloadable {
@@ -1157,7 +1151,7 @@ class NetConfigPanel : public wxPanel {
       ConfigureControlsForView(kTcpDevice);
     }
 
-    bool CheckStatus() {
+    [[nodiscard]] bool CheckStatus() const {
       bool ok = CheckAddress(m_parent, *m_address_textctrl);
       if (ok) ok = CheckPort(m_parent, *m_port_textctrl);
       return ok;
@@ -1207,7 +1201,7 @@ class NetConfigPanel : public wxPanel {
       m_parent->Layout();
     }
 
-    void OnAddressChange(wxFocusEvent& ev) {
+    void OnAddressChange(wxFocusEvent& ev) const {
       int selection = m_connection_type_choice->GetSelection();
       if (selection != wxNOT_FOUND) {
         std::string type =
@@ -1361,10 +1355,11 @@ public:
   }
 
   /**
-   * check that user data is sane, possibly run dialogs.
+   * Check that user data is sane, possibly run dialogs for missing or
+   * bad input.
    * @return true if user data is ok to be submitted.
    */
-  bool CheckStatus() { return m_grid->CheckStatus(); }
+  [[nodiscard]] bool CheckStatus() const { return m_grid->CheckStatus(); }
 
 private:
   ConnectionParams& m_params;
@@ -1393,17 +1388,26 @@ class CanConfigPanel : public wxPanel {
   private:
     ConnectionParams& m_params;
 
+    // Check available SocketCAN interfaces, empty list if not linux
+#if !defined(__linux__) || defined(__APPLE__)
+    std::vector<std::string> GetAvailableSocketCanInterfaces() { return {}; }
+#else
+    static int print_intf(const struct intf_entry* entry, void* arg) {
+      std::string iface = entry->intf_name;
+      if (entry->intf_type == 1 && iface.find("can") != std::string::npos) {
+        can_if_candidates.emplace_back(entry->intf_name);
+      }
+      return 0;
+    }
+
     static std::vector<std::string> GetAvailableSocketCanInterfaces() {
       std::vector<std::string> rv;
-
-#if defined(__linux__) && !defined(__ANDROID__)
-      can_if_candidates.clear();  // FIXME: global...
+      can_if_candidates.clear();
 
       if ((intf = intf_open()) == nullptr) {
         wxLogWarning("Error opening interface list");
         return rv;
       }
-
       if (intf_loop(intf, print_intf, nullptr) < 0) {
         wxLogWarning("Error looping over interface list");
       }
@@ -1411,74 +1415,68 @@ class CanConfigPanel : public wxPanel {
 
       for (const auto& iface : can_if_candidates) {
         int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
-        if (sock < 0) {
-          continue;
-        }
+        if (sock < 0) continue;
 
         // Get the interface index
         ifreq if_request = {0};
         strcpy(if_request.ifr_name, iface.c_str());
-        if (ioctl(sock, SIOCGIFINDEX, &if_request) < 0) {
-          continue;
-        }
+        if (ioctl(sock, SIOCGIFINDEX, &if_request) < 0) continue;
 
-        // Check if interface is UP
+        // Check if interface is UP.
         sockaddr_can can_address = {0};
         can_address.can_family = AF_CAN;
         can_address.can_ifindex = if_request.ifr_ifindex;
-        if (ioctl(sock, SIOCGIFFLAGS, &if_request) < 0) {
-          continue;
-        }
-        if (if_request.ifr_flags & IFF_UP) {
-          rv.push_back(iface);
-        }
+        if (ioctl(sock, SIOCGIFFLAGS, &if_request) < 0) continue;
+
+        if (if_request.ifr_flags & IFF_UP) rv.push_back(iface);
       }
-#endif  // defined(__linux__) && !defined(__ANDROID__)
       return rv;
     }
   };
 
-public:
-  CanConfigPanel(wxWindow* parent, ConnectionParams& params)
-      : wxPanel(parent), m_params(params) {
-    auto hbox = new wxBoxSizer(wxHORIZONTAL);
-    hbox->Add(new wxStaticText(this, wxID_ANY, "Socketcan source"),
-              wxSizerFlags().Border().CentreVertical());
-    m_choice = new CanChoice(this, m_params);
-    m_choice->Append("foobar");
-    hbox->Add(m_choice, wxSizerFlags().Border());
-    SetSizer(hbox);
-    wxWindow::Layout();
-    wxWindow::Show();
-  }
+#endif  // !defined(__linux__) || defined(__ANDROID__)
 
-private:
-  ConnectionParams& m_params;
-  wxChoice* m_choice;
-};
+  public:
+    CanConfigPanel(wxWindow* parent, ConnectionParams& params)
+        : wxPanel(parent), m_params(params) {
+      auto hbox = new wxBoxSizer(wxHORIZONTAL);
+      hbox->Add(new wxStaticText(this, wxID_ANY, "Socketcan source"),
+                wxSizerFlags().Border().CentreVertical());
+      m_choice = new CanChoice(this, m_params);
+      m_choice->Append("foobar");
+      hbox->Add(m_choice, wxSizerFlags().Border());
+      SetSizer(hbox);
+      wxWindow::Layout();
+      wxWindow::Show();
+    }
 
-class ButtonSizer : public wxStdDialogButtonSizer {
-public:
-  ButtonSizer(wxWindow* parent, std::function<void(wxCommandEvent&)> on_ok,
-              std::function<void(wxCommandEvent&)> on_cancel)
-      : wxStdDialogButtonSizer(),
-        m_on_ok(std::move(on_ok)),
-        m_on_cancel(std::move(on_cancel)) {
-    auto ok_btn = new wxButton(parent, wxID_OK);
-    ok_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& ev) { m_on_ok(ev); });
-    AddButton(ok_btn);
-    auto cancel_btn = new wxButton(parent, wxID_CANCEL);
-    cancel_btn->Bind(wxEVT_BUTTON,
-                     [&](wxCommandEvent& ev) { m_on_cancel(ev); });
-    AddButton(cancel_btn);
-    SetAffirmativeButton(ok_btn);
-    Realize();
-  }
+  private:
+    ConnectionParams& m_params;
+    wxChoice* m_choice;
+  };
 
-private:
-  std::function<void(wxCommandEvent&)> m_on_ok;
-  std::function<void(wxCommandEvent&)> m_on_cancel;
-};
+  class ButtonSizer : public wxStdDialogButtonSizer {
+  public:
+    ButtonSizer(wxWindow* parent, std::function<void(wxCommandEvent&)> on_ok,
+                std::function<void(wxCommandEvent&)> on_cancel)
+        : wxStdDialogButtonSizer(),
+          m_on_ok(std::move(on_ok)),
+          m_on_cancel(std::move(on_cancel)) {
+      auto ok_btn = new wxButton(parent, wxID_OK);
+      ok_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& ev) { m_on_ok(ev); });
+      AddButton(ok_btn);
+      auto cancel_btn = new wxButton(parent, wxID_CANCEL);
+      cancel_btn->Bind(wxEVT_BUTTON,
+                       [&](wxCommandEvent& ev) { m_on_cancel(ev); });
+      AddButton(cancel_btn);
+      SetAffirmativeButton(ok_btn);
+      Realize();
+    }
+
+  private:
+    std::function<void(wxCommandEvent&)> m_on_ok;
+    std::function<void(wxCommandEvent&)> m_on_cancel;
+  };
 
 }  // Anonymous namespace
 
@@ -1525,7 +1523,7 @@ public:
   }
 
   void SetParams(std::unique_ptr<ConnectionParams> p) override {
-    m_is_new = !bool(p);
+    m_is_new = !static_cast<bool>(p);
     m_params = p ? *p : GetDefaultParams();
     Reload();
     OnTypeBtnClick(m_params.type);
