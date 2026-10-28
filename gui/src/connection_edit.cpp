@@ -816,15 +816,32 @@ private:
 
 /** Configure windows-only canable connection. */
 class CanableConfigPanel : public wxPanel {
+  class PortCombo : public wxComboBox, public Reloadable {
+  public:
+    PortCombo(wxWindow* parent, wxString& port)
+        : wxComboBox(parent, wxID_ANY), m_port(port) {
+      SetValue(m_port);
+      Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) {
+        m_port = GetValue();
+        e.Skip();
+      });
+    }
+
+    void Reload() override { SetValue(m_port); }
+
+  private:
+    wxString& m_port;
+  };
+
 public:
   CanableConfigPanel(wxWindow* parent, ConnectionParams& params)
       : wxPanel(parent, wxID_ANY), m_params(params) {
     auto* grid_sizer = new wxFlexGridSizer(2, wxWindow::GetCharHeight() / 2, 0);
     auto label_flags = wxSizerFlags().Border().CentreVertical();
     auto ctrl_flags = wxSizerFlags(1).Expand();
-    grid_sizer->Add(new wxStaticText(this, wxID_ANY, _("Data port")),
+    grid_sizer->Add(new wxStaticText(this, wxID_ANY, _("Data source")),
                     label_flags);
-    auto port_text_ctrl = new PortTextCtrl(this, m_params);
+    auto port_text_ctrl = new PortCombo(this, m_params.serial_port);
     port_text_ctrl->SetMinSize(wxSize(50 * wxWindow::GetCharWidth(), -1));
     grid_sizer->Add(port_text_ctrl, ctrl_flags);
     grid_sizer->Add(new wxStaticText(this, wxID_ANY, "User comment"),
@@ -1359,7 +1376,10 @@ public:
    * bad input.
    * @return true if user data is ok to be submitted.
    */
-  [[nodiscard]] bool CheckStatus() const { return m_grid->CheckStatus(); }
+  [[nodiscard]] bool CheckStatus() const {
+    if (m_params.type != ConnectionType::NETWORK) return true;
+    return m_grid->CheckStatus();
+  }
 
 private:
   ConnectionParams& m_params;
