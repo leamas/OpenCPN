@@ -29,6 +29,10 @@
 #include <wx/arrstr.h>
 #include <wx/string.h>
 
+#ifdef __ANDROID__
+#include "androidUTIL.h"
+#endif
+
 static wxString StringArrayToString(const wxArrayString& arr) {
   wxString ret = wxEmptyString;
   for (size_t i = 0; i < arr.Count(); i++) {

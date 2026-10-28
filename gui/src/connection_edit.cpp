@@ -31,10 +31,30 @@
 #include <wx/wx.h>
 #endif
 
-#include <wx/tokenzr.h>
+#include <wx/arrstr.h>
+#include <wx/button.h>
+#include <wx/checkbox.h>
+#include <wx/combobox.h>
+#include <wx/choice.h>
+#include <wx/event.h>
+#include <wx/log.h>
+#include <wx/msgdlg.h>
+#include <wx/panel.h>
+#include <wx/platinfo.h>
+#include <wx/radiobut.h>
+#include <wx/sizer.h>
 #include <wx/regex.h>
 #include <wx/statline.h>
+#include <wx/stattext.h>
+#include <wx/string.h>
+#include <wx/textctrl.h>
+#include <wx/tokenzr.h>
+#include <wx/timer.h>
+#include <wx/weakref.h>
+#include <wx/window.h>
 #include <wx/wrapsizer.h>
+
+// wxAtoi
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <linux/can.h>
@@ -206,27 +226,11 @@ static void SetupProtocolChoice(wxChoice* choice) {
   choice->Enable();
 }
 
-#ifdef __ANDROID__
-if (m_type_internal_gps_radiobtn) {
-  m_type_internal_gps_radiobtn->SetValue(true);
-  SetNMEAFormToGPS();
-} else {
-  m_type_net_radiobtn->SetValue(true);
-  SetNMEAFormToNet();
-}
-#elif defined(ORVAR)
-m_type_serial_radiobtn->SetValue(bserial);
-m_type_net_radiobtn->SetValue(!bserial);
-bserial ? SetNMEAFormToSerial() : SetNMEAFormToNet();
-m_type_can_radiobtn->SetValue(false);
-m_type_canable_radiobtn->SetValue(false);
-#endif
-
 /*--------------------------------------*/
 namespace {
 
 // CanConfigPanel global scope support
-#if defined(__linux__) && !defined(__APPLE__)
+#if defined(__linux__) && !defined(__ANDROID__)
 intf_t* intf;
 std::vector<std::string> can_if_candidates;
 #endif
@@ -304,7 +308,7 @@ class PortCombo : public wxComboBox, public Reloadable {
 public:
   PortCombo(wxWindow* parent, wxString& port)
       : wxComboBox(parent, wxID_ANY), m_port(port) {
-    LoadSerialPorts();
+    PortCombo::LoadSerialPorts();
     Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) {
       m_port = GetValue();
       e.Skip();
@@ -820,7 +824,7 @@ class CanableConfigPanel : public wxPanel {
   public:
     PortCombo(wxWindow* parent, wxString& port)
         : wxComboBox(parent, wxID_ANY), m_port(port) {
-      SetValue(m_port);
+      wxComboBox::SetValue(m_port);
       Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) {
         m_port = GetValue();
         e.Skip();
@@ -837,7 +841,10 @@ public:
   CanableConfigPanel(wxWindow* parent, ConnectionParams& params)
       : wxPanel(parent, wxID_ANY), m_params(params) {
     auto* grid_sizer = new wxFlexGridSizer(2, wxWindow::GetCharHeight() / 2, 0);
-    auto label_flags = wxSizerFlags().Border().CentreVertical();
+    auto label_flags = wxSizerFlags().Border();
+#if wxCHECK_VERSION(3, 2, 0)
+    label_flags = label_flags.CentreVertical();
+#endif
     auto ctrl_flags = wxSizerFlags(1).Expand();
     grid_sizer->Add(new wxStaticText(this, wxID_ANY, _("Data source")),
                     label_flags);
@@ -950,7 +957,10 @@ class SerialConfigPanel : public wxPanel {
     SerialParamsGrid(wxWindow* parent, ConnectionParams& params)
         : wxFlexGridSizer(2), m_params(params) {
       auto flags = wxSizerFlags().Border();
-      auto text_flags = flags.CentreVertical();
+      auto text_flags = flags;
+#if wxCHECK_VERSION(3, 2, 0)
+      text_flags = flags.CentreVertical();
+#endif
       Add(new wxStaticText(parent, wxID_ANY, _("Data port")), text_flags);
       Add(new PortCombo(parent, m_params.serial_port), flags.Expand());
       Add(new wxStaticText(parent, wxID_ANY, _("Baudrate")), text_flags);
@@ -1124,7 +1134,10 @@ class NetConfigPanel : public wxPanel {
           m_params(params),
           m_in_out_panel(in_out_panel) {
       auto flags = wxSizerFlags().Border();
-      auto label_flags = wxSizerFlags().Border().CentreVertical();
+      auto label_flags = wxSizerFlags().Border();
+#if wxCHECK_VERSION(3, 2, 0)
+      label_flags = label_flags.CentreVertical();
+#endif
 
       m_expert_mode_checkbox = new ExpertModeCheckBox(parent);
       m_expert_mode_checkbox->Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& e) {
@@ -1409,7 +1422,7 @@ class CanConfigPanel : public wxPanel {
     ConnectionParams& m_params;
 
     // Check available SocketCAN interfaces, empty list if not linux
-#if !defined(__linux__) || defined(__APPLE__)
+#if !defined(__linux__) || defined(__ANDROID__)
     std::vector<std::string> GetAvailableSocketCanInterfaces() { return {}; }
 #else
     static int print_intf(const struct intf_entry* entry, void* arg) {
@@ -1452,51 +1465,53 @@ class CanConfigPanel : public wxPanel {
       }
       return rv;
     }
-  };
-
 #endif  // !defined(__linux__) || defined(__ANDROID__)
-
-  public:
-    CanConfigPanel(wxWindow* parent, ConnectionParams& params)
-        : wxPanel(parent), m_params(params) {
-      auto hbox = new wxBoxSizer(wxHORIZONTAL);
-      hbox->Add(new wxStaticText(this, wxID_ANY, "Socketcan source"),
-                wxSizerFlags().Border().CentreVertical());
-      m_choice = new CanChoice(this, m_params);
-      m_choice->Append("foobar");
-      hbox->Add(m_choice, wxSizerFlags().Border());
-      SetSizer(hbox);
-      wxWindow::Layout();
-      wxWindow::Show();
-    }
-
-  private:
-    ConnectionParams& m_params;
-    wxChoice* m_choice;
   };
 
-  class ButtonSizer : public wxStdDialogButtonSizer {
-  public:
-    ButtonSizer(wxWindow* parent, std::function<void(wxCommandEvent&)> on_ok,
-                std::function<void(wxCommandEvent&)> on_cancel)
-        : wxStdDialogButtonSizer(),
-          m_on_ok(std::move(on_ok)),
-          m_on_cancel(std::move(on_cancel)) {
-      auto ok_btn = new wxButton(parent, wxID_OK);
-      ok_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& ev) { m_on_ok(ev); });
-      AddButton(ok_btn);
-      auto cancel_btn = new wxButton(parent, wxID_CANCEL);
-      cancel_btn->Bind(wxEVT_BUTTON,
-                       [&](wxCommandEvent& ev) { m_on_cancel(ev); });
-      AddButton(cancel_btn);
-      SetAffirmativeButton(ok_btn);
-      Realize();
-    }
+public:
+  CanConfigPanel(wxWindow* parent, ConnectionParams& params)
+      : wxPanel(parent), m_params(params) {
+    auto hbox = new wxBoxSizer(wxHORIZONTAL);
+    auto flags = wxSizerFlags().Border();
+#if wxCHECK_VERSION(3, 2, 0)
+    flags = flags.CentreVertical();
+#endif
+    hbox->Add(new wxStaticText(this, wxID_ANY, "Socketcan source"), flags);
+    m_choice = new CanChoice(this, m_params);
+    m_choice->Append("foobar");
+    hbox->Add(m_choice, wxSizerFlags().Border());
+    SetSizer(hbox);
+    wxWindow::Layout();
+    wxWindow::Show();
+  }
 
-  private:
-    std::function<void(wxCommandEvent&)> m_on_ok;
-    std::function<void(wxCommandEvent&)> m_on_cancel;
-  };
+private:
+  ConnectionParams& m_params;
+  wxChoice* m_choice;
+};
+
+class ButtonSizer : public wxStdDialogButtonSizer {
+public:
+  ButtonSizer(wxWindow* parent, std::function<void(wxCommandEvent&)> on_ok,
+              std::function<void(wxCommandEvent&)> on_cancel)
+      : wxStdDialogButtonSizer(),
+        m_on_ok(std::move(on_ok)),
+        m_on_cancel(std::move(on_cancel)) {
+    auto ok_btn = new wxButton(parent, wxID_OK);
+    ok_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& ev) { m_on_ok(ev); });
+    AddButton(ok_btn);
+    auto cancel_btn = new wxButton(parent, wxID_CANCEL);
+    cancel_btn->Bind(wxEVT_BUTTON,
+                     [&](wxCommandEvent& ev) { m_on_cancel(ev); });
+    AddButton(cancel_btn);
+    SetAffirmativeButton(ok_btn);
+    Realize();
+  }
+
+private:
+  std::function<void(wxCommandEvent&)> m_on_ok;
+  std::function<void(wxCommandEvent&)> m_on_cancel;
+};
 
 }  // Anonymous namespace
 
