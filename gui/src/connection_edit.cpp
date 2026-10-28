@@ -59,7 +59,6 @@
 #if defined(__linux__) && !defined(__ANDROID__)
 #include <linux/can.h>
 #include <net/if.h>
-#include <serial/serial.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include "dnet.h"
