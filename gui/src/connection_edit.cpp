@@ -294,7 +294,7 @@ private:
 
   void OnChange(wxCommandEvent& event) const {
     try {
-      m_params.network_port = std::stoi(GetLabel().ToStdString());
+      m_params.network_port = std::stoi(GetValue().ToStdString());
     } catch (std::logic_error& e) {
       wxLogWarning("Cannot parse configuration network port: %s", e.what());
       m_params.network_port = 99999;  // Illegal for ipv4
@@ -302,54 +302,6 @@ private:
     event.Skip();
   }
 };  // PortTextCtrl
-
-class PortCombo : public wxComboBox, public Reloadable {
-public:
-  PortCombo(wxWindow* parent, wxString& port)
-      : wxComboBox(parent, wxID_ANY), m_port(port) {
-    PortCombo::LoadSerialPorts();
-    Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) {
-      m_port = GetValue();
-      e.Skip();
-    });
-  }
-
-  void Reload() override { SetValue(m_port); }
-
-private:
-  wxString& m_port;
-
-  virtual void LoadSerialPorts() {
-    /** Sort all links to same device as equals. */
-    class PortSorter {
-    private:
-      [[nodiscard]] static std::string GetKey(const std::string& s) {
-        if (s.find("->") == std::string::npos) return s;
-        return ocpn::trim(ocpn::split(s, "->")[1]) + " link";
-      }
-
-    public:
-      bool operator()(const std::string& lhs, const std::string& rhs) const {
-        return GetKey(lhs) < GetKey(rhs);
-      }
-    } port_sorter;
-
-    std::set<std::string, PortSorter> sorted_ports(port_sorter);
-    std::unique_ptr<wxArrayString> ports(EnumerateSerialPorts());
-    for (size_t i = 0; i < ports->GetCount(); i++)
-      sorted_ports.insert((*ports)[i].ToStdString());
-
-    auto value = GetValue();
-    Clear();
-    for (auto& p : sorted_ports) Append(p);
-    if (!value.empty())
-      SetValue(value);
-    else if (FindString(m_port) != wxNOT_FOUND)
-      Select(FindString(m_port));
-    else if (!sorted_ports.empty())
-      SetSelection(0);
-  }
-};  // PortCombo
 
 /**
  * The three radio buttons selecting serial, network or socketcan
@@ -878,6 +830,53 @@ private:
 
 class SerialConfigPanel : public wxPanel {
   /** Select serial port combobox. */
+  class PortCombo : public wxComboBox, public Reloadable {
+  public:
+    PortCombo(wxWindow* parent, wxString& port)
+        : wxComboBox(parent, wxID_ANY), m_port(port) {
+      PortCombo::LoadSerialPorts();
+      Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) {
+        m_port = GetValue();
+        e.Skip();
+      });
+    }
+
+    void Reload() override { SetValue(m_port); }
+
+  private:
+    wxString& m_port;
+
+    virtual void LoadSerialPorts() {
+      /** Sort all links to same device as equals. */
+      class PortSorter {
+      private:
+        [[nodiscard]] static std::string GetKey(const std::string& s) {
+          if (s.find("->") == std::string::npos) return s;
+          return ocpn::trim(ocpn::split(s, "->")[1]) + " link";
+        }
+
+      public:
+        bool operator()(const std::string& lhs, const std::string& rhs) const {
+          return GetKey(lhs) < GetKey(rhs);
+        }
+      } port_sorter;
+
+      std::set<std::string, PortSorter> sorted_ports(port_sorter);
+      std::unique_ptr<wxArrayString> ports(EnumerateSerialPorts());
+      for (size_t i = 0; i < ports->GetCount(); i++)
+        sorted_ports.insert((*ports)[i].ToStdString());
+
+      auto value = GetValue();
+      Clear();
+      for (auto& p : sorted_ports) Append(p);
+      if (!value.empty())
+        SetValue(value);
+      else if (FindString(m_port) != wxNOT_FOUND)
+        Select(FindString(m_port));
+      else if (!sorted_ports.empty())
+        SetSelection(0);
+    }
+  };  // PortCombo
 
   /** Select baudrate  combobox. */
   class BaudChoice : public wxComboBox, public Reloadable {
@@ -1095,7 +1094,7 @@ class NetConfigPanel : public wxPanel {
           m_params(params) {
       AddressTextCtrl::Reload();
       Bind(wxEVT_TEXT, [&](wxCommandEvent& e) {
-        m_params.network_address = GetLabel();
+        m_params.network_address = GetValue();
         e.Skip();
       });
       wxWindowBase::SetMinSize(wxSize(60 * wxWindow::GetCharWidth(), -1));
@@ -1113,7 +1112,7 @@ class NetConfigPanel : public wxPanel {
         : wxTextCtrl(parent, wxID_ANY), m_params(params) {
       CommentTextCtrl::Reload();
       Bind(wxEVT_TEXT, [&](wxCommandEvent& e) {
-        m_params.user_comment = GetLabel();
+        m_params.user_comment = GetValue();
         e.Skip();
       });
     }
@@ -1137,7 +1136,6 @@ class NetConfigPanel : public wxPanel {
 #if wxCHECK_VERSION(3, 2, 0)
       label_flags = label_flags.CentreVertical();
 #endif
-
       m_expert_mode_checkbox = new ExpertModeCheckBox(parent);
       m_expert_mode_checkbox->Bind(wxEVT_CHECKBOX, [&](wxCommandEvent& e) {
         OnExpertModeChange();
