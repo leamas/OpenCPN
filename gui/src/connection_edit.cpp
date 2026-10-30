@@ -81,10 +81,8 @@
 
 #include "conn_params_panel.h"
 #include "filter_sentence_dlg.h"
-#include "gui_lib.h"
 #include "ocpn_platform.h"
 #include "options.h"
-#include "priority_gui.h"
 
 // Make _() return std::string instead of wxString;
 #undef _
@@ -193,7 +191,7 @@ operating system and should normally not be used by OpenCPN)");
   return true;
 }
 
-bool CheckAddress(wxWindow* parent, const TextCtrlWithHelp& ctrl) {
+static bool CheckAddress(wxWindow* parent, const TextCtrlWithHelp& ctrl) {
   if (ctrl.IsPristine() || ctrl.GetValue().empty()) {
     auto dlg = wxMessageDialog(parent, _("Required field address is missing"),
                                _("OpenCPN error"), wxOK | wxICON_ERROR);
@@ -203,26 +201,6 @@ bool CheckAddress(wxWindow* parent, const TextCtrlWithHelp& ctrl) {
   // Checking the address requires using gethostbyname() or so since it
   // could be a hostname. Not worthwhile in this context.
   return true;
-}
-
-bool CheckIoDirections(wxWindow* parent, const wxCheckBox* input,
-                       const wxCheckBox* output) {
-  if (input->GetValue() || output->GetValue()) return true;
-
-  auto dlg =
-      wxMessageDialog(parent, _("Either input or output must be checked"),
-                      _("OpenCPN error"), wxOK | wxICON_ERROR);
-  dlg.ShowModal();
-  return false;
-}
-
-/** Initiate the nmea protocol 0183/2000 choide */
-static void SetupProtocolChoice(wxChoice* choice) {
-  choice->Clear();
-  choice->Append("NMEA 0183");
-  choice->Append("NMEA 2000");
-  choice->SetSelection(0);
-  choice->Enable();
 }
 
 /*--------------------------------------*/
@@ -287,7 +265,7 @@ public:
     Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { OnChange(e); });
   }
 
-  void Reload() override { SetLabel(std::to_string(m_params.network_port)); }
+  void Reload() override { ChangeValue(std::to_string(m_params.network_port)); }
 
 private:
   ConnectionParams& m_params;
@@ -828,6 +806,7 @@ private:
   }
 };  // CanableConfigPanel
 
+/** Configure serial connection port, baudrate, etc. */
 class SerialConfigPanel : public wxPanel {
   /** Select serial port combobox. */
   class PortCombo : public wxComboBox, public Reloadable {
@@ -1100,7 +1079,7 @@ class NetConfigPanel : public wxPanel {
       wxWindowBase::SetMinSize(wxSize(60 * wxWindow::GetCharWidth(), -1));
     }
 
-    void Reload() override { SetLabel(m_params.network_address); }
+    void Reload() override { ChangeValue(m_params.network_address); }
 
   private:
     ConnectionParams& m_params;
@@ -1117,7 +1096,7 @@ class NetConfigPanel : public wxPanel {
       });
     }
 
-    void Reload() override { SetLabel(m_params.user_comment); }
+    void Reload() override { ChangeValue(m_params.user_comment); }
 
   private:
     ConnectionParams& m_params;
@@ -1255,6 +1234,15 @@ class NetConfigPanel : public wxPanel {
       OnExpertModeChange();
     }
 
+    /** Initiate the nmea protocol 0183/2000 choide */
+    static void SetupProtocolChoice(wxChoice* choice) {
+      choice->Clear();
+      choice->Append("NMEA 0183");
+      choice->Append("NMEA 2000");
+      choice->SetSelection(0);
+      choice->Enable();
+    }
+
     void ConfigureControlsForView(const std::string& view) {
       auto found =
           std::find(kBasicNetViews.begin(), kBasicNetViews.end(), view);
@@ -1358,14 +1346,29 @@ class NetConfigPanel : public wxPanel {
     }
   };  // NetGrid
 
+  class NetGridPanel : public wxPanel {
+  public:
+    NetGridPanel(wxWindow* parent, ConnectionParams& params,
+                 InputOutputPanel* in_out_panel)
+        : wxPanel(parent), m_net_grid(new NetGrid(this, params, in_out_panel)) {
+      SetSizer(m_net_grid);
+      wxWindowBase::Layout();
+    }
+
+    bool CheckStatus() { return m_net_grid->CheckStatus(); }
+
+  private:
+    NetGrid* m_net_grid;
+  };
+
 public:
   NetConfigPanel(wxWindow* parent, ConnectionParams& params)
-      : wxPanel(parent), m_params(params), m_grid(nullptr) {
+      : wxPanel(parent), m_params(params), m_grid_panel(nullptr) {
     auto flags = wxSizerFlags().Border();
     auto vbox = new wxBoxSizer(wxVERTICAL);
     auto input_output_panel = new InputOutputPanel(this, m_params);
-    m_grid = new NetGrid(this, m_params, input_output_panel);
-    vbox->Add(m_grid, flags);
+    m_grid_panel = new NetGridPanel(this, m_params, input_output_panel);
+    vbox->Add(m_grid_panel, flags);
     vbox->Add(input_output_panel, flags);
 
     auto advanced_panel = new FilterConfigPanel(this, m_params);
@@ -1388,12 +1391,12 @@ public:
    */
   [[nodiscard]] bool CheckStatus() const {
     if (m_params.type != ConnectionType::NETWORK) return true;
-    return m_grid->CheckStatus();
+    return m_grid_panel->CheckStatus();
   }
 
 private:
   ConnectionParams& m_params;
-  NetGrid* m_grid;
+  NetGridPanel* m_grid_panel;
 };
 
 class CanConfigPanel : public wxPanel {
@@ -1557,8 +1560,8 @@ public:
   void SetParams(std::unique_ptr<ConnectionParams> p) override {
     m_is_new = !static_cast<bool>(p);
     m_params = p ? *p : GetDefaultParams();
-    Reload();
     OnTypeBtnClick(m_params.type);
+    Reload();
   }
 
   ConnectionParams GetEditedParams() override { return m_params; }
