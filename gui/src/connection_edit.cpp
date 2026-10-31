@@ -424,7 +424,7 @@ class FilterConfigPanel : public wxPanel, public Reloadable {
       setup_box->Add(m_edit_btn, flags0);
 
       auto vbox = new wxBoxSizer(wxVERTICAL);
-      vbox->Add(radio_btn_box, wxSizerFlags().Border());
+      vbox->Add(radio_btn_box, wxSizerFlags());
       vbox->Add(setup_box, wxSizerFlags(1).Border().Expand());
       SetSizer(vbox);
       // FIXME (leamas) - Why?
@@ -471,9 +471,11 @@ class FilterConfigPanel : public wxPanel, public Reloadable {
       SentenceListDlg dlg(m_parent, FILTER_INPUT, type, list);
       if (dlg.ShowModal() != wxID_OK) return;
 
-      m_sentences_text->SetLabel(dlg.GetSentences());
       m_params.input_sentence_list =
           wxStringTokenize(m_sentences_text->GetLabel(), ",");
+      std::string text = dlg.GetSentences().ToStdString();
+      if (text.empty()) text = _("No sentences selected");
+      m_sentences_text->SetLabel(text);
       GetGrandParent()->Layout();
     }
   };  // Statbox
@@ -1614,10 +1616,9 @@ private:
   void OnOkCancel(wxCommandEvent&, bool ok) {
     if (!ok) {
       m_on_cancel();
-      return;
-    }
-    if (m_net_config_panel->CheckStatus())
+    } else if (m_net_config_panel->CheckStatus()) {
       m_on_ok(std::make_unique<ConnectionParams>(m_params), m_is_new);
+    }
   }
 
   static ConnectionParams GetDefaultParams() {

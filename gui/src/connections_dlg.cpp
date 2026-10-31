@@ -1012,7 +1012,8 @@ public:
   TopScroll(wxWindow* parent, const std::vector<ConnectionParams*>& connections,
             obs::EventVar& evt_add_connection)
       : wxScrolledWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                         wxVSCROLL | wxHSCROLL, TopScrollWindowName) {
+                         wxVSCROLL | wxHSCROLL, TopScrollWindowName),
+        m_edited_connection(nullptr) {
     ShowScrollbars(wxSHOW_SB_NEVER, wxSHOW_SB_ALWAYS);
     auto vbox = new wxBoxSizer(wxVERTICAL);
     SetSizer(vbox);
@@ -1024,9 +1025,9 @@ public:
         HandleNew(p);
     };
 
-    top_panel =
+    m_top_panel =
         new TopPanel(this, connections, evt_add_connection, on_edit_connection);
-    vbox->Add(top_panel, wxSizerFlags(1).Expand());
+    vbox->Add(m_top_panel, wxSizerFlags(1).Expand());
     auto on_cancel = [&] { SwitchToGrid(); };
 
     auto on_edit_click = [&](std::unique_ptr<ConnectionParams> params,
@@ -1034,7 +1035,6 @@ public:
       HandleEditFinish(std::move(params), new_mode);
     };
 
-    // m_edit_panel = new ConnectionEditDlg(this, on_edit_click);
     m_edit_panel =
         AbstractConnectionEditDlg::Create(this, on_cancel, on_edit_click);
     wxWindow* options = FindWindowByName("Options");
@@ -1056,10 +1056,11 @@ public:
   }
 
   void SetColorScheme(ColorScheme cs) const {
-    if (top_panel) top_panel->SetColorScheme(cs);
+    if (m_top_panel) m_top_panel->SetColorScheme(cs);
   }
 
   void HandleEdit(ConnectionParams* p) {
+    m_edited_connection = p;
     m_edit_panel->SetParams(std::make_unique<ConnectionParams>(*p));
     SwitchToEditor();
   }
@@ -1070,7 +1071,7 @@ public:
   }
 
   void SwitchToEditor() {
-    top_panel->Hide();  // TopPanel
+    m_top_panel->Hide();  // TopPanel
     Scroll(0, 0);
     DimeControl(m_edit_panel);
     m_edit_panel->Show();
@@ -1080,29 +1081,28 @@ public:
 
   void SwitchToGrid() {
     m_edit_panel->Hide();
-    top_panel->GetConnectionsGrid()->ReloadGrid(TheConnectionParams());
+    m_top_panel->GetConnectionsGrid()->ReloadGrid(TheConnectionParams());
     g_options->ShowOKButtons(true);
     Layout();
     Scroll(0, 0);
-    top_panel->Show();
+    m_top_panel->Show();
   }
 
-  void HandleEditFinish(std::unique_ptr<ConnectionParams> cp_orig,
+  void HandleEditFinish(std::unique_ptr<ConnectionParams> new_params,
                         bool new_mode) {
-    // OK from EDIT mode
     if (!new_mode) {
-      ConnectionParams cp_edited = m_edit_panel->GetEditedParams();
-      delete cp_orig->options_panel;
-      StopAndRemoveCommDriver(cp_orig->GetStrippedDSPort(),
-                              cp_orig->GetCommProtocol());
-      int index =
-          top_panel->GetConnectionsGrid()->FindConnectionIndex(cp_orig.get());
+      // OK from EDIT mode
+      StopAndRemoveCommDriver(m_edited_connection->GetStrippedDSPort(),
+                              m_edited_connection->GetCommProtocol());
+      assert(m_edited_connection && "No edited connection");
+      int index = m_top_panel->GetConnectionsGrid()->FindConnectionIndex(
+          m_edited_connection);
       assert(index != -1 && "Cannot look up connection index");
-      *TheConnectionParams()[index] = cp_edited;
-      cp_edited.is_setup = false;  // Trigger new stream
-    }
-    //  OK from NEW mode
-    else {
+      *TheConnectionParams()[index] = *new_params;
+      TheConnectionParams()[index]->is_setup = false;  // Trigger new stream
+      m_edited_connection = nullptr;
+    } else {
+      //  OK from NEW mode
       ConnectionParams cp = m_edit_panel->GetEditedParams();
       if (FindConnectionByIface(&cp)) {
         wxMessageDialog dialog(this, kInterfaceExistsMessage,
@@ -1125,7 +1125,7 @@ public:
                                 msg.ToStdString(), 60);
       }
       UpdateDatastreams();
-      top_panel->m_evt_add_connection.Notify();
+      m_top_panel->m_evt_add_connection.Notify();
     }
 
     SwitchToGrid();
@@ -1133,8 +1133,9 @@ public:
   }
 
 private:
-  TopPanel* top_panel;
+  TopPanel* m_top_panel;
   AbstractConnectionEditDlg* m_edit_panel;
+  const ConnectionParams* m_edited_connection;
 };
 
 /** Main window: Panel with a single TopScroll child. */
