@@ -408,13 +408,20 @@ class FilterConfigPanel : public wxPanel, public Reloadable {
       radio_btn_box->Add(m_ignore_btn, wxSizerFlags().Border());
 
       auto setup_box = new wxBoxSizer(wxHORIZONTAL);
-      m_sentences_text = new wxTextCtrl(this, wxID_ANY, "");
+      auto flags1 = wxSizerFlags(1).Border();
+      auto flags0 = wxSizerFlags(0).Border();
+#if wxCHECK_VERSION(3, 2, 0)
+      flags0 = flags0.CentreVertical();
+      flags1 = flags1.CentreVertical();
+#endif
+      m_sentences_text = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition,
+                                          wxDefaultSize, wxST_ELLIPSIZE_END);
       m_sentences_text->Disable();
       m_edit_btn = new wxButton(this, wxID_ANY, "...");
       m_edit_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& e) { OnEdit(e); });
       m_edit_btn->SetMaxSize(wxSize(wxWindow::GetCharWidth() * 4, -1));
-      setup_box->Add(m_sentences_text, wxSizerFlags(1).Border());
-      setup_box->Add(m_edit_btn, wxSizerFlags().Border());
+      setup_box->Add(m_sentences_text, flags1);
+      setup_box->Add(m_edit_btn, flags0);
 
       auto vbox = new wxBoxSizer(wxVERTICAL);
       vbox->Add(radio_btn_box, wxSizerFlags().Border());
@@ -422,7 +429,7 @@ class FilterConfigPanel : public wxPanel, public Reloadable {
       SetSizer(vbox);
       // FIXME (leamas) - Why?
       wxWindowBase::SetMinSize(wxSize(-1, 7 * wxWindow::GetCharHeight()));
-      wxWindow::Layout();
+      wxWindow::Fit();
 
       Statbox::Reload();
       m_ignore_btn->Bind(wxEVT_RADIOBUTTON,
@@ -436,15 +443,17 @@ class FilterConfigPanel : public wxPanel, public Reloadable {
       m_accept_btn->SetValue(accept);
       bool ignore = m_params.input_sentence_list_type == ListType::BLACKLIST;
       m_ignore_btn->SetValue(ignore);
-      m_sentences_text->SetValue(
-          StringArrayToString(m_params.input_sentence_list));
+      auto text = StringArrayToString(m_params.input_sentence_list);
+      text = text.empty() ? _("No sentences selected") : text;
+      m_sentences_text->SetLabel(text);
+      GetGrandParent()->Layout();
     }
 
   private:
     ConnectionParams& m_params;
     wxRadioButton* m_accept_btn;
     wxRadioButton* m_ignore_btn;
-    wxTextCtrl* m_sentences_text;
+    wxStaticText* m_sentences_text;
     wxButton* m_edit_btn;
 
     void OnDirectionChange(wxCommandEvent& e) {
@@ -458,13 +467,14 @@ class FilterConfigPanel : public wxPanel, public Reloadable {
     void OnEdit(wxCommandEvent& e) {
       const ListType type = m_params.input_sentence_list_type;
       const wxArrayString list =
-          wxStringTokenize(m_sentences_text->GetValue(), ",");
+          wxStringTokenize(m_sentences_text->GetLabel(), ",");
       SentenceListDlg dlg(m_parent, FILTER_INPUT, type, list);
       if (dlg.ShowModal() != wxID_OK) return;
 
-      m_sentences_text->SetValue(dlg.GetSentences());
+      m_sentences_text->SetLabel(dlg.GetSentences());
       m_params.input_sentence_list =
-          wxStringTokenize(m_sentences_text->GetValue(), ",");
+          wxStringTokenize(m_sentences_text->GetLabel(), ",");
+      GetGrandParent()->Layout();
     }
   };  // Statbox
 
