@@ -265,7 +265,10 @@ public:
     Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { OnChange(e); });
   }
 
-  void Reload() override { ChangeValue(std::to_string(m_params.network_port)); }
+  void Reload() override {
+    auto string = std::to_string(m_params.network_port);
+    ChangeValue(string == "0" ? "" : string);
+  }
 
 private:
   ConnectionParams& m_params;
@@ -312,11 +315,11 @@ public:
       m_can_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
       wbox->Add(m_can_btn, wxSizerFlags().Border());
     }
-    // if (IsWindows()) {
-    m_canable_btn = new wxRadioButton(this, wxID_ANY, _("Canable (SLCAN)"));
-    m_canable_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
-    wbox->Add(m_canable_btn, wxSizerFlags().Border());
-    //}
+    if (IsWindows()) {
+      m_canable_btn = new wxRadioButton(this, wxID_ANY, _("Canable (SLCAN)"));
+      m_canable_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
+      wbox->Add(m_canable_btn, wxSizerFlags().Border());
+    }
     if (OCPNPlatform::hasInternalGPS()) {
       m_internal_gps_btn = new wxRadioButton(this, wxID_ANY, _("Internal GPS"));
       m_internal_gps_btn->Bind(wxEVT_RADIOBUTTON, on_clicked);
