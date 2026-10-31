@@ -1324,6 +1324,7 @@ class NetConfigPanel : public wxPanel {
       if (m_protocol_choice->GetCount() != 2)
         SetupProtocolChoice(m_protocol_choice);  // FIXME - leamas
       if (view == kTcpDevice || view == kTcpClient) {
+        m_params.net_protocol = NetworkProtocol::TCP;
         m_address_label->Show();
         m_address_label->Show();
         if (m_address_textctrl->GetValue() == "0.0.0.0")
@@ -1336,6 +1337,7 @@ class NetConfigPanel : public wxPanel {
         m_in_out_panel->EnableInput();
         m_in_out_panel->EnableOutput();
       } else if (view == kUdpReceive || view == kUdpInput) {
+        m_params.net_protocol = NetworkProtocol::UDP;
         m_address_label->Hide();
         m_address_textctrl->ChangeValue("0.0.0.0");
         m_params.network_address = "0.0.0.0";
@@ -1349,6 +1351,7 @@ class NetConfigPanel : public wxPanel {
         m_in_out_panel->SetOutput(false);
         m_in_out_panel->SetInput(true);
       } else if (view == kUdpSend || view == kUdpOutput) {
+        m_params.net_protocol = NetworkProtocol::UDP;
         if (m_address_textctrl->GetValue() == "0.0.0.0")
           m_address_textctrl->RestoreHelp();
         if (m_address_textctrl->IsPristine())
@@ -1356,6 +1359,7 @@ class NetConfigPanel : public wxPanel {
         m_in_out_panel->SetInput(false);
         m_in_out_panel->SetOutput(true);
       } else if (view == kGpsdClient || view == kGpsdDevice) {
+        m_params.net_protocol = NetworkProtocol::TCP;
         m_protocol_choice->Clear();
         m_protocol_choice->Append("gpsd");
         m_protocol_choice->SetSelection(0);
@@ -1369,6 +1373,7 @@ class NetConfigPanel : public wxPanel {
         m_in_out_panel->SetInput(true);
         m_in_out_panel->SetOutput(false);
       } else if (view == kSignalkClient || view == kSignalkDevice) {
+        m_params.net_protocol = NetworkProtocol::TCP;
         m_protocol_choice->Clear();
         m_protocol_choice->Append("SignalK");
         m_protocol_choice->SetSelection(0);
@@ -1382,13 +1387,15 @@ class NetConfigPanel : public wxPanel {
         m_in_out_panel->SetInput(true);
         m_in_out_panel->SetOutput(false);
       } else if (view == kTcpServer) {
+        m_params.net_protocol = NetworkProtocol::TCP;
+        m_params.network_address = "0.0.0.0";
         m_address_label->SetLabel(_("Interface"));
         m_address_textctrl->ChangeValue("0.0.0.0");
-        m_params.network_address = "0.0.0.0";
         m_address_textctrl->Disable();
         m_in_out_panel->EnableInput();
         m_in_out_panel->EnableOutput();
       } else if (view == kMulticastClient || view == kMulticastServer) {
+        m_params.net_protocol = NetworkProtocol::UDP;
         if (m_address_textctrl->GetValue().empty())
           m_address_textctrl->RestoreHelp();
         m_address_label->SetLabel(_("Multicast group"));
