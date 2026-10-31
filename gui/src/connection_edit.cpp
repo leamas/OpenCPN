@@ -1178,6 +1178,28 @@ class NetConfigPanel : public wxPanel {
       return ok;
     }
 
+    /** Update GUI elements from m_params values. */
+    void Reload() {
+      ConnectionParams default_params;
+      std::string view;
+      bool is_expert;
+      if (IsDefaultParams(&m_params)) {
+        view = kTcpDevice;
+        is_expert = false;
+      } else {
+        view = NetViewByConnection(&m_params);
+        auto found =
+            std::find(kBasicNetViews.begin(), kBasicNetViews.end(), view);
+        is_expert = found == kBasicNetViews.end();
+      }
+      m_expert_mode_checkbox->SetValue(is_expert);
+      OnExpertModeChange();
+
+      auto item = m_connection_type_choice->FindString(view);
+      if (item != wxNOT_FOUND) m_connection_type_choice->SetSelection(item);
+      OnConnectionTypeChange();
+    }
+
   private:
     wxWindow* m_parent;
     ConnectionParams& m_params;
@@ -1258,6 +1280,31 @@ class NetConfigPanel : public wxPanel {
       choice->Enable();
     }
 
+    /**
+     * Return net view name for given ConnectionParams. For ambigious cases
+     * like kTcpDevice (basic view)/kTcpClient (Advanced view) return
+     * the basic view.
+     */
+    static std::string NetViewByConnection(const ConnectionParams* cp) {
+      auto address = cp->network_address.ToStdString();
+      bool is_server = address.empty() || address == "0.0.0.0";
+      if (IsAddressMultiCast(cp->network_address))
+        return is_server ? kMulticastServer : kMulticastClient;
+      switch (cp->net_protocol) {
+        case NetworkProtocol::GPSD:
+          return kGpsdDevice;
+        case NetworkProtocol::SIGNALK:
+          return kSignalkDevice;
+        case NetworkProtocol::UDP:
+          return is_server ? kUdpReceive : kUdpSend;
+        case NetworkProtocol::TCP:
+          return is_server ? kTcpServer : kTcpDevice;
+        default:
+          wxLogWarning("Cannot deduce connection params view type");
+          return "";
+      }
+      return "";  // for the compiler
+    }
     void ConfigureControlsForView(const std::string& view) {
       auto found =
           std::find(kBasicNetViews.begin(), kBasicNetViews.end(), view);
@@ -1291,6 +1338,7 @@ class NetConfigPanel : public wxPanel {
       } else if (view == kUdpReceive || view == kUdpInput) {
         m_address_label->Hide();
         m_address_textctrl->ChangeValue("0.0.0.0");
+        m_params.network_address = "0.0.0.0";
         m_address_textctrl->Disable();
         m_address_textctrl->Hide();
         if (m_address_textctrl->IsPristine())
@@ -1336,6 +1384,7 @@ class NetConfigPanel : public wxPanel {
       } else if (view == kTcpServer) {
         m_address_label->SetLabel(_("Interface"));
         m_address_textctrl->ChangeValue("0.0.0.0");
+        m_params.network_address = "0.0.0.0";
         m_address_textctrl->Disable();
         m_in_out_panel->EnableInput();
         m_in_out_panel->EnableOutput();
@@ -1359,9 +1408,17 @@ class NetConfigPanel : public wxPanel {
         assert(false && "Illegal view");
       }
     }
+
+    static bool IsDefaultParams(const ConnectionParams* params) {
+      static const ConnectionParams default_params;
+      return ConnectionType::NETWORK == params->type &&
+             default_params.net_protocol == params->net_protocol &&
+             default_params.network_port == params->network_port &&
+             default_params.network_address == params->network_address;
+    }
   };  // NetGrid
 
-  class NetGridPanel : public wxPanel {
+  class NetGridPanel : public wxPanel, public Reloadable {
   public:
     NetGridPanel(wxWindow* parent, ConnectionParams& params,
                  InputOutputPanel* in_out_panel)
@@ -1371,6 +1428,8 @@ class NetConfigPanel : public wxPanel {
     }
 
     bool CheckStatus() { return m_net_grid->CheckStatus(); }
+
+    void Reload() override { m_net_grid->Reload(); }
 
   private:
     NetGrid* m_net_grid;
@@ -1438,7 +1497,9 @@ class CanConfigPanel : public wxPanel {
 
     // Check available SocketCAN interfaces, empty list if not linux
 #if !defined(__linux__) || defined(__ANDROID__)
-    std::vector<std::string> GetAvailableSocketCanInterfaces() { return {}; }
+    std::vector<std::string> GetAvailableSocketCanInterfaces() {
+      return {{}};
+    }
 #else
     static int print_intf(const struct intf_entry* entry, void* arg) {
       std::string iface = entry->intf_name;
@@ -1466,7 +1527,7 @@ class CanConfigPanel : public wxPanel {
         if (sock < 0) continue;
 
         // Get the interface index
-        ifreq if_request = {0};
+        ifreq if_request = {{0}};
         strcpy(if_request.ifr_name, iface.c_str());
         if (ioctl(sock, SIOCGIFINDEX, &if_request) < 0) continue;
 
