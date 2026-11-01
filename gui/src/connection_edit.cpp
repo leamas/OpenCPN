@@ -281,6 +281,7 @@ public:
   void Reload() override {
     auto string = std::to_string(m_params.network_port);
     ChangeValue(string == "0" ? "" : string);
+    if (GetValue().empty()) RestoreHelp();
   }
 
   void ChangeValue(const wxString& value) override {
@@ -292,6 +293,7 @@ private:
   ConnectionParams& m_params;
 
   void OnChange() {
+    if (GetValue().empty()) return;
     try {
       m_params.network_port = std::stoi(GetValue().ToStdString());
     } catch (std::logic_error& e) {
@@ -1119,11 +1121,30 @@ class NetConfigPanel : public wxPanel {
 
     void Reload() override {
       TextCtrlWithHelp::ChangeValue(m_params.network_address);
+      if (GetValue().empty()) RestoreHelp();
     }
 
     void ChangeValue(const wxString& text) override {
       TextCtrlWithHelp::ChangeValue(text);
       m_params.network_address = text;
+    }
+
+    void SetClientMode() {
+      if (GetValue() == "0.0.0.0") ChangeValue("");
+      if (IsPristine() || GetValue().empty()) SetHelp(kAddressDefaultHelp);
+      Enable();
+    }
+
+    void SetServerMode() {
+      SetValue("0.0.0.0");
+      m_params.network_address = "0.0.0.0";
+      Disable();
+    }
+
+    void SetClientMode(const std::string& help) {
+      SetClientMode();
+      SetHelp(help);
+      if (IsPristine()) RestoreHelp();
     }
 
   private:
@@ -1211,7 +1232,6 @@ class NetConfigPanel : public wxPanel {
 
     /** Update GUI elements from m_params values. */
     void Reload() {
-      ConnectionParams default_params;
       std::string view;
       bool is_expert;
       if (IsDefaultParams(&m_params)) {
@@ -1240,11 +1260,11 @@ class NetConfigPanel : public wxPanel {
     wxStaticText* m_connection_type_label;
     wxChoice* m_connection_type_choice;
     wxStaticText* m_protocol_label;
-    wxChoice* m_protocol_choice;
+    ProtocolChoice* m_protocol_choice;
     wxStaticText* m_address_label;
-    TextCtrlWithHelp* m_address_textctrl;
+    AddressTextCtrl* m_address_textctrl;
     wxStaticText* m_port_label;
-    TextCtrlWithHelp* m_port_textctrl;
+    PortTextCtrl* m_port_textctrl;
     wxStaticText* m_comment_label;
     wxTextCtrl* m_comment_textctrl;
 
@@ -1357,31 +1377,30 @@ class NetConfigPanel : public wxPanel {
       assert(selection != wxNOT_FOUND);
       m_expert_mode_checkbox->SetValue(found == kBasicNetViews.end());
       m_address_textctrl->Enable();
+      m_address_textctrl->Reload();
+      m_address_textctrl->SetClientMode();
+      m_address_textctrl->Show();
       m_address_label->SetLabel(_("Server address"));
       m_in_out_panel->EnableOutput(false);
       m_in_out_panel->EnableInput(false);
       m_address_label->Show();
-      m_address_textctrl->Show();
+      m_port_textctrl->Reload();
       auto port = m_port_textctrl->GetValue();
       if (port == kDefaultGpsdPort || port == kDefaultSignalkPort ||
-          port.empty())
+          port.empty()) {
         m_port_textctrl->RestoreHelp();
-      if (m_protocol_choice->GetCount() != 2)
-        SetupProtocolChoice(m_protocol_choice);  // FIXME - leamas
+      }
+      m_protocol_choice->Reload();
+      m_protocol_choice->Enable();
       if (view == kTcpDevice || view == kTcpClient) {
         m_address_label->Show();
-        if (m_address_textctrl->GetValue() == "0.0.0.0")
-          m_address_textctrl->RestoreHelp();
-        if (m_address_textctrl->IsPristine())
-          m_address_textctrl->SetHelp(kAddressDefaultHelp);
+        m_address_textctrl->SetClientMode();
         if (m_port_textctrl->IsPristine()) m_port_textctrl->SetHelp(kPortHelp);
         m_in_out_panel->EnableInput();
         m_in_out_panel->EnableOutput();
       } else if (view == kUdpReceive || view == kUdpInput) {
         m_address_label->Hide();
-        m_address_textctrl->ChangeValue("0.0.0.0");
-        m_params.network_address = "0.0.0.0";
-        m_address_textctrl->Disable();
+        m_address_textctrl->SetServerMode();
         m_address_textctrl->Hide();
         if (m_address_textctrl->IsPristine())
           m_address_textctrl->SetHelp(kAddressDefaultHelp);
@@ -1389,10 +1408,7 @@ class NetConfigPanel : public wxPanel {
         m_in_out_panel->SetOutput(false);
         m_in_out_panel->SetInput(true);
       } else if (view == kUdpSend || view == kUdpOutput) {
-        if (m_address_textctrl->GetValue() == "0.0.0.0")
-          m_address_textctrl->RestoreHelp();
-        if (m_address_textctrl->IsPristine())
-          m_address_textctrl->SetHelp(kAddressUdpHelp);
+        m_address_textctrl->SetClientMode(kAddressUdpHelp);
         m_in_out_panel->SetInput(false);
         m_in_out_panel->SetOutput(true);
       } else if (view == kGpsdClient || view == kGpsdDevice) {
@@ -1400,10 +1416,7 @@ class NetConfigPanel : public wxPanel {
         m_protocol_choice->Append("gpsd");
         m_protocol_choice->SetSelection(0);
         m_protocol_choice->Disable();
-        if (m_address_textctrl->GetValue() == "0.0.0.0")
-          m_address_textctrl->RestoreHelp();
-        if (m_address_textctrl->IsPristine())
-          m_address_textctrl->SetHelp(kAddressDefaultHelp);
+        m_address_textctrl->SetClientMode();
         if (m_port_textctrl->IsPristine())
           m_port_textctrl->ChangeValue(kDefaultGpsdPort);
         m_in_out_panel->SetInput(true);
@@ -1413,18 +1426,14 @@ class NetConfigPanel : public wxPanel {
         m_protocol_choice->Append("SignalK");
         m_protocol_choice->SetSelection(0);
         m_protocol_choice->Disable();
-        if (m_address_textctrl->GetValue() == "0.0.0.0")
-          m_address_textctrl->RestoreHelp();
-        if (m_address_textctrl->IsPristine())
-          m_address_textctrl->SetHelp(kAddressDefaultHelp);
+        m_address_textctrl->SetClientMode(kAddressUdpHelp);
         if (m_port_textctrl->IsPristine())
           m_port_textctrl->ChangeValue(kDefaultSignalkPort);
         m_in_out_panel->SetInput(true);
         m_in_out_panel->SetOutput(false);
       } else if (view == kTcpServer) {
         m_address_label->SetLabel(_("Interface"));
-        m_address_textctrl->ChangeValue("0.0.0.0");
-        m_address_textctrl->Disable();
+        m_address_textctrl->SetServerMode();
         m_in_out_panel->EnableInput();
         m_in_out_panel->EnableOutput();
       } else if (view == kMulticastClient || view == kMulticastServer) {
