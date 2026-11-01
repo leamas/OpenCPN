@@ -98,6 +98,11 @@ static const std::string kAddressUdpHelp =
     _("IP address or hostname, often 255.255.255.255");
 static const std::string kAddressMcastHelp =
     _("Group address, usually 224.0.2.0 - 224.0.255.255");
+static const std::string kPortHelp =
+    _("Port number (1025 - 65535, often 10110)");
+
+static const std::string kMcastPortHelp =
+    _("Port number, usually 49152 - 65535");
 static const std::string kTcpDevice = _("Device using TCP");
 static const std::string kUdpReceive = _("Device sending UDP");
 static const std::string kUdpOutput = _("UDP send");
@@ -212,12 +217,21 @@ intf_t* intf;
 std::vector<std::string> can_if_candidates;
 #endif
 
-/** Interface implemented by widgets supporting reload from parameter(s) */
+/**
+ * Interface implemented by widgets reflecting a ConnectionParams
+ * parameter. The widget is kept in sync with the parameter(s) at any
+ * time using a contract:
+ *
+ *   - When created, widget state is updated from parameters.
+ *   - WHen user modifies widget state parameter(s) is updated.
+ *   - When external code changes the parameter(s) it invokes Reload()
+ *     which updates the widget state.
+ */
 class Reloadable {
 public:
   virtual ~Reloadable() = default;
 
-  /** Reload GUI value(s) from parameter(s) */
+  /** Reload widget value(s) from parameter(s) */
   virtual void Reload() = 0;
 };
 
@@ -259,8 +273,7 @@ private:
 class PortTextCtrl : public TextCtrlWithHelp, public Reloadable {
 public:
   PortTextCtrl(wxWindow* parent, ConnectionParams& params)
-      : TextCtrlWithHelp(parent, "Port number (1025 - 65535, often 10110)"),
-        m_params(params) {
+      : TextCtrlWithHelp(parent, kPortHelp), m_params(params) {
     PortTextCtrl::Reload();
     Bind(wxEVT_TEXT, [&](wxCommandEvent& e) { OnChange(e); });
   }
@@ -270,22 +283,31 @@ public:
     ChangeValue(string == "0" ? "" : string);
   }
 
+  void ChangeValue(const wxString& value) override {
+    TextCtrlWithHelp::ChangeValue(value);
+    OnChange();
+  }
+
 private:
   ConnectionParams& m_params;
 
-  void OnChange(wxCommandEvent& event) const {
+  void OnChange() {
     try {
       m_params.network_port = std::stoi(GetValue().ToStdString());
     } catch (std::logic_error& e) {
       wxLogWarning("Cannot parse configuration network port: %s", e.what());
       m_params.network_port = 99999;  // Illegal for ipv4
     }
+  }
+
+  void OnChange(wxCommandEvent& event) {
+    OnChange();
     event.Skip();
   }
 };  // PortTextCtrl
 
 /**
- * The three radio buttons selecting serial, network or socketcan
+ * The radio buttons selecting serial, network, socketcan, etc.
  * connection type.
  */
 class TypeButtons : public wxPanel, public Reloadable {
@@ -396,7 +418,7 @@ private:
 };
 
 /** Configure input filters: accept or ignore list of sentences. */
-class FilterConfigPanel : public wxPanel, public Reloadable {
+class FilterConfigPanel : public wxPanel {
   /** Container fir accept/ignore buttons and  filtered sentences. */
   class Statbox : public wxStaticBox, public Reloadable {
   public:
@@ -493,8 +515,6 @@ public:
     SetSizer(vbox);
     wxWindowBase::Layout();
   }
-
-  void Reload() override {}
 
 private:
   ConnectionParams& m_params;
@@ -594,8 +614,9 @@ class InternalBtConfigPanel : public wxPanel, public Reloadable {
     ScanTimer() : m_owner(nullptr) {}
 
     void SetOwner(InternalBtConfigPanel* owner) { m_owner = owner; }
+
     void Notify() override {
-      if (m_owner.get()) m_owner->OnBtScanTimer();
+      if (m_owner.get()) m_owner->OnTimer();
     }
 
   private:
@@ -636,8 +657,7 @@ public:
     m_src_choice->Append("unscanned");
     m_src_choice->SetSelection(0);
     m_scan_btn = new wxButton(this, wxID_ANY, _("Scan"));
-    m_scan_btn->Bind(wxEVT_BUTTON,
-                     [&](wxCommandEvent& e) { OnScanBtClick(e); });
+    m_scan_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& e) { OnClick(e); });
     src_box->Add(m_src_choice, flags);
     src_box->Add(m_scan_btn, flags);
     vbox->Add(src_box, flags);
@@ -669,9 +689,9 @@ private:
   wxArrayString m_bt_scan_results;
   int m_bt_last_result_count;
 
-  void OnScanBtClick(wxCommandEvent& event) {
+  void OnClick(wxCommandEvent& event) {
     if (m_bt_scanning)
-      StopBtScan();
+      StopScan();
     else {
       m_bt_no_change_counter = 0;
       m_bt_last_result_count = 0;
@@ -684,7 +704,7 @@ private:
     }
   }
 
-  void OnBtScanTimer() {
+  void OnTimer() {
     if (!m_bt_scanning) return;
     m_bt_scanning++;
     m_bt_scan_results = g_Platform->getBluetoothScanResults();
@@ -706,7 +726,7 @@ private:
 
     //  Watch for changes.  When no changes occur after n seconds, stop the
     //  scan
-    if (m_bt_no_change_counter > 5) StopBtScan();
+    if (m_bt_no_change_counter > 5) StopScan();
     int count = static_cast<int>(m_bt_scan_results.GetCount());
     if (count == m_bt_last_result_count)
       m_bt_no_change_counter++;
@@ -716,11 +736,11 @@ private:
 
     // Absolute fallback
     if (m_bt_scanning >= 15) {
-      StopBtScan();
+      StopScan();
     }
   }
 
-  void StopBtScan() {
+  void StopScan() {
     m_scan_timer.Stop();
     g_Platform->stopBluetoothScan();
     m_bt_scanning = 0;
@@ -878,7 +898,7 @@ class SerialConfigPanel : public wxPanel {
     BaudChoice(wxWindow* parent, int& baudrate)
         : wxComboBox(parent, wxID_ANY), m_baudrate(baudrate) {
       BaudChoice::Reload();
-      Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) { OnBaudChange(e); });
+      Bind(wxEVT_COMBOBOX, [&](wxCommandEvent& e) { OnChange(e); });
     };
 
     void Reload() override { LoadBaudrates(); }
@@ -899,7 +919,7 @@ class SerialConfigPanel : public wxPanel {
         SetSelection(5);  // 4800
     }
 
-    void OnBaudChange(wxCommandEvent& e) {
+    void OnChange(wxCommandEvent& e) {
       std::string speed = GetStringSelection().ToStdString();
       try {
         m_baudrate = std::stoi(speed);
@@ -916,7 +936,7 @@ class SerialConfigPanel : public wxPanel {
     ProtocolChoice(wxWindow* parent, DataProtocol& protocol)
         : wxChoice(parent, wxID_ANY), m_protocol(protocol) {
       ProtocolChoice::Reload();
-      Bind(wxEVT_CHOICE, [&](wxCommandEvent& e) { OnProtocolChange(e); });
+      Bind(wxEVT_CHOICE, [&](wxCommandEvent& e) { OnChange(e); });
     };
 
     void Reload() override { LoadProtocols(); }
@@ -924,7 +944,7 @@ class SerialConfigPanel : public wxPanel {
   private:
     DataProtocol& m_protocol;
 
-    void OnProtocolChange(wxCommandEvent& e) {
+    void OnChange(wxCommandEvent& e) {
       std::string protocol = GetStringSelection().ToStdString();
       if (protocol == "0")
         m_protocol = PROTO_NMEA0183;
@@ -965,8 +985,9 @@ class SerialConfigPanel : public wxPanel {
 
   private:
     ConnectionParams& m_params;
-  };  // NetGrid
+  };  // SerialParamsGrid
 
+  /** Global Advanced stuff: Use Garmin checkbox, filter configuration */
   class AdvancedPanel : public wxPanel {
   public:
     AdvancedPanel(wxWindow* parent, ConnectionParams& params)
@@ -1010,8 +1031,9 @@ private:
   ConnectionParams& m_params;
   wxWindow* m_advanced_panel;
   SerialParamsGrid* m_grid;
-};
+};  // SerialConfigPanel
 
+/** Network configuration: TCP/UDP, client/server, etc. */
 class NetConfigPanel : public wxPanel {
   class ExpertModeCheckBox : public wxCheckBox {
   public:
@@ -1080,6 +1102,7 @@ class NetConfigPanel : public wxPanel {
     }
   };  // ProtocolChoice
 
+  /** Network address text entry. */
   class AddressTextCtrl : public TextCtrlWithHelp, public Reloadable {
   public:
     AddressTextCtrl(wxWindow* parent, ConnectionParams& params)
@@ -1094,12 +1117,20 @@ class NetConfigPanel : public wxPanel {
       wxWindowBase::SetMinSize(wxSize(60 * wxWindow::GetCharWidth(), -1));
     }
 
-    void Reload() override { ChangeValue(m_params.network_address); }
+    void Reload() override {
+      TextCtrlWithHelp::ChangeValue(m_params.network_address);
+    }
+
+    void ChangeValue(const wxString& text) override {
+      TextCtrlWithHelp::ChangeValue(text);
+      m_params.network_address = text;
+    }
 
   private:
     ConnectionParams& m_params;
   };
 
+  /** User comments text entry. */
   class CommentTextCtrl : public wxTextCtrl, public Reloadable {
   public:
     CommentTextCtrl(wxWindow* parent, ConnectionParams& params)
@@ -1267,6 +1298,19 @@ class NetConfigPanel : public wxPanel {
       if (selection == wxNOT_FOUND) return;
       std::string view =
           m_connection_type_choice->GetStringSelection().ToStdString();
+      if (view == kTcpDevice || view == kTcpClient || view == kTcpServer ||
+          view == kGpsdClient || view == kGpsdDevice ||
+          view == kSignalkClient || view == kSignalkDevice)
+        m_params.net_protocol = NetworkProtocol::TCP;
+      else if (view == kUdpReceive || view == kUdpInput || view == kUdpSend ||
+               view == kUdpOutput || view == kMulticastClient ||
+               view == kMulticastServer)
+        m_params.net_protocol = NetworkProtocol::UDP;
+      else
+        assert(false && "Cannot handle view");
+      if (view == kTcpServer || view == kUdpReceive || view == kUdpInput ||
+          view == kMulticastServer)
+        m_params.network_address = "0.0.0.0";
       ConfigureControlsForView(view);
       OnExpertModeChange();
     }
@@ -1281,8 +1325,8 @@ class NetConfigPanel : public wxPanel {
     }
 
     /**
-     * Return net view name for given ConnectionParams. For ambigious cases
-     * like kTcpDevice (basic view)/kTcpClient (Advanced view) return
+     * Return net view name for given ConnectionParams. For ambiguous cases
+     * like kTcpDevice (basic view)/kTcpClient (advanced view) return
      * the basic view.
      */
     static std::string NetViewByConnection(const ConnectionParams* cp) {
@@ -1305,6 +1349,7 @@ class NetConfigPanel : public wxPanel {
       }
       return "";  // for the compiler
     }
+
     void ConfigureControlsForView(const std::string& view) {
       auto found =
           std::find(kBasicNetViews.begin(), kBasicNetViews.end(), view);
@@ -1324,20 +1369,15 @@ class NetConfigPanel : public wxPanel {
       if (m_protocol_choice->GetCount() != 2)
         SetupProtocolChoice(m_protocol_choice);  // FIXME - leamas
       if (view == kTcpDevice || view == kTcpClient) {
-        m_params.net_protocol = NetworkProtocol::TCP;
-        m_address_label->Show();
         m_address_label->Show();
         if (m_address_textctrl->GetValue() == "0.0.0.0")
           m_address_textctrl->RestoreHelp();
         if (m_address_textctrl->IsPristine())
           m_address_textctrl->SetHelp(kAddressDefaultHelp);
-        if (m_port_textctrl->IsPristine())
-          m_port_textctrl->SetHelp(
-              _("Port number (1025 - 65535, often 10110)"));
+        if (m_port_textctrl->IsPristine()) m_port_textctrl->SetHelp(kPortHelp);
         m_in_out_panel->EnableInput();
         m_in_out_panel->EnableOutput();
       } else if (view == kUdpReceive || view == kUdpInput) {
-        m_params.net_protocol = NetworkProtocol::UDP;
         m_address_label->Hide();
         m_address_textctrl->ChangeValue("0.0.0.0");
         m_params.network_address = "0.0.0.0";
@@ -1345,13 +1385,10 @@ class NetConfigPanel : public wxPanel {
         m_address_textctrl->Hide();
         if (m_address_textctrl->IsPristine())
           m_address_textctrl->SetHelp(kAddressDefaultHelp);
-        if (m_port_textctrl->IsPristine())
-          m_port_textctrl->SetHelp(
-              _("Port number (1025 - 65535, often 10110)"));
+        if (m_port_textctrl->IsPristine()) m_port_textctrl->SetHelp(kPortHelp);
         m_in_out_panel->SetOutput(false);
         m_in_out_panel->SetInput(true);
       } else if (view == kUdpSend || view == kUdpOutput) {
-        m_params.net_protocol = NetworkProtocol::UDP;
         if (m_address_textctrl->GetValue() == "0.0.0.0")
           m_address_textctrl->RestoreHelp();
         if (m_address_textctrl->IsPristine())
@@ -1359,7 +1396,6 @@ class NetConfigPanel : public wxPanel {
         m_in_out_panel->SetInput(false);
         m_in_out_panel->SetOutput(true);
       } else if (view == kGpsdClient || view == kGpsdDevice) {
-        m_params.net_protocol = NetworkProtocol::TCP;
         m_protocol_choice->Clear();
         m_protocol_choice->Append("gpsd");
         m_protocol_choice->SetSelection(0);
@@ -1373,7 +1409,6 @@ class NetConfigPanel : public wxPanel {
         m_in_out_panel->SetInput(true);
         m_in_out_panel->SetOutput(false);
       } else if (view == kSignalkClient || view == kSignalkDevice) {
-        m_params.net_protocol = NetworkProtocol::TCP;
         m_protocol_choice->Clear();
         m_protocol_choice->Append("SignalK");
         m_protocol_choice->SetSelection(0);
@@ -1387,20 +1422,18 @@ class NetConfigPanel : public wxPanel {
         m_in_out_panel->SetInput(true);
         m_in_out_panel->SetOutput(false);
       } else if (view == kTcpServer) {
-        m_params.net_protocol = NetworkProtocol::TCP;
-        m_params.network_address = "0.0.0.0";
         m_address_label->SetLabel(_("Interface"));
         m_address_textctrl->ChangeValue("0.0.0.0");
         m_address_textctrl->Disable();
         m_in_out_panel->EnableInput();
         m_in_out_panel->EnableOutput();
       } else if (view == kMulticastClient || view == kMulticastServer) {
-        m_params.net_protocol = NetworkProtocol::UDP;
-        if (m_address_textctrl->GetValue().empty())
-          m_address_textctrl->RestoreHelp();
+        auto address = m_address_textctrl->GetValue();
+        if (address.empty() || address == "0.0.0.0")
+          m_address_textctrl->SetHelp(kAddressMcastHelp);
         m_address_label->SetLabel(_("Multicast group"));
         if (m_port_textctrl->IsPristine())
-          m_port_textctrl->SetHelp(_("Port number, usually 49152 - 65535"));
+          m_port_textctrl->SetHelp(kMcastPortHelp);
         if (m_address_textctrl->IsPristine())
           m_address_textctrl->SetHelp(kAddressMcastHelp);
         if (view == kMulticastClient) {
@@ -1478,8 +1511,9 @@ public:
 private:
   ConnectionParams& m_params;
   NetGridPanel* m_grid_panel;
-};
+};  // NetConfigPanel
 
+/** Configure Linux socketcan connection */
 class CanConfigPanel : public wxPanel {
   class CanChoice : public wxChoice, public Reloadable {
   public:
@@ -1571,34 +1605,34 @@ public:
 private:
   ConnectionParams& m_params;
   wxChoice* m_choice;
-};
-
-class ButtonSizer : public wxStdDialogButtonSizer {
-public:
-  ButtonSizer(wxWindow* parent, std::function<void(wxCommandEvent&)> on_ok,
-              std::function<void(wxCommandEvent&)> on_cancel)
-      : wxStdDialogButtonSizer(),
-        m_on_ok(std::move(on_ok)),
-        m_on_cancel(std::move(on_cancel)) {
-    auto ok_btn = new wxButton(parent, wxID_OK);
-    ok_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& ev) { m_on_ok(ev); });
-    AddButton(ok_btn);
-    auto cancel_btn = new wxButton(parent, wxID_CANCEL);
-    cancel_btn->Bind(wxEVT_BUTTON,
-                     [&](wxCommandEvent& ev) { m_on_cancel(ev); });
-    AddButton(cancel_btn);
-    SetAffirmativeButton(ok_btn);
-    Realize();
-  }
-
-private:
-  std::function<void(wxCommandEvent&)> m_on_ok;
-  std::function<void(wxCommandEvent&)> m_on_cancel;
-};
+};  // CanConfigPanel
 
 }  // Anonymous namespace
 
 class ConnectionEditDlg : public AbstractConnectionEditDlg {
+  class ButtonSizer : public wxStdDialogButtonSizer {
+  public:
+    ButtonSizer(wxWindow* parent, std::function<void(wxCommandEvent&)> on_ok,
+                std::function<void(wxCommandEvent&)> on_cancel)
+        : wxStdDialogButtonSizer(),
+          m_on_ok(std::move(on_ok)),
+          m_on_cancel(std::move(on_cancel)) {
+      auto ok_btn = new wxButton(parent, wxID_OK);
+      ok_btn->Bind(wxEVT_BUTTON, [&](wxCommandEvent& ev) { m_on_ok(ev); });
+      AddButton(ok_btn);
+      auto cancel_btn = new wxButton(parent, wxID_CANCEL);
+      cancel_btn->Bind(wxEVT_BUTTON,
+                       [&](wxCommandEvent& ev) { m_on_cancel(ev); });
+      AddButton(cancel_btn);
+      SetAffirmativeButton(ok_btn);
+      Realize();
+    }
+
+  private:
+    std::function<void(wxCommandEvent&)> m_on_ok;
+    std::function<void(wxCommandEvent&)> m_on_cancel;
+  };
+
 public:
   explicit ConnectionEditDlg(wxWindow* parent, std::function<void()> on_cancel,
                              ConnEditCallback on_ok)
