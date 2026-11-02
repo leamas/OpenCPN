@@ -498,12 +498,11 @@ class FilterConfigPanel : public wxPanel {
       SentenceListDlg dlg(m_parent, FILTER_INPUT, type, list);
       if (dlg.ShowModal() != wxID_OK) return;
 
-      m_params.input_sentence_list =
-          wxStringTokenize(m_sentences_text->GetLabel(), ",");
       std::string text = dlg.GetSentences().ToStdString();
+      m_params.input_sentence_list = wxStringTokenize(text, ",");
       if (text.empty()) text = _("No sentences selected");
       m_sentences_text->SetLabel(text);
-      GetGrandParent()->Layout();
+      GetParent()->Layout();
     }
   };  // Statbox
 
@@ -970,24 +969,41 @@ class SerialConfigPanel : public wxPanel {
   public:
     SerialParamsGrid(wxWindow* parent, ConnectionParams& params)
         : wxFlexGridSizer(2), m_params(params) {
+      AddGrowableCol(1);
       auto flags = wxSizerFlags().Border();
-      auto text_flags = flags;
+      auto text_flags = wxSizerFlags().Border();
 #if wxCHECK_VERSION(3, 2, 0)
-      text_flags = flags.CentreVertical();
+      text_flags = text_flags.CentreVertical();
 #endif
       Add(new wxStaticText(parent, wxID_ANY, _("Data port")), text_flags);
-      Add(new PortCombo(parent, m_params.serial_port), flags.Expand());
+      Add(new PortCombo(parent, m_params.serial_port), flags);
       Add(new wxStaticText(parent, wxID_ANY, _("Baudrate")), text_flags);
-      Add(new BaudChoice(parent, m_params.baudrate), flags.Expand());
+      Add(new BaudChoice(parent, m_params.baudrate), flags);
       Add(new wxStaticText(parent, wxID_ANY, _("Protocol")), text_flags);
-      Add(new ProtocolChoice(parent, m_params.data_protocol), flags.Expand());
+      Add(new ProtocolChoice(parent, m_params.data_protocol), flags);
       Add(new wxStaticText(parent, wxID_ANY, _("User Comment")), text_flags);
-      Add(new CommentText(parent, m_params.user_comment), flags.Expand());
+      Add(new CommentText(parent, m_params.user_comment),
+          wxSizerFlags(1).Border().Expand());
     }
 
   private:
     ConnectionParams& m_params;
   };  // SerialParamsGrid
+
+  class GridPanel : public wxPanel {
+  public:
+    GridPanel(wxWindow* parent, ConnectionParams& params)
+        : wxPanel(parent, wxID_ANY),
+          m_params(params),
+          m_grid(new SerialParamsGrid(this, m_params)) {
+      SetSizer(m_grid);
+      wxWindow::Layout();
+    }
+
+  private:
+    ConnectionParams& m_params;
+    SerialParamsGrid* m_grid;
+  };
 
   /** Global Advanced stuff: Use Garmin checkbox, filter configuration */
   class AdvancedPanel : public wxPanel {
@@ -1010,7 +1026,7 @@ public:
   SerialConfigPanel(wxWindow* parent, ConnectionParams& params)
       : wxPanel(parent), m_params(params) {
     auto flags = wxSizerFlags().Border();
-    m_grid = new SerialParamsGrid(this, params);
+    m_grid = new GridPanel(this, params);
 
     m_advanced_panel = new AdvancedPanel(this, params);
     auto advanced_ctrl = new ExpandablePanel(this, m_advanced_panel,
@@ -1020,7 +1036,7 @@ public:
     hbox->Add(advanced_ctrl, flags);
 
     auto vbox = new wxBoxSizer(wxVERTICAL);
-    vbox->Add(m_grid, flags);
+    vbox->Add(m_grid, wxSizerFlags().Border().Expand());
     vbox->Add(new InputOutputPanel(this, params), flags);
     vbox->Add(hbox, flags);
     vbox->Add(m_advanced_panel, flags);
@@ -1032,7 +1048,7 @@ public:
 private:
   ConnectionParams& m_params;
   wxWindow* m_advanced_panel;
-  SerialParamsGrid* m_grid;
+  GridPanel* m_grid;
 };  // SerialConfigPanel
 
 /** Network configuration: TCP/UDP, client/server, etc. */
@@ -1177,6 +1193,9 @@ class NetConfigPanel : public wxPanel {
           m_parent(parent),
           m_params(params),
           m_in_out_panel(in_out_panel) {
+      // Longest help text in address and port:
+      static const wxSize kHelpSize = parent->GetTextExtent(kAddressMcastHelp);
+      AddGrowableCol(1);
       auto flags = wxSizerFlags().Border();
       auto label_flags = wxSizerFlags().Border();
 #if wxCHECK_VERSION(3, 2, 0)
@@ -1206,15 +1225,17 @@ class NetConfigPanel : public wxPanel {
 
       m_address_label = new wxStaticText(parent, wxID_ANY, _("Server address"));
       m_address_textctrl = new AddressTextCtrl(parent, m_params);
+      m_address_textctrl->SetMinSize(wxSize(kHelpSize.x, -1));
       m_address_textctrl->Bind(wxEVT_KILL_FOCUS,
                                [&](wxFocusEvent& ev) { OnAddressChange(ev); });
       Add(m_address_label, label_flags);
-      Add(m_address_textctrl, wxSizerFlags(1).Expand().Border());
+      Add(m_address_textctrl, wxSizerFlags().Border());
 
       m_port_label = new wxStaticText(parent, wxID_ANY, _("Data Port"));
       m_port_textctrl = new PortTextCtrl(parent, m_params);
+      m_port_textctrl->SetMinSize(wxSize(kHelpSize.x, -1));
       Add(m_port_label, label_flags);
-      Add(m_port_textctrl, wxSizerFlags(1).Expand().Border());
+      Add(m_port_textctrl, wxSizerFlags().Border());
 
       m_comment_label = new wxStaticText(parent, wxID_ANY, _("User comment"));
       m_comment_textctrl = new CommentTextCtrl(parent, m_params);
@@ -1222,6 +1243,7 @@ class NetConfigPanel : public wxPanel {
       Add(m_comment_textctrl, wxSizerFlags(1).Expand().Border());
       OnExpertModeChange();
       ConfigureControlsForView(kTcpDevice);
+      wxSizer::Layout();
     }
 
     [[nodiscard]] bool CheckStatus() const {
@@ -1335,15 +1357,6 @@ class NetConfigPanel : public wxPanel {
       OnExpertModeChange();
     }
 
-    /** Initiate the nmea protocol 0183/2000 choide */
-    static void SetupProtocolChoice(wxChoice* choice) {
-      choice->Clear();
-      choice->Append("NMEA 0183");
-      choice->Append("NMEA 2000");
-      choice->SetSelection(0);
-      choice->Enable();
-    }
-
     /**
      * Return net view name for given ConnectionParams. For ambiguous cases
      * like kTcpDevice (basic view)/kTcpClient (advanced view) return
@@ -1371,19 +1384,18 @@ class NetConfigPanel : public wxPanel {
     }
 
     void ConfigureControlsForView(const std::string& view) {
-      auto found =
-          std::find(kBasicNetViews.begin(), kBasicNetViews.end(), view);
       int selection = m_connection_type_choice->GetSelection();
       assert(selection != wxNOT_FOUND);
+      auto found =
+          std::find(kBasicNetViews.begin(), kBasicNetViews.end(), view);
       m_expert_mode_checkbox->SetValue(found == kBasicNetViews.end());
-      m_address_textctrl->Enable();
       m_address_textctrl->Reload();
       m_address_textctrl->SetClientMode();
       m_address_textctrl->Show();
       m_address_label->SetLabel(_("Server address"));
+      m_address_label->Show();
       m_in_out_panel->EnableOutput(false);
       m_in_out_panel->EnableInput(false);
-      m_address_label->Show();
       m_port_textctrl->Reload();
       auto port = m_port_textctrl->GetValue();
       if (port == kDefaultGpsdPort || port == kDefaultSignalkPort ||
@@ -1402,8 +1414,6 @@ class NetConfigPanel : public wxPanel {
         m_address_label->Hide();
         m_address_textctrl->SetServerMode();
         m_address_textctrl->Hide();
-        if (m_address_textctrl->IsPristine())
-          m_address_textctrl->SetHelp(kAddressDefaultHelp);
         if (m_port_textctrl->IsPristine()) m_port_textctrl->SetHelp(kPortHelp);
         m_in_out_panel->SetOutput(false);
         m_in_out_panel->SetInput(true);
@@ -1491,7 +1501,7 @@ public:
     auto vbox = new wxBoxSizer(wxVERTICAL);
     auto input_output_panel = new InputOutputPanel(this, m_params);
     m_grid_panel = new NetGridPanel(this, m_params, input_output_panel);
-    vbox->Add(m_grid_panel, flags);
+    vbox->Add(m_grid_panel, flags.Expand());
     vbox->Add(input_output_panel, flags);
 
     auto advanced_panel = new FilterConfigPanel(this, m_params);
@@ -1537,9 +1547,16 @@ class CanConfigPanel : public wxPanel {
 
     void Reload() override {
       Clear();
+      Enable();
       for (const auto& port : GetAvailableSocketCanInterfaces()) Append(port);
-      int found = FindString(m_params.socket_can_port);
-      SetSelection(found != wxNOT_FOUND ? found : 0);
+      if (GetCount() == 0) {
+        Append("No source available");
+        SetSelection(0);
+        Disable();
+      } else {
+        int found = FindString(m_params.socket_can_port);
+        SetSelection(found != wxNOT_FOUND ? found : 0);
+      }
     }
 
   private:
@@ -1658,17 +1675,17 @@ public:
     statbox->Add(m_type_buttons, wxSizerFlags().Border());
     statbox->Add(new wxStaticLine(this), wxSizerFlags().Expand());
     m_serial_config_panel = new SerialConfigPanel(this, m_params);
-    statbox->Add(m_serial_config_panel);
+    statbox->Add(m_serial_config_panel, flags.Expand());
     m_net_config_panel = new NetConfigPanel(this, m_params);
-    statbox->Add(m_net_config_panel);
+    statbox->Add(m_net_config_panel, flags.Expand());
     m_can_config_panel = new CanConfigPanel(this, m_params);
     statbox->Add(m_can_config_panel);
     m_canable_config_panel = new CanableConfigPanel(this, m_params);
-    statbox->Add(m_canable_config_panel);
+    statbox->Add(m_canable_config_panel, flags);
     m_internal_gps_config_panel = new InternalGpsConfigPanel(this, m_params);
-    statbox->Add(m_internal_gps_config_panel);
+    statbox->Add(m_internal_gps_config_panel, flags);
     m_internal_bt_config_panel = new InternalBtConfigPanel(this, m_params);
-    statbox->Add(m_internal_bt_config_panel);
+    statbox->Add(m_internal_bt_config_panel, flags);
     vbox->Add(statbox, flags.Expand());
 
     auto on_ok_ = [&](wxCommandEvent& ev) { OnOkCancel(ev, true); };
