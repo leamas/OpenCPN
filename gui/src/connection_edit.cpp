@@ -53,6 +53,7 @@
 #include <wx/weakref.h>
 #include <wx/window.h>
 #include <wx/wrapsizer.h>
+#include <wx/wupdlock.h>
 
 // wxAtoi
 
@@ -358,8 +359,6 @@ public:
     SetSelectedType(ConnectionType::SERIAL);
 
     SetSizer(wbox);
-    wbox->Layout();
-    wxWindow::Show();
   }
 
   void Reload() override { SetSelectedType(m_params.type); }
@@ -519,7 +518,6 @@ public:
                           m_params.output_sentence_list, _("Output filtering")),
               flags);
     SetSizer(vbox);
-    wxWindowBase::Layout();
   }
 
 private:
@@ -585,7 +583,6 @@ public:
     vbox->Add(m_input_box, flags);
     vbox->Add(m_output_box, flags);
     SetSizer(vbox);
-    wxWindow::Layout();
   }
 
   void EnableOutput(bool enabled = true) {
@@ -650,7 +647,6 @@ class InternalBtConfigPanel : public wxPanel, public Reloadable {
       vbox->Add(new GarminCheckBox(this, m_params), flags);
       vbox->Add(new FilterConfigPanel(this, m_params), flags);
       SetSizer(vbox);
-      wxWindowBase::Layout();
     }
 
   private:
@@ -771,37 +767,6 @@ private:
   }
 };
 
-/** Configure internal GPS usage, usually on Android */
-class InternalGpsConfigPanel : public wxPanel {
-public:
-  InternalGpsConfigPanel(wxWindow* parent, ConnectionParams& params)
-      : wxPanel(parent, wxID_ANY), m_params(params) {
-    auto checkbox = new wxCheckBox(this, wxID_ANY, _("Use internal GPS"));
-    checkbox->SetValue(true);
-    checkbox->Disable();
-
-    auto vbox = new wxBoxSizer(wxVERTICAL);
-    vbox->Add(checkbox);
-    auto top_box = new wxBoxSizer(wxVERTICAL);
-    top_box->Add(vbox, wxSizerFlags().Border());
-    SetSizer(top_box);
-    wxWindowBase::Layout();
-    SetParams();
-  }
-
-private:
-  ConnectionParams& m_params;
-
-  void SetParams() {
-    m_params.type = ConnectionType::INTERNAL_GPS;
-    m_params.network_address = "";
-    m_params.network_port = 0;
-    m_params.net_protocol = PROTO_UNDEFINED;
-    m_params.baudrate = 0;
-    m_params.serial_port = "Internal GPS";
-  }
-};  // InternalGpsConfigPanel
-
 /** Configure windows-only canable connection. */
 class CanableConfigPanel : public wxPanel {
 
@@ -843,8 +808,6 @@ public:
     auto vbox = new wxBoxSizer(wxVERTICAL);
     vbox->Add(grid_sizer, wxSizerFlags().Border());
     SetSizer(vbox);
-
-    wxWindowBase::Layout();
     SetParams();
   }
 
@@ -1017,7 +980,6 @@ class SerialConfigPanel : public wxPanel {
           m_params(params),
           m_grid(new SerialParamsGrid(this, m_params)) {
       SetSizer(m_grid);
-      wxWindow::Layout();
     }
 
   private:
@@ -1035,7 +997,6 @@ class SerialConfigPanel : public wxPanel {
       vbox->Add(new GarminCheckBox(this, m_params), flags);
       vbox->Add(new FilterConfigPanel(this, m_params), flags);
       SetSizer(vbox);
-      wxWindowBase::Layout();
     }
 
   private:
@@ -1062,8 +1023,6 @@ public:
     vbox->Add(hbox, flags);
     vbox->Add(m_advanced_panel, flags);
     SetSizer(vbox);
-    wxWindow::Layout();
-    wxWindow::Show();
   }
 
 private:
@@ -1264,7 +1223,6 @@ class NetConfigPanel : public wxPanel {
       Add(m_comment_textctrl, wxSizerFlags(1).Expand().Border());
       OnExpertModeChange();
       ConfigureControlsForView(kTcpDevice);
-      wxSizer::Layout();
     }
 
     [[nodiscard]] bool CheckStatus() const {
@@ -1504,7 +1462,6 @@ class NetConfigPanel : public wxPanel {
                  InputOutputPanel* in_out_panel)
         : wxPanel(parent), m_net_grid(new NetGrid(this, params, in_out_panel)) {
       SetSizer(m_net_grid);
-      wxWindowBase::Layout();
     }
 
     bool CheckStatus() { return m_net_grid->CheckStatus(); }
@@ -1535,8 +1492,6 @@ public:
     vbox->Add(advanced_panel, flags);
 
     SetSizer(vbox);
-    wxWindow::Layout();
-    wxWindow::Show();
   }
 
   /**
@@ -1643,8 +1598,6 @@ public:
     m_choice->Append("foobar");
     hbox->Add(m_choice, wxSizerFlags().Border());
     SetSizer(hbox);
-    wxWindow::Layout();
-    wxWindow::Show();
   }
 
 private:
@@ -1654,40 +1607,104 @@ private:
 
 }  // Anonymous namespace
 
-class ConfigPanel : public wxPanel {
+/** Configure internal GPS usage, usually on Android */
+class InternalGpsConfigPanel : public wxPanel {
 public:
-  explicit ConfigPanel(wxWindow* parent, ConnectionParams& params)
-      : wxPanel(parent), m_params(params) {
-    auto flags = wxSizerFlags().Border();
-    auto vbox = new wxBoxSizer(wxVERTICAL);
-    m_serial_config_panel = new SerialConfigPanel(this, m_params);
-    vbox->Add(m_serial_config_panel, flags.Expand());
-    m_net_config_panel = new NetConfigPanel(this, m_params);
-    vbox->Add(m_net_config_panel, flags.Expand());
-    m_can_config_panel = new CanConfigPanel(this, m_params);
-    vbox->Add(m_can_config_panel);
-    m_canable_config_panel = new CanableConfigPanel(this, m_params);
-    vbox->Add(m_canable_config_panel, flags);
-    m_internal_gps_config_panel = new InternalGpsConfigPanel(this, m_params);
-    vbox->Add(m_internal_gps_config_panel, flags);
-    m_internal_bt_config_panel = new InternalBtConfigPanel(this, m_params);
-    vbox->Add(m_internal_bt_config_panel, flags);
+  InternalGpsConfigPanel(wxWindow* parent, ConnectionParams& params)
+      : wxPanel(parent, wxID_ANY), m_params(params) {
+    auto checkbox = new wxCheckBox(this, wxID_ANY, "Use internal GPS");
+    checkbox->SetValue(true);
+    checkbox->Disable();
 
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    vbox->Add(checkbox);
     SetSizer(vbox);
-    SetActivePanel(ConnectionType::NETWORK);
-    wxWindow::Show();
+    SetParams();
   }
 
+  virtual ~InternalGpsConfigPanel() = default;
+
+  ConnectionParams& m_params;
+
+  void SetParams() {
+    m_params.type = ConnectionType::INTERNAL_GPS;
+    m_params.network_address = "";
+    m_params.network_port = 0;
+    m_params.net_protocol = PROTO_UNDEFINED;
+    m_params.baudrate = 0;
+    m_params.serial_port = "Internal GPS";
+  }
+};  // InternalGpsConfigPanel
+
+class ConfigPanel : public wxScrolledWindow {
+public:
+  explicit ConfigPanel(wxWindow* parent, ConnectionParams& params)
+      : wxScrolledWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                         wxVSCROLL | wxHSCROLL, "foobar"),
+        m_params(params),
+        m_net_config_panel(nullptr),
+        m_can_config_panel(nullptr),
+        m_canable_config_panel(nullptr),
+        m_internal_bt_config_panel(nullptr),
+        m_internal_gps_config_panel(nullptr),
+        m_serial_config_panel(nullptr) {
+    // 1. Create a container panel to act as the SINGLE direct child of the
+    // scrolled window
+    auto content_container = new wxPanel(this, wxID_ANY);
+    auto flags = wxSizerFlags().Border();
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+
+    m_internal_gps_config_panel =
+        new InternalGpsConfigPanel(content_container, m_params);
+    vbox->Add(m_internal_gps_config_panel, flags);
+    content_container->SetSizer(vbox);
+
+    // 2. Bind the container to the scrolled window's sizer
+    auto outer_vbox = new wxBoxSizer(wxVERTICAL);
+    outer_vbox->Add(content_container, 1, wxEXPAND);
+    SetSizer(outer_vbox);
+
+    // 5. Initialize the panel visibility state
+    SetActivePanel(ConnectionType::INTERNAL_BT);
+
+    /**
+    auto flags = wxSizerFlags().Border();
+    auto vbox = new wxBoxSizer(wxVERTICAL);
+    // m_serial_config_panel = new SerialConfigPanel(this, m_params);
+    // vbox->Add(m_serial_config_panel, flags.Expand());
+    // m_net_config_panel = new NetConfigPanel(this, m_params);
+    // vbox->Add(m_net_config_panel, flags.Expand());
+    // m_can_config_panel = new CanConfigPanel(this, m_params);
+    // vbox->Add(m_can_config_panel);
+    // m_canable_config_panel = new CanableConfigPanel(this, m_params);
+    // vbox->Add(m_canable_config_panel, flags);
+    m_internal_gps_config_panel = new InternalGpsConfigPanel(this, m_params);
+    vbox->Add(m_internal_gps_config_panel, flags);
+    // m_internal_bt_config_panel = new InternalBtConfigPanel(this, m_params);
+    // vbox->Add(m_internal_bt_config_panel, flags);
+
+    SetSizer(vbox);
+    FitInside();
+    SetScrollRate(10, 10);
+    SetActivePanel(ConnectionType::INTERNAL_BT);
+    **/
+  }
+  virtual ~ConfigPanel() override = default;
+
   void SetActivePanel(ConnectionType type) {
-    m_net_config_panel->Show(type == ConnectionType::NETWORK);
-    m_can_config_panel->Show(type == ConnectionType::SOCKETCAN);
-    m_serial_config_panel->Show(type == ConnectionType::SERIAL);
-    m_canable_config_panel->Show(type == ConnectionType::CANABLE);
-    m_internal_gps_config_panel->Show(type == ConnectionType::INTERNAL_GPS);
-    m_internal_bt_config_panel->Show(type == ConnectionType::INTERNAL_BT);
+    // m_net_config_panel->Show(type == ConnectionType::NETWORK);
+    // m_can_config_panel->Show(type == ConnectionType::SOCKETCAN);
+    // m_serial_config_panel->Show(type == ConnectionType::SERIAL);
+    // m_canable_config_panel->Show(type == ConnectionType::CANABLE);
+    if (m_internal_gps_config_panel)
+      m_internal_gps_config_panel->Show(type == ConnectionType::INTERNAL_GPS);
+    // m_internal_bt_config_panel->Show(type == ConnectionType::INTERNAL_BT);
+    Layout();
+    FitInside();
   }
 
   bool CheckStatus() {
+    return true;  // debug junk
     if (!m_net_config_panel->IsShown()) return true;
     return m_net_config_panel->CheckStatus();
   }
@@ -1697,8 +1714,8 @@ private:
   NetConfigPanel* m_net_config_panel;
   CanConfigPanel* m_can_config_panel;
   CanableConfigPanel* m_canable_config_panel;
-  InternalGpsConfigPanel* m_internal_gps_config_panel;
   InternalBtConfigPanel* m_internal_bt_config_panel;
+  InternalGpsConfigPanel* m_internal_gps_config_panel;
   SerialConfigPanel* m_serial_config_panel;
 };
 
