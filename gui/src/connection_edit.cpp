@@ -1652,12 +1652,12 @@ private:
   wxChoice* m_choice;
 };  // CanConfigPanel
 
-}  // Anonymous namespace
-
-class ConfigPanel : public wxPanel {
+class ConfigPanel : public wxScrolledWindow {
 public:
   explicit ConfigPanel(wxWindow* parent, ConnectionParams& params)
-      : wxPanel(parent), m_params(params) {
+      : wxScrolledWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                         wxVSCROLL | wxHSCROLL, "foobar"),
+        m_params(params) {
     auto flags = wxSizerFlags().Border();
     auto vbox = new wxBoxSizer(wxVERTICAL);
     m_serial_config_panel = new SerialConfigPanel(this, m_params);
@@ -1675,7 +1675,8 @@ public:
 
     SetSizer(vbox);
     SetActivePanel(ConnectionType::NETWORK);
-    wxWindow::Show();
+    Layout();
+    SetScrollRate(0, 10);
   }
 
   virtual ~ConfigPanel() = default;
@@ -1703,6 +1704,8 @@ private:
   InternalBtConfigPanel* m_internal_bt_config_panel;
   SerialConfigPanel* m_serial_config_panel;
 };
+
+}  // Anonymous namespace
 
 class ConnectionEditDlg : public AbstractConnectionEditDlg {
   class ButtonSizer : public wxStdDialogButtonSizer {
