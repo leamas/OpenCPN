@@ -1531,8 +1531,8 @@ public:
     hbox->Add(new ExpandablePanel(this, advanced_panel,
                                   [&] { GetParent()->Layout(); }));
     flags = flags.ReserveSpaceEvenIfHidden();
-    vbox->Add(hbox, flags);
-    vbox->Add(advanced_panel, flags);
+    vbox->Add(hbox, flags.Expand());
+    vbox->Add(advanced_panel, flags.Expand());
 
     SetSizer(vbox);
     wxWindow::Layout();
@@ -1675,7 +1675,7 @@ public:
 
     SetSizer(vbox);
     SetActivePanel(ConnectionType::NETWORK);
-    Layout();
+    ShowScrollbars(wxSHOW_SB_NEVER, wxSHOW_SB_ALWAYS);
     SetScrollRate(0, 10);
   }
 
@@ -1747,7 +1747,7 @@ public:
     statbox->Add(m_type_buttons, wxSizerFlags().Border());
     statbox->Add(new wxStaticLine(this), wxSizerFlags().Expand());
     m_config_panel = new ConfigPanel(this, m_params);
-    statbox->Add(m_config_panel, flags);
+    statbox->Add(m_config_panel, flags.Expand());
     vbox->Add(statbox, flags.Expand());
 
     auto on_ok_ = [&](wxCommandEvent& ev) { OnOkCancel(ev, true); };
@@ -1758,8 +1758,8 @@ public:
     OnTypeBtnClick(ConnectionType::NETWORK);
 
     SetSizer(vbox);
-    wxWindow::Fit();
-    wxWindow::Show();
+    wxWindow::Layout();
+    SetBackgroundColour(*wxRED);
   }
 
   void SetParams(std::unique_ptr<ConnectionParams> p) override {

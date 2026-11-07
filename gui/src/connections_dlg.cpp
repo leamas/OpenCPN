@@ -1043,7 +1043,8 @@ public:
 #endif
     m_edit_panel->SetSize(
         wxSize(options->GetSize().x, options->GetSize().y * fraction / 10));
-    vbox->Add(m_edit_panel, wxSizerFlags(0).Expand());
+    vbox->Add(m_edit_panel,
+              wxSizerFlags(0).Expand().ReserveSpaceEvenIfHidden());
     m_edit_panel->Hide();
 
     // SetScrollRate(0, 10);
