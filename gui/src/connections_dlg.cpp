@@ -1007,14 +1007,12 @@ private:
 };
 
 /** Top scroll window, adds scrollbars to TopPanel. */
-class TopScroll : public wxScrolledWindow {
+class TopScroll : public wxPanel {
 public:
   TopScroll(wxWindow* parent, const std::vector<ConnectionParams*>& connections,
             obs::EventVar& evt_add_connection)
-      : wxScrolledWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                         wxVSCROLL | wxHSCROLL, TopScrollWindowName),
-        m_edited_connection(nullptr) {
-    ShowScrollbars(wxSHOW_SB_NEVER, wxSHOW_SB_ALWAYS);
+      : wxPanel(parent, wxID_ANY), m_edited_connection(nullptr) {
+    // ShowScrollbars(wxSHOW_SB_NEVER, wxSHOW_SB_ALWAYS);
     auto vbox = new wxBoxSizer(wxVERTICAL);
     SetSizer(vbox);
 
@@ -1048,11 +1046,8 @@ public:
     vbox->Add(m_edit_panel, wxSizerFlags(0).Expand());
     m_edit_panel->Hide();
 
-    SetScrollRate(0, 10);
-    if (IsAndroid()) SetScrollRate(1, 1);
-
-    SetScrollRate(0, 10);
-    if (IsAndroid()) SetScrollRate(1, 1);
+    // SetScrollRate(0, 10);
+    // if (IsAndroid()) SetScrollRate(1, 1);
   }
 
   void SetColorScheme(ColorScheme cs) const {
@@ -1072,7 +1067,7 @@ public:
 
   void SwitchToEditor() {
     m_top_panel->Hide();  // TopPanel
-    Scroll(0, 0);
+                          //  Scroll(0, 0);
     DimeControl(m_edit_panel);
     m_edit_panel->Show();
     g_options->ShowOKButtons(false);
@@ -1084,7 +1079,7 @@ public:
     m_top_panel->GetConnectionsGrid()->ReloadGrid(TheConnectionParams());
     g_options->ShowOKButtons(true);
     Layout();
-    Scroll(0, 0);
+    // Scroll(0, 0);
     m_top_panel->Show();
   }
 

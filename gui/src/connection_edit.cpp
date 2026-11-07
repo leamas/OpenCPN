@@ -1530,7 +1530,7 @@ public:
     hbox->Add(new wxStaticText(this, wxID_ANY, _("Advanced")));
     hbox->Add(new ExpandablePanel(this, advanced_panel,
                                   [&] { GetParent()->Layout(); }));
-    if (IsWindows()) flags = flags.ReserveSpaceEvenIfHidden();
+    flags = flags.ReserveSpaceEvenIfHidden();
     vbox->Add(hbox, flags);
     vbox->Add(advanced_panel, flags);
 
