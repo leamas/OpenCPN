@@ -30,7 +30,7 @@ ExpandablePanel::ExpandablePanel(wxWindow* parent, wxWindow* child,
       m_expand_icon(new ExpandableIcon(
           this, [&](bool collapsed) { OnClick(collapsed); })),
       m_on_resize(std::move(on_resize)) {
-  if (m_child) OnClick(true);
+  if (m_child) m_child->Hide();
 }
 
 ExpandablePanel::ExpandablePanel(wxWindow* parent)
